@@ -33,7 +33,11 @@ impl Delta {
     pub fn new(metric: &str, baseline: f64, current: f64, direction: Direction) -> Self {
         let absolute = current - baseline;
         let pct_change = if baseline.abs() < 1e-9 {
-            if current.abs() < 1e-9 { 0.0 } else { 100.0 }
+            if current.abs() < 1e-9 {
+                0.0
+            } else {
+                100.0
+            }
         } else {
             (absolute / baseline.abs()) * 100.0
         };
@@ -106,7 +110,12 @@ impl ComparisonReport {
                             .copied()
                             .unwrap_or(Direction::HigherIsBetter);
 
-                        deltas.push(Delta::new(metric_name, baseline_value, current_value, direction));
+                        deltas.push(Delta::new(
+                            metric_name,
+                            baseline_value,
+                            current_value,
+                            direction,
+                        ));
                     }
                 }
             }
@@ -116,10 +125,12 @@ impl ComparisonReport {
         let category_breakdown = CategoryBreakdown::from_deltas(&deltas, baseline, current);
 
         Self {
-            baseline_version: baseline.first()
+            baseline_version: baseline
+                .first()
                 .map(|r| r.version.clone())
                 .unwrap_or_default(),
-            current_version: current.first()
+            current_version: current
+                .first()
                 .map(|r| r.version.clone())
                 .unwrap_or_default(),
             deltas,
@@ -131,18 +142,23 @@ impl ComparisonReport {
 
     /// Get only regressions.
     pub fn regressions(&self) -> Vec<&Delta> {
-        self.deltas.iter().filter(|d| d.is_regression && d.is_significant).collect()
+        self.deltas
+            .iter()
+            .filter(|d| d.is_regression && d.is_significant)
+            .collect()
     }
 
     /// Get only improvements.
     pub fn improvements(&self) -> Vec<&Delta> {
-        self.deltas.iter().filter(|d| d.is_improvement && d.is_significant).collect()
+        self.deltas
+            .iter()
+            .filter(|d| d.is_improvement && d.is_significant)
+            .collect()
     }
 
     /// Export as JSON.
     pub fn to_json(&self) -> Result<String, String> {
-        serde_json::to_string_pretty(self)
-            .map_err(|e| format!("JSON serialization failed: {}", e))
+        serde_json::to_string_pretty(self).map_err(|e| format!("JSON serialization failed: {}", e))
     }
 
     /// Text summary.
@@ -195,15 +211,23 @@ pub struct ComparisonSummary {
 impl ComparisonSummary {
     pub fn from_deltas(deltas: &[Delta]) -> Self {
         let total = deltas.len() as u64;
-        let improvements = deltas.iter().filter(|d| d.is_improvement && d.is_significant).count() as u64;
-        let regressions = deltas.iter().filter(|d| d.is_regression && d.is_significant).count() as u64;
+        let improvements = deltas
+            .iter()
+            .filter(|d| d.is_improvement && d.is_significant)
+            .count() as u64;
+        let regressions = deltas
+            .iter()
+            .filter(|d| d.is_regression && d.is_significant)
+            .count() as u64;
         let unchanged = total - improvements - regressions;
 
-        let imp_pcts: Vec<f64> = deltas.iter()
+        let imp_pcts: Vec<f64> = deltas
+            .iter()
             .filter(|d| d.is_improvement)
             .map(|d| d.pct_change)
             .collect();
-        let reg_pcts: Vec<f64> = deltas.iter()
+        let reg_pcts: Vec<f64> = deltas
+            .iter()
             .filter(|d| d.is_regression)
             .map(|d| d.pct_change)
             .collect();
@@ -251,10 +275,15 @@ impl CategoryBreakdown {
             groups.entry(cat).or_default().push(d.clone());
         }
 
-        groups.into_iter()
+        groups
+            .into_iter()
             .map(|(category, deltas)| {
                 let has_regression = deltas.iter().any(|d| d.is_regression && d.is_significant);
-                CategoryBreakdown { category, deltas, has_regression }
+                CategoryBreakdown {
+                    category,
+                    deltas,
+                    has_regression,
+                }
             })
             .collect()
     }

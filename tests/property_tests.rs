@@ -4,34 +4,37 @@
 // across the 9-ring security architecture.
 
 use chakravyuh::{
-    Config,
-    Decision,
-    shield::{ShieldRing, ShieldRequest},
-    identity::{IdentityRing, IdentityConfig, IdentityRequest},
-    keshav::{
-        risk::{KeshavRisk, RiskSignals, ContextSignals},
-        feedback_collector::{FeedbackCollector, FeedbackCollectorConfig, FeedbackEntry, FeedbackType, FeedbackSeverity},
-    },
     ananta::{
-        crypto::{
-            hashing::{hash_bytes, hash_combined, constant_time_eq},
-            signing::{sign, verify, KeyPair},
-            merkle::MerkleTree,
-            encryption::{encrypt, decrypt},
-            ShamirScheme, lagrange_interpolate_at_zero,
-        },
         config::HashAlgorithm,
+        crypto::{
+            encryption::{decrypt, encrypt},
+            hashing::{constant_time_eq, hash_bytes, hash_combined},
+            lagrange_interpolate_at_zero,
+            merkle::MerkleTree,
+            signing::{sign, verify, KeyPair},
+            ShamirScheme,
+        },
         ovaph_loop::OvaphStage,
     },
-    storage::{MemoryStore, Store},
-    policy_compiler::vm::PolicyVM,
-    policy_compiler::bytecode::{OpCode, Instruction, Constant, BytecodeProgram},
     cross_ring::{CrossRingMessage, CrossRingType, MessagePriority},
-    infra::{AuditTrail, AuditConfig},
+    identity::{IdentityConfig, IdentityRequest, IdentityRing},
+    infra::{AuditConfig, AuditTrail},
+    keshav::{
+        feedback_collector::{
+            FeedbackCollector, FeedbackCollectorConfig, FeedbackEntry, FeedbackSeverity,
+            FeedbackType,
+        },
+        risk::{ContextSignals, KeshavRisk, RiskSignals},
+    },
+    policy_compiler::bytecode::{BytecodeProgram, Constant, Instruction, OpCode},
+    policy_compiler::vm::PolicyVM,
+    shield::{ShieldRequest, ShieldRing},
+    storage::{MemoryStore, Store},
+    Config, Decision,
 };
 use proptest::prelude::*;
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 // ─────────────────────────────────────────────────────────────────────
 // Helpers
@@ -60,7 +63,8 @@ fn make_shield_request(prompt: &str) -> ShieldRequest {
 /// Construct a minimal valid Decision::Challenge via JSON deserialization.
 /// ChallengeType is in a private module, so we use serde to construct it.
 fn make_challenge_decision() -> Decision {
-    serde_json::from_value(serde_json::json!({"type": "challenge", "challenge_type": "javascript"})).unwrap()
+    serde_json::from_value(serde_json::json!({"type": "challenge", "challenge_type": "javascript"}))
+        .unwrap()
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -953,8 +957,8 @@ fn config_default_yaml_roundtrip() {
     let yaml = Config::default_yaml();
     let mut tmp = tempfile::NamedTempFile::new().unwrap();
     std::io::Write::write_all(tmp.as_file_mut(), yaml.as_bytes()).unwrap();
-    let config = Config::from_file(tmp.path())
-        .expect("default_yaml should parse into a valid Config");
+    let config =
+        Config::from_file(tmp.path()).expect("default_yaml should parse into a valid Config");
     assert!(config.shield.enabled, "shield should be enabled by default");
 }
 

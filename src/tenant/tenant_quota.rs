@@ -194,7 +194,8 @@ impl QuotaUsage {
         self.tokens_today.store(0, Ordering::Relaxed);
         self.bandwidth_today.store(0, Ordering::Relaxed);
         self.tool_calls_this_request.store(0, Ordering::Relaxed);
-        self.last_reset.store(current_unix_secs() as i64, Ordering::Relaxed);
+        self.last_reset
+            .store(current_unix_secs() as i64, Ordering::Relaxed);
     }
 
     /// Create a snapshot of current usage.
@@ -451,7 +452,15 @@ impl QuotaAlert {
         );
         QuotaAlert {
             tenant_id,
-            resource_name: message.split(':').nth(1).unwrap_or("unknown").trim().split_whitespace().next().unwrap_or("unknown").to_string(),
+            resource_name: message
+                .split(':')
+                .nth(1)
+                .unwrap_or("unknown")
+                .trim()
+                .split_whitespace()
+                .next()
+                .unwrap_or("unknown")
+                .to_string(),
             usage_pct,
             threshold_pct,
             severity,
@@ -633,17 +642,30 @@ impl QuotaEnforcer {
         // This is only used for the check; actual mutations go through
         // the write lock in record_* methods.
         let usage = QuotaUsage::new();
-        usage.requests_today.store(snapshot.requests_today, Ordering::Relaxed);
-        usage.tokens_today.store(snapshot.tokens_today, Ordering::Relaxed);
-        usage.storage_bytes.store(snapshot.storage_bytes, Ordering::Relaxed);
-        usage.concurrent_requests
+        usage
+            .requests_today
+            .store(snapshot.requests_today, Ordering::Relaxed);
+        usage
+            .tokens_today
+            .store(snapshot.tokens_today, Ordering::Relaxed);
+        usage
+            .storage_bytes
+            .store(snapshot.storage_bytes, Ordering::Relaxed);
+        usage
+            .concurrent_requests
             .store(snapshot.concurrent_requests, Ordering::Relaxed);
-        usage.active_sessions
+        usage
+            .active_sessions
             .store(snapshot.active_sessions, Ordering::Relaxed);
-        usage.tool_calls_this_request
+        usage
+            .tool_calls_this_request
             .store(snapshot.tool_calls_this_request, Ordering::Relaxed);
-        usage.api_key_count.store(snapshot.api_key_count, Ordering::Relaxed);
-        usage.bandwidth_today.store(snapshot.bandwidth_today, Ordering::Relaxed);
+        usage
+            .api_key_count
+            .store(snapshot.api_key_count, Ordering::Relaxed);
+        usage
+            .bandwidth_today
+            .store(snapshot.bandwidth_today, Ordering::Relaxed);
         usage.last_reset.store(
             self.usage
                 .read()
@@ -705,9 +727,7 @@ impl QuotaEnforcer {
         }
 
         entry.requests_today.fetch_add(1, Ordering::Relaxed);
-        entry
-            .concurrent_requests
-            .fetch_add(1, Ordering::Relaxed);
+        entry.concurrent_requests.fetch_add(1, Ordering::Relaxed);
     }
 
     /// Record LLM token usage for the tenant.
@@ -740,9 +760,7 @@ impl QuotaEnforcer {
         } else {
             let current = entry.storage_bytes.load(Ordering::Relaxed);
             let subtract = (bytes.abs() as u64).min(current);
-            entry
-                .storage_bytes
-                .fetch_sub(subtract, Ordering::Relaxed);
+            entry.storage_bytes.fetch_sub(subtract, Ordering::Relaxed);
         }
     }
 
@@ -768,9 +786,7 @@ impl QuotaEnforcer {
         if let Some(entry) = usage_map.get(&ctx.tenant_id.0) {
             let current = entry.concurrent_requests.load(Ordering::Relaxed);
             if current > 0 {
-                entry
-                    .concurrent_requests
-                    .fetch_sub(1, Ordering::Relaxed);
+                entry.concurrent_requests.fetch_sub(1, Ordering::Relaxed);
             }
         }
     }
@@ -819,7 +835,10 @@ impl QuotaEnforcer {
             requests_pct: pct(snapshot.requests_today, q.max_requests_per_day),
             tokens_pct: pct(snapshot.tokens_today, q.max_tokens_per_day),
             storage_pct: pct(snapshot.storage_bytes, q.max_storage_bytes),
-            concurrent_pct: pct(snapshot.concurrent_requests as u64, q.max_concurrent_requests as u64),
+            concurrent_pct: pct(
+                snapshot.concurrent_requests as u64,
+                q.max_concurrent_requests as u64,
+            ),
             sessions_pct: 0.0, // Not tracked separately yet
             api_keys_pct: pct(snapshot.api_key_count as u64, q.max_api_keys as u64),
             bandwidth_pct: pct(snapshot.bandwidth_today, q.bandwidth_bytes_per_day),
@@ -1217,8 +1236,16 @@ mod tests {
 
     #[test]
     fn enforcer_usage_pct_unlimited() {
-        let enforcer =
-            QuotaEnforcer::new(ResourceQuota::new(u64::MAX, u64::MAX, u64::MAX, 10, 5, 3, 2, u64::MAX));
+        let enforcer = QuotaEnforcer::new(ResourceQuota::new(
+            u64::MAX,
+            u64::MAX,
+            u64::MAX,
+            10,
+            5,
+            3,
+            2,
+            u64::MAX,
+        ));
         let ctx = test_tenant_ctx("test-tenant");
         enforcer.record_request(&ctx);
         let pct = enforcer.usage_pct(&ctx);
@@ -1242,7 +1269,10 @@ mod tests {
         }
         let alerts = enforcer.check_alerts(&ctx);
         // 9/10 = 90% >= 80% warning threshold
-        let request_alerts: Vec<_> = alerts.iter().filter(|a| a.resource_name == "requests").collect();
+        let request_alerts: Vec<_> = alerts
+            .iter()
+            .filter(|a| a.resource_name == "requests")
+            .collect();
         assert_eq!(request_alerts.len(), 1);
         assert_eq!(request_alerts[0].severity, QuotaAlertSeverity::Warning);
     }
@@ -1257,7 +1287,10 @@ mod tests {
         }
         let alerts = enforcer.check_alerts(&ctx);
         // 10/10 = 100% >= 95% critical threshold
-        let request_alerts: Vec<_> = alerts.iter().filter(|a| a.resource_name == "requests").collect();
+        let request_alerts: Vec<_> = alerts
+            .iter()
+            .filter(|a| a.resource_name == "requests")
+            .collect();
         assert_eq!(request_alerts.len(), 1);
         assert_eq!(request_alerts[0].severity, QuotaAlertSeverity::Critical);
     }

@@ -15,8 +15,8 @@
 //   - They run without any ML, without Risk scoring, without Orchestrate.
 //   - They are pure functions of ring verdicts.
 
-use crate::decision::Decision;
 use super::decide::AllRingVerdicts;
+use crate::decision::Decision;
 use crate::shield::ShieldVerdict;
 use crate::threat::ThreatVerdict;
 
@@ -63,46 +63,95 @@ impl FallbackRules {
     pub fn evaluate_all(&self, all: &AllRingVerdicts<'_>) -> (Decision, String) {
         // 1. Shield
         if all.shield.decision.is_deny() {
-            return (all.shield.decision.clone(), format!("fallback: shield ring denied ({})", decision_code(&all.shield.decision)));
+            return (
+                all.shield.decision.clone(),
+                format!(
+                    "fallback: shield ring denied ({})",
+                    decision_code(&all.shield.decision)
+                ),
+            );
         }
         if matches!(all.shield.decision, Decision::Challenge { .. }) {
-            return (all.shield.decision.clone(), "fallback: shield ring issued challenge".into());
+            return (
+                all.shield.decision.clone(),
+                "fallback: shield ring issued challenge".into(),
+            );
         }
 
         // 2. Threat
         if let Some(t) = all.threat {
             if t.decision.is_deny() {
-                return (t.decision.clone(), format!("fallback: threat ring denied (score={:.3}, sigs={})", t.composite_score, t.matched_signatures.len()));
+                return (
+                    t.decision.clone(),
+                    format!(
+                        "fallback: threat ring denied (score={:.3}, sigs={})",
+                        t.composite_score,
+                        t.matched_signatures.len()
+                    ),
+                );
             }
             if matches!(t.decision, Decision::Challenge { .. }) {
-                return (t.decision.clone(), "fallback: threat ring issued challenge".into());
+                return (
+                    t.decision.clone(),
+                    "fallback: threat ring issued challenge".into(),
+                );
             }
         }
 
         // 3. Identity
         if let Some(i) = all.identity {
             if i.decision.is_deny() {
-                return (i.decision.clone(), format!("fallback: identity ring denied (risk={:.3})", i.identity_risk_score));
+                return (
+                    i.decision.clone(),
+                    format!(
+                        "fallback: identity ring denied (risk={:.3})",
+                        i.identity_risk_score
+                    ),
+                );
             }
             if matches!(i.decision, Decision::Challenge { .. }) {
-                return (i.decision.clone(), format!("fallback: identity ring challenged (risk={:.3})", i.identity_risk_score));
+                return (
+                    i.decision.clone(),
+                    format!(
+                        "fallback: identity ring challenged (risk={:.3})",
+                        i.identity_risk_score
+                    ),
+                );
             }
         }
 
         // 4. Memory
         if let Some(m) = all.memory {
             if m.decision.is_deny() {
-                return (m.decision.clone(), format!("fallback: memory ring denied (risk={:.3})", m.memory_risk_score));
+                return (
+                    m.decision.clone(),
+                    format!(
+                        "fallback: memory ring denied (risk={:.3})",
+                        m.memory_risk_score
+                    ),
+                );
             }
             if matches!(m.decision, Decision::Challenge { .. }) {
-                return (m.decision.clone(), format!("fallback: memory ring challenged (risk={:.3})", m.memory_risk_score));
+                return (
+                    m.decision.clone(),
+                    format!(
+                        "fallback: memory ring challenged (risk={:.3})",
+                        m.memory_risk_score
+                    ),
+                );
             }
         }
 
         // 5. Agent
         if let Some(a) = all.agent {
             if a.decision.is_deny() {
-                return (a.decision.clone(), format!("fallback: agent ring denied (risk={:.3})", a.behavior_risk_score));
+                return (
+                    a.decision.clone(),
+                    format!(
+                        "fallback: agent ring denied (risk={:.3})",
+                        a.behavior_risk_score
+                    ),
+                );
             }
         }
 
@@ -116,32 +165,65 @@ impl FallbackRules {
         // 7. Reasoning
         if let Some(r) = all.reasoning {
             if r.decision.is_deny() {
-                return (r.decision.clone(), format!("fallback: reasoning ring denied (risk={:.3})", r.reasoning_risk_score));
+                return (
+                    r.decision.clone(),
+                    format!(
+                        "fallback: reasoning ring denied (risk={:.3})",
+                        r.reasoning_risk_score
+                    ),
+                );
             }
             if matches!(r.decision, Decision::Challenge { .. }) {
-                return (r.decision.clone(), format!("fallback: reasoning ring challenged (risk={:.3})", r.reasoning_risk_score));
+                return (
+                    r.decision.clone(),
+                    format!(
+                        "fallback: reasoning ring challenged (risk={:.3})",
+                        r.reasoning_risk_score
+                    ),
+                );
             }
         }
 
         // 8. Governance
         if let Some(g) = all.governance {
             if g.decision.is_deny() {
-                return (g.decision.clone(), format!("fallback: governance ring denied (risk={:.3})", g.governance_risk_score));
+                return (
+                    g.decision.clone(),
+                    format!(
+                        "fallback: governance ring denied (risk={:.3})",
+                        g.governance_risk_score
+                    ),
+                );
             }
             if matches!(g.decision, Decision::Escalate { .. }) {
-                return (g.decision.clone(), format!("fallback: governance ring escalated (risk={:.3})", g.governance_risk_score));
+                return (
+                    g.decision.clone(),
+                    format!(
+                        "fallback: governance ring escalated (risk={:.3})",
+                        g.governance_risk_score
+                    ),
+                );
             }
         }
 
         // 9. Recovery
         if let Some(rc) = all.recovery {
             if rc.decision.is_deny() {
-                return (rc.decision.clone(), format!("fallback: recovery ring denied (risk={:.3})", rc.recovery_risk_score));
+                return (
+                    rc.decision.clone(),
+                    format!(
+                        "fallback: recovery ring denied (risk={:.3})",
+                        rc.recovery_risk_score
+                    ),
+                );
             }
         }
 
         // 10. Default: allow.
-        (Decision::Allow, "fallback: no ring denied or challenged".into())
+        (
+            Decision::Allow,
+            "fallback: no ring denied or challenged".into(),
+        )
     }
 }
 

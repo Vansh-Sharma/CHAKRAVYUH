@@ -249,7 +249,10 @@ impl SoakRunner {
 
         let memory_growth_exceeded = memory_leak
             .as_ref()
-            .map(|ml| ml.total_growth_bytes > 0 && ml.total_growth_bytes as u64 > self.config.max_memory_growth_bytes)
+            .map(|ml| {
+                ml.total_growth_bytes > 0
+                    && ml.total_growth_bytes as u64 > self.config.max_memory_growth_bytes
+            })
             .unwrap_or(false);
 
         let healthy = !has_critical_leak
@@ -545,7 +548,11 @@ mod tests {
         };
         let result = SoakRunner::new(config);
         assert!(result.is_err());
-        assert!(result.as_ref().err().unwrap().contains("sample_interval_ms"));
+        assert!(result
+            .as_ref()
+            .err()
+            .unwrap()
+            .contains("sample_interval_ms"));
     }
 
     #[test]

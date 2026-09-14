@@ -105,9 +105,24 @@ pub struct AuditEntry {
 
 impl AuditEntry {
     /// Compute the content hash for this entry.
-    fn compute_hash(algorithm: &HashAlgorithm, prev_hash: &str, category: &str, message: &str, timestamp: &str) -> String {
+    fn compute_hash(
+        algorithm: &HashAlgorithm,
+        prev_hash: &str,
+        category: &str,
+        message: &str,
+        timestamp: &str,
+    ) -> String {
         use crate::ananta::crypto::hashing::hash_combined;
-        hash_combined(&[prev_hash.as_bytes(), category.as_bytes(), message.as_bytes(), timestamp.as_bytes()], algorithm).hex
+        hash_combined(
+            &[
+                prev_hash.as_bytes(),
+                category.as_bytes(),
+                message.as_bytes(),
+                timestamp.as_bytes(),
+            ],
+            algorithm,
+        )
+        .hex
     }
 }
 
@@ -164,7 +179,9 @@ impl AuditLog {
         message: &str,
     ) -> &AuditEntry {
         let sequence = self.entries.len() as u64;
-        let prev_hash = self.entries.last()
+        let prev_hash = self
+            .entries
+            .last()
             .map(|e| e.hash.clone())
             .unwrap_or_else(|| "0".repeat(64));
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -199,7 +216,10 @@ impl AuditLog {
         };
 
         // Update category counts.
-        *self.category_counts.entry(entry.category.clone()).or_insert(0) += 1;
+        *self
+            .category_counts
+            .entry(entry.category.clone())
+            .or_insert(0) += 1;
 
         self.entries.push(entry);
         self.entries.last().unwrap()
@@ -214,7 +234,9 @@ impl AuditLog {
         data: HashMap<String, serde_json::Value>,
     ) -> &AuditEntry {
         let sequence = self.entries.len() as u64;
-        let prev_hash = self.entries.last()
+        let prev_hash = self
+            .entries
+            .last()
             .map(|e| e.hash.clone())
             .unwrap_or_else(|| "0".repeat(64));
         let timestamp = chrono::Utc::now().to_rfc3339();
@@ -248,14 +270,19 @@ impl AuditLog {
             hash,
         };
 
-        *self.category_counts.entry(entry.category.clone()).or_insert(0) += 1;
+        *self
+            .category_counts
+            .entry(entry.category.clone())
+            .or_insert(0) += 1;
         self.entries.push(entry);
         self.entries.last().unwrap()
     }
 
     /// Query the audit log.
     pub fn query(&self, query: &AuditQuery) -> Vec<&AuditEntry> {
-        let mut results: Vec<&AuditEntry> = self.entries.iter()
+        let mut results: Vec<&AuditEntry> = self
+            .entries
+            .iter()
             .filter(|e| {
                 // Category filter.
                 if let Some(ref cat) = query.category {
@@ -338,7 +365,9 @@ impl AuditLog {
 
         // Keep entries at or above the threshold, plus the chain anchors.
         // In a real implementation, we'd write a summary entry.
-        let kept: Vec<AuditEntry> = self.entries.drain(..)
+        let kept: Vec<AuditEntry> = self
+            .entries
+            .drain(..)
             .filter(|e| e.severity >= min_severity.clone())
             .collect();
 
@@ -347,7 +376,10 @@ impl AuditLog {
         self.category_counts.clear();
 
         for entry in &mut self.entries {
-            *self.category_counts.entry(entry.category.clone()).or_insert(0) += 1;
+            *self
+                .category_counts
+                .entry(entry.category.clone())
+                .or_insert(0) += 1;
         }
 
         self.compaction_count += 1;
@@ -370,8 +402,7 @@ impl AuditLog {
 
     /// Export all entries as JSON.
     pub fn to_json(&self) -> Result<String, String> {
-        serde_json::to_string_pretty(&self.entries)
-            .map_err(|e| format!("audit export: {}", e))
+        serde_json::to_string_pretty(&self.entries).map_err(|e| format!("audit export: {}", e))
     }
 
     /// Get the hash algorithm used for chaining.
@@ -391,8 +422,16 @@ mod tests {
     #[test]
     fn append_and_query() {
         let mut log = test_log();
-        log.append(AuditCategory::Trust, AuditSeverity::Info, "trust check passed");
-        log.append(AuditCategory::Drift, AuditSeverity::Warning, "drift detected");
+        log.append(
+            AuditCategory::Trust,
+            AuditSeverity::Info,
+            "trust check passed",
+        );
+        log.append(
+            AuditCategory::Drift,
+            AuditSeverity::Warning,
+            "drift detected",
+        );
 
         assert_eq!(log.len(), 2);
 
@@ -432,7 +471,11 @@ mod tests {
     fn query_with_limit() {
         let mut log = test_log();
         for i in 0..10 {
-            log.append(AuditCategory::Trust, AuditSeverity::Info, &format!("entry {}", i));
+            log.append(
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                &format!("entry {}", i),
+            );
         }
         let limited = log.query(&AuditQuery {
             limit: Some(3),
@@ -445,7 +488,11 @@ mod tests {
     fn integrity_verification() {
         let mut log = test_log();
         for i in 0..5 {
-            log.append(AuditCategory::Integrity, AuditSeverity::Info, &format!("check {}", i));
+            log.append(
+                AuditCategory::Integrity,
+                AuditSeverity::Info,
+                &format!("check {}", i),
+            );
         }
         assert!(log.verify().is_none());
     }

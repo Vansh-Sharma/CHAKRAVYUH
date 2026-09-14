@@ -117,15 +117,16 @@ impl BehavioralMetrics {
             0.0
         } else {
             let mean = self.avg_prompt_length();
-            let variance = (self.total_prompt_length_sq as f64 / self.unique_prompts as f64)
-                - (mean * mean);
+            let variance =
+                (self.total_prompt_length_sq as f64 / self.unique_prompts as f64) - (mean * mean);
             variance.sqrt().max(0.0)
         }
     }
 
     /// Most active hour.
     pub fn peak_hour(&self) -> u8 {
-        self.hourly_distribution.iter()
+        self.hourly_distribution
+            .iter()
             .enumerate()
             .max_by_key(|(_, &c)| c)
             .map(|(h, _)| h as u8)
@@ -187,10 +188,18 @@ pub struct AnomalyProfilerConfig {
     pub decay_factor: f64,
 }
 
-fn default_zscore_threshold() -> f64 { 2.0 }
-fn default_max_profiles() -> usize { 50_000 }
-fn default_min_requests() -> u64 { 3 }
-fn default_decay_factor() -> f64 { 0.99 }
+fn default_zscore_threshold() -> f64 {
+    2.0
+}
+fn default_max_profiles() -> usize {
+    50_000
+}
+fn default_min_requests() -> u64 {
+    3
+}
+fn default_decay_factor() -> f64 {
+    0.99
+}
 
 impl Default for AnomalyProfilerConfig {
     fn default() -> Self {
@@ -239,8 +248,10 @@ impl AnomalyProfiler {
 
             // Apply decay and update existing profile.
             if let Some(metrics) = profiles.get_mut(&key) {
-                metrics.request_count = (metrics.request_count as f64 * self.config.decay_factor) as u64 + 1;
-                metrics.deny_count = (metrics.deny_count as f64 * self.config.decay_factor) as u64 + (denied as u64);
+                metrics.request_count =
+                    (metrics.request_count as f64 * self.config.decay_factor) as u64 + 1;
+                metrics.deny_count =
+                    (metrics.deny_count as f64 * self.config.decay_factor) as u64 + (denied as u64);
                 metrics.total_prompt_length += prompt_length as u64;
                 metrics.total_prompt_length_sq += (prompt_length * prompt_length) as u64;
                 metrics.unique_prompts += 1;
@@ -268,8 +279,10 @@ impl AnomalyProfiler {
             }
 
             // Update global aggregates (with decay).
-            global.request_count = (global.request_count as f64 * self.config.decay_factor) as u64 + 1;
-            global.deny_count = (global.deny_count as f64 * self.config.decay_factor) as u64 + (denied as u64);
+            global.request_count =
+                (global.request_count as f64 * self.config.decay_factor) as u64 + 1;
+            global.deny_count =
+                (global.deny_count as f64 * self.config.decay_factor) as u64 + (denied as u64);
             global.last_seen_secs = now;
 
             // Enforce max profiles (evict least recently seen).
@@ -289,7 +302,9 @@ impl AnomalyProfiler {
 
         let metrics = profiles.get(&key);
 
-        if metrics.is_none() || metrics.unwrap().request_count < self.config.min_requests_for_profile {
+        if metrics.is_none()
+            || metrics.unwrap().request_count < self.config.min_requests_for_profile
+        {
             return AnomalyAssessment {
                 source_key: key,
                 anomaly_score: 0.0,
@@ -303,36 +318,61 @@ impl AnomalyProfiler {
         let g = &*global;
 
         // Compute per-dimension z-scores.
-        let global_deny_rate = if g.request_count > 0 { g.deny_count as f64 / g.request_count as f64 } else { 0.0 };
+        let global_deny_rate = if g.request_count > 0 {
+            g.deny_count as f64 / g.request_count as f64
+        } else {
+            0.0
+        };
         let global_stddev = global_deny_rate * (1.0 - global_deny_rate).sqrt().max(0.01);
         let deny_rate_zscore = if global_stddev > 0.001 {
             (m.deny_rate() - global_deny_rate) / global_stddev
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         let request_rate_zscore = if g.request_count > 0 {
             let avg_requests = g.request_count as f64 / profiles.len().max(1) as f64;
             ((m.request_count as f64) - avg_requests) / avg_requests.sqrt().max(1.0)
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         // Tool diversity anomaly: unusually high tool count for this source type.
-        let avg_tools = profiles.values().map(|p| p.unique_tools).sum::<usize>() as f64 / profiles.len().max(1) as f64;
+        let avg_tools = profiles.values().map(|p| p.unique_tools).sum::<usize>() as f64
+            / profiles.len().max(1) as f64;
         let tool_diversity_zscore = if avg_tools > 0.0 {
             (m.unique_tools as f64 - avg_tools) / avg_tools.sqrt().max(1.0)
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         // Prompt entropy: high stddev relative to mean suggests inconsistent prompts.
         let prompt_entropy_zscore = if m.avg_prompt_length() > 0.0 {
             m.prompt_length_stddev() / m.avg_prompt_length()
-        } else { 0.0 };
+        } else {
+            0.0
+        };
 
         // Temporal anomaly: activity outside typical hours.
         let peak_hour = m.peak_hour() as usize;
         let current_hour = chrono::Utc::now().hour() as usize;
         let temporal_zscore = if m.hourly_distribution[peak_hour] > 0 {
-            let ratio = m.hourly_distribution.get(current_hour).copied().unwrap_or(0) as f64
+            let ratio = m
+                .hourly_distribution
+                .get(current_hour)
+                .copied()
+                .unwrap_or(0) as f64
                 / m.hourly_distribution[peak_hour] as f64;
-            if ratio < 0.1 { -2.0 } else if ratio > 2.0 { 2.0 } else { 0.0 }
-        } else { 0.0 };
+            if ratio < 0.1 {
+                -2.0
+            } else if ratio > 2.0 {
+                2.0
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
 
         let dimensions = AnomalyDimensions {
             request_rate_zscore,
@@ -343,13 +383,12 @@ impl AnomalyProfiler {
         };
 
         // Composite anomaly score: weighted sum of absolute z-scores.
-        let anomaly_score = (
-            request_rate_zscore.abs() * 0.20
+        let anomaly_score = (request_rate_zscore.abs() * 0.20
             + deny_rate_zscore.abs() * 0.35  // deny rate is most important
             + tool_diversity_zscore.abs() * 0.15
             + prompt_entropy_zscore.abs() * 0.15
-            + temporal_zscore.abs() * 0.15
-        ).clamp(0.0, 10.0);
+            + temporal_zscore.abs() * 0.15)
+            .clamp(0.0, 10.0);
 
         let is_anomalous = anomaly_score >= self.config.zscore_threshold;
 
@@ -518,7 +557,7 @@ mod tests {
     fn prompt_length_stats() {
         let m = BehavioralMetrics {
             unique_prompts: 2,
-            total_prompt_length: 200,  // avg=100
+            total_prompt_length: 200,      // avg=100
             total_prompt_length_sq: 20000, // variance = 10000/2 - 10000 = 0
             ..Default::default()
         };

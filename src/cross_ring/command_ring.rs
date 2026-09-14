@@ -18,8 +18,7 @@ use std::time::Instant;
 
 use super::message::{CrossRingMessage, MessagePriority};
 use super::transport::{
-    RingTransport, TransportErrorKind, TransportMetricsCollector,
-    InProcessTransport,
+    InProcessTransport, RingTransport, TransportErrorKind, TransportMetricsCollector,
 };
 
 // ─── Configuration ────────────────────────────────────────────────
@@ -54,12 +53,24 @@ pub struct CommandRingConfig {
     pub transport: String,
 }
 
-fn default_enabled() -> bool { true }
-fn default_buffer_size() -> usize { 1000 }
-fn default_true() -> bool { true }
-fn default_ack_timeout_secs() -> u64 { 30 }
-fn default_dedup_window() -> usize { 10_000 }
-fn default_transport() -> String { "in_process".into() }
+fn default_enabled() -> bool {
+    true
+}
+fn default_buffer_size() -> usize {
+    1000
+}
+fn default_true() -> bool {
+    true
+}
+fn default_ack_timeout_secs() -> u64 {
+    30
+}
+fn default_dedup_window() -> usize {
+    10_000
+}
+fn default_transport() -> String {
+    "in_process".into()
+}
 
 impl Default for CommandRingConfig {
     fn default() -> Self {
@@ -407,12 +418,18 @@ mod tests {
         ring.send(msg.clone()).unwrap();
 
         // Before ACK, status is Pending.
-        assert_eq!(ring.command_status(&msg.message_id), Some(CommandStatus::Pending));
+        assert_eq!(
+            ring.command_status(&msg.message_id),
+            Some(CommandStatus::Pending)
+        );
         assert_eq!(ring.pending_acks(), 1);
 
         // ACK the command.
         ring.ack(&msg.message_id);
-        assert_eq!(ring.command_status(&msg.message_id), Some(CommandStatus::Acknowledged));
+        assert_eq!(
+            ring.command_status(&msg.message_id),
+            Some(CommandStatus::Acknowledged)
+        );
         assert_eq!(ring.pending_acks(), 0);
     }
 
@@ -421,7 +438,8 @@ mod tests {
         let ring = CommandRing::new(&CommandRingConfig {
             ack_timeout_secs: 0, // Instant timeout
             ..Default::default()
-        }).unwrap();
+        })
+        .unwrap();
 
         let msg = cmd_msg("memory");
         ring.send(msg).unwrap();
@@ -461,7 +479,8 @@ mod tests {
         let ring = CommandRing::new(&CommandRingConfig {
             buffer_size: 2,
             ..Default::default()
-        }).unwrap();
+        })
+        .unwrap();
 
         ring.send(cmd_msg("shield")).unwrap();
         ring.send(cmd_msg("threat")).unwrap();

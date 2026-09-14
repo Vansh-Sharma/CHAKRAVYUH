@@ -402,8 +402,14 @@ mod tests {
         let json = openapi_json();
         assert_eq!(json["openapi"], "3.1.0");
         assert!(json["paths"].is_object());
-        assert!(json["paths"].as_object().unwrap().contains_key("/v1/protect"));
-        assert!(json["paths"].as_object().unwrap().contains_key("/v1/auth/signup"));
+        assert!(json["paths"]
+            .as_object()
+            .unwrap()
+            .contains_key("/v1/protect"));
+        assert!(json["paths"]
+            .as_object()
+            .unwrap()
+            .contains_key("/v1/auth/signup"));
         assert!(json["paths"].as_object().unwrap().contains_key("/v1/orgs"));
     }
 

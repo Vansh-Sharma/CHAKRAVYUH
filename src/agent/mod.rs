@@ -37,7 +37,9 @@ pub use agent_scope::{AgentScope, AgentScopeConfig, AgentScopeType, ScopeVerdict
 pub use behavior_monitor::{BehaviorAnalysis, BehaviorMonitor, BehaviorMonitorConfig};
 pub use capability_guard::{Capability, CapabilityGuard, CapabilityGuardConfig};
 pub use permission_enforcer::{Permission, PermissionEnforcer, PermissionEnforcerConfig};
-pub use tool_chaining_detector::{ChainPattern, ChainRisk, ToolChainingDetector, ToolChainingDetectorConfig};
+pub use tool_chaining_detector::{
+    ChainPattern, ChainRisk, ToolChainingDetector, ToolChainingDetectorConfig,
+};
 
 /// Agent Ring configuration.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -67,8 +69,12 @@ pub struct AgentConfig {
     pub deny_threshold: f64,
 }
 
-fn default_enabled() -> bool { true }
-fn default_deny_threshold() -> f64 { 9.0 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_deny_threshold() -> f64 {
+    9.0
+}
 
 impl Default for AgentConfig {
     fn default() -> Self {
@@ -126,16 +132,26 @@ pub struct AgentVerdict {
 }
 
 impl Verdict for AgentVerdict {
-    fn decision(&self) -> &Decision { &self.decision }
-    fn latency_ms(&self) -> f64 { self.latency_ms }
+    fn decision(&self) -> &Decision {
+        &self.decision
+    }
+    fn latency_ms(&self) -> f64 {
+        self.latency_ms
+    }
 }
 
 impl AgentVerdict {
     fn disabled(start: std::time::Instant) -> Self {
         Self {
-            decision: Decision::Allow, agent_type: None, effective_permissions: vec![],
-            scope_verdict: None, behavior_analysis: None, chain_risk: None,
-            engine_results: vec![], latency_ms: start.elapsed().as_secs_f64() * 1000.0, behavior_risk_score: 0.0,
+            decision: Decision::Allow,
+            agent_type: None,
+            effective_permissions: vec![],
+            scope_verdict: None,
+            behavior_analysis: None,
+            chain_risk: None,
+            engine_results: vec![],
+            latency_ms: start.elapsed().as_secs_f64() * 1000.0,
+            behavior_risk_score: 0.0,
         }
     }
 }
@@ -159,7 +175,9 @@ impl AgentRing {
             agent_scope: Arc::new(AgentScope::new(&config.agent_scope)),
             capability_guard: Arc::new(CapabilityGuard::new(&config.capability_guard)),
             behavior_monitor: Arc::new(BehaviorMonitor::new(&config.behavior_monitor)),
-            tool_chaining_detector: Arc::new(ToolChainingDetector::new(&config.tool_chaining_detector)),
+            tool_chaining_detector: Arc::new(ToolChainingDetector::new(
+                &config.tool_chaining_detector,
+            )),
             config: Arc::new(config.clone()),
         })
     }
@@ -185,16 +203,28 @@ impl AgentRing {
         });
         if !policy_result.allowed {
             let verdict = AgentVerdict {
-                decision: Decision::Deny { code: "AGENT_POLICY_DENIED".into(), retry_after: None },
-                agent_type: Some(agent_type), effective_permissions: vec![], scope_verdict: None,
-                behavior_analysis: None, chain_risk: None, engine_results, latency_ms: start.elapsed().as_secs_f64() * 1000.0,
+                decision: Decision::Deny {
+                    code: "AGENT_POLICY_DENIED".into(),
+                    retry_after: None,
+                },
+                agent_type: Some(agent_type),
+                effective_permissions: vec![],
+                scope_verdict: None,
+                behavior_analysis: None,
+                chain_risk: None,
+                engine_results,
+                latency_ms: start.elapsed().as_secs_f64() * 1000.0,
                 behavior_risk_score: risk_accumulator.clamp(0.0, 10.0),
             };
             return verdict;
         }
 
         // Engine 2: PermissionEnforcer
-        let perm_result = self.permission_enforcer.evaluate(&agent_type, &request.action, &request.tools_requested);
+        let perm_result = self.permission_enforcer.evaluate(
+            &agent_type,
+            &request.action,
+            &request.tools_requested,
+        );
         let effective_permissions = perm_result.effective_permissions.clone();
         if !perm_result.allowed {
             risk_accumulator += 6.0;
@@ -207,7 +237,9 @@ impl AgentRing {
 
         // Engine 3: AgentScope
         let scope = request.scope.clone().unwrap_or(AgentScopeType::Global);
-        let scope_verdict = self.agent_scope.evaluate(&scope, &request.action, &request.target);
+        let scope_verdict = self
+            .agent_scope
+            .evaluate(&scope, &request.action, &request.target);
         if scope_verdict.violated {
             risk_accumulator += 5.0;
         }
@@ -218,7 +250,9 @@ impl AgentRing {
         });
 
         // Engine 4: CapabilityGuard
-        let cap_result = self.capability_guard.evaluate(&agent_type, &request.tools_requested);
+        let cap_result = self
+            .capability_guard
+            .evaluate(&agent_type, &request.tools_requested);
         if !cap_result.allowed {
             risk_accumulator += 4.0;
         }
@@ -230,7 +264,10 @@ impl AgentRing {
 
         // Engine 5: BehaviorMonitor
         let behavior_analysis = self.behavior_monitor.evaluate(
-            &request.agent_id, &request.action, &request.tools_requested, &request.source_ip,
+            &request.agent_id,
+            &request.action,
+            &request.tools_requested,
+            &request.source_ip,
         );
         risk_accumulator += behavior_analysis.risk_score;
         engine_results.push(AgentEngineResult {
@@ -241,7 +278,9 @@ impl AgentRing {
         });
 
         // Engine 6: ToolChainingDetector
-        let chain_risk = self.tool_chaining_detector.evaluate(&request.tools_requested);
+        let chain_risk = self
+            .tool_chaining_detector
+            .evaluate(&request.tools_requested);
         risk_accumulator += chain_risk.risk_score;
         engine_results.push(AgentEngineResult {
             engine_name: "tool_chaining_detector".into(),
@@ -253,21 +292,39 @@ impl AgentRing {
         let behavior_risk_score = risk_accumulator.clamp(0.0, 10.0);
 
         let decision = if behavior_risk_score >= self.config.deny_threshold {
-            Decision::Deny { code: "AGENT_BEHAVIOR_SEVERE".into(), retry_after: Some(300) }
+            Decision::Deny {
+                code: "AGENT_BEHAVIOR_SEVERE".into(),
+                retry_after: Some(300),
+            }
         } else if !perm_result.allowed {
-            Decision::Deny { code: "AGENT_PERMISSION_DENIED".into(), retry_after: None }
+            Decision::Deny {
+                code: "AGENT_PERMISSION_DENIED".into(),
+                retry_after: None,
+            }
         } else if scope_verdict.violated {
-            Decision::Deny { code: "AGENT_SCOPE_VIOLATION".into(), retry_after: None }
+            Decision::Deny {
+                code: "AGENT_SCOPE_VIOLATION".into(),
+                retry_after: None,
+            }
         } else if behavior_risk_score > 5.0 {
-            Decision::Escalate { approver_role: "admin".into(), timeout_secs: 300 }
+            Decision::Escalate {
+                approver_role: "admin".into(),
+                timeout_secs: 300,
+            }
         } else {
             Decision::Allow
         };
 
         AgentVerdict {
-            decision, agent_type: Some(agent_type), effective_permissions, scope_verdict: Some(scope_verdict),
-            behavior_analysis: Some(behavior_analysis), chain_risk: Some(chain_risk), engine_results,
-            latency_ms: start.elapsed().as_secs_f64() * 1000.0, behavior_risk_score,
+            decision,
+            agent_type: Some(agent_type),
+            effective_permissions,
+            scope_verdict: Some(scope_verdict),
+            behavior_analysis: Some(behavior_analysis),
+            chain_risk: Some(chain_risk),
+            engine_results,
+            latency_ms: start.elapsed().as_secs_f64() * 1000.0,
+            behavior_risk_score,
         }
     }
 }
@@ -275,9 +332,12 @@ impl AgentRing {
 impl Clone for AgentRing {
     fn clone(&self) -> Self {
         Self {
-            config: Arc::clone(&self.config), agent_policy: Arc::clone(&self.agent_policy),
-            permission_enforcer: Arc::clone(&self.permission_enforcer), agent_scope: Arc::clone(&self.agent_scope),
-            capability_guard: Arc::clone(&self.capability_guard), behavior_monitor: Arc::clone(&self.behavior_monitor),
+            config: Arc::clone(&self.config),
+            agent_policy: Arc::clone(&self.agent_policy),
+            permission_enforcer: Arc::clone(&self.permission_enforcer),
+            agent_scope: Arc::clone(&self.agent_scope),
+            capability_guard: Arc::clone(&self.capability_guard),
+            behavior_monitor: Arc::clone(&self.behavior_monitor),
             tool_chaining_detector: Arc::clone(&self.tool_chaining_detector),
         }
     }
@@ -287,16 +347,23 @@ impl Clone for AgentRing {
 mod tests {
     use super::*;
 
-    fn default_ring() -> AgentRing { AgentRing::new(&AgentConfig::default()).unwrap() }
+    fn default_ring() -> AgentRing {
+        AgentRing::new(&AgentConfig::default()).unwrap()
+    }
 
     fn coder_request(tools: Vec<&str>) -> AgentRequest {
         AgentRequest {
-            agent_id: "agent-1".into(), agent_type: Some(AgentType::Coder),
-            action: "read_file".into(), target: Some("/project/src".into()),
+            agent_id: "agent-1".into(),
+            agent_type: Some(AgentType::Coder),
+            action: "read_file".into(),
+            target: Some("/project/src".into()),
             tools_requested: tools.iter().map(|s| s.to_string()).collect(),
-            source_ip: "1.2.3.4".into(), user_id: Some("user-1".into()), role: Some("user".into()),
+            source_ip: "1.2.3.4".into(),
+            user_id: Some("user-1".into()),
+            role: Some("user".into()),
             scope: Some(AgentScopeType::Project("/project".into())),
-            request_id: "test-1".into(), headers: HashMap::new(),
+            request_id: "test-1".into(),
+            headers: HashMap::new(),
         }
     }
 
@@ -306,7 +373,16 @@ mod tests {
         let mut req = coder_request(vec!["file_read", "code_execution"]);
         req.agent_id = "test-coder-normal".into();
         let v = ring.evaluate(&req);
-        assert!(v.decision.is_allow(), "decision={:?}, behavior_risk={:.1}, engine_results={:?}", v.decision, v.behavior_risk_score, v.engine_results.iter().map(|e| (e.engine_name.as_str(), e.decision.as_str())).collect::<Vec<_>>());
+        assert!(
+            v.decision.is_allow(),
+            "decision={:?}, behavior_risk={:.1}, engine_results={:?}",
+            v.decision,
+            v.behavior_risk_score,
+            v.engine_results
+                .iter()
+                .map(|e| (e.engine_name.as_str(), e.decision.as_str()))
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]
@@ -329,7 +405,11 @@ mod tests {
 
     #[test]
     fn disabled_allows_all() {
-        let ring = AgentRing::new(&AgentConfig { enabled: false, ..Default::default() }).unwrap();
+        let ring = AgentRing::new(&AgentConfig {
+            enabled: false,
+            ..Default::default()
+        })
+        .unwrap();
         let req = coder_request(vec!["shell_access", "email_send"]);
         let v = ring.evaluate(&req);
         assert!(v.decision.is_allow());

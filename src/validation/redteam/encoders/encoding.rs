@@ -21,7 +21,9 @@ pub trait Encoder {
 pub struct IdentityEncoder;
 
 impl Encoder for IdentityEncoder {
-    fn name(&self) -> &str { "identity" }
+    fn name(&self) -> &str {
+        "identity"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         Ok(payload.to_string())
     }
@@ -33,7 +35,9 @@ impl Encoder for IdentityEncoder {
 pub struct Base64Encoder;
 
 impl Encoder for Base64Encoder {
-    fn name(&self) -> &str { "base64" }
+    fn name(&self) -> &str {
+        "base64"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         use base64::Engine;
         let engine = base64::engine::general_purpose::STANDARD;
@@ -47,7 +51,9 @@ impl Encoder for Base64Encoder {
 pub struct UrlEncoder;
 
 impl Encoder for UrlEncoder {
-    fn name(&self) -> &str { "url_encoding" }
+    fn name(&self) -> &str {
+        "url_encoding"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         let encoded: String = payload
             .bytes()
@@ -70,7 +76,9 @@ impl Encoder for UrlEncoder {
 pub struct HexEncoder;
 
 impl Encoder for HexEncoder {
-    fn name(&self) -> &str { "hex_encoding" }
+    fn name(&self) -> &str {
+        "hex_encoding"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         Ok(hex::encode(payload.as_bytes()))
     }
@@ -82,7 +90,9 @@ impl Encoder for HexEncoder {
 pub struct HtmlEntityEncoder;
 
 impl Encoder for HtmlEntityEncoder {
-    fn name(&self) -> &str { "html_entity_encoding" }
+    fn name(&self) -> &str {
+        "html_entity_encoding"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         let encoded: String = payload
             .chars()
@@ -104,7 +114,9 @@ impl Encoder for HtmlEntityEncoder {
 pub struct UnicodeEscapeEncoder;
 
 impl Encoder for UnicodeEscapeEncoder {
-    fn name(&self) -> &str { "unicode_escape" }
+    fn name(&self) -> &str {
+        "unicode_escape"
+    }
     fn encode(&self, payload: &str) -> Result<String, String> {
         let encoded: String = payload
             .chars()

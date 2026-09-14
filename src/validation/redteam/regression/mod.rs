@@ -2,7 +2,4 @@
 
 pub mod suite;
 
-pub use suite::{
-    RegressionSuite, RegressionBaseline, RegressionDiff,
-    DiffEntry, DiffKind,
-};
+pub use suite::{DiffEntry, DiffKind, RegressionBaseline, RegressionDiff, RegressionSuite};

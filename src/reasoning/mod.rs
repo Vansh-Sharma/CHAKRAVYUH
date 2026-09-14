@@ -50,8 +50,12 @@ pub struct ReasoningConfig {
     pub deny_threshold: f64,
 }
 
-fn default_enabled() -> bool { true }
-fn default_deny_threshold() -> f64 { 9.0 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_deny_threshold() -> f64 {
+    9.0
+}
 
 impl Default for ReasoningConfig {
     fn default() -> Self {
@@ -75,9 +79,15 @@ pub struct CoherenceCheckerConfig {
     #[serde(default = "default_min_coherence")]
     pub min_coherence_score: f64,
 }
-fn default_min_coherence() -> f64 { 0.3 }
+fn default_min_coherence() -> f64 {
+    0.3
+}
 impl Default for CoherenceCheckerConfig {
-    fn default() -> Self { Self { min_coherence_score: default_min_coherence() } }
+    fn default() -> Self {
+        Self {
+            min_coherence_score: default_min_coherence(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -85,9 +95,15 @@ pub struct HallucinationDetectorConfig {
     #[serde(default = "default_sensitivity")]
     pub sensitivity: f64,
 }
-fn default_sensitivity() -> f64 { 0.7 }
+fn default_sensitivity() -> f64 {
+    0.7
+}
 impl Default for HallucinationDetectorConfig {
-    fn default() -> Self { Self { sensitivity: default_sensitivity() } }
+    fn default() -> Self {
+        Self {
+            sensitivity: default_sensitivity(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -95,9 +111,15 @@ pub struct DepthAnalyzerConfig {
     #[serde(default = "default_min_depth")]
     pub min_depth_ratio: f64,
 }
-fn default_min_depth() -> f64 { 0.2 }
+fn default_min_depth() -> f64 {
+    0.2
+}
 impl Default for DepthAnalyzerConfig {
-    fn default() -> Self { Self { min_depth_ratio: default_min_depth() } }
+    fn default() -> Self {
+        Self {
+            min_depth_ratio: default_min_depth(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -105,9 +127,15 @@ pub struct BiasDetectorConfig {
     #[serde(default = "default_bias_threshold")]
     pub bias_threshold: f64,
 }
-fn default_bias_threshold() -> f64 { 0.6 }
+fn default_bias_threshold() -> f64 {
+    0.6
+}
 impl Default for BiasDetectorConfig {
-    fn default() -> Self { Self { bias_threshold: default_bias_threshold() } }
+    fn default() -> Self {
+        Self {
+            bias_threshold: default_bias_threshold(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -115,9 +143,15 @@ pub struct StepValidatorConfig {
     #[serde(default = "default_max_invalid_steps")]
     pub max_invalid_steps: usize,
 }
-fn default_max_invalid_steps() -> usize { 2 }
+fn default_max_invalid_steps() -> usize {
+    2
+}
 impl Default for StepValidatorConfig {
-    fn default() -> Self { Self { max_invalid_steps: default_max_invalid_steps() } }
+    fn default() -> Self {
+        Self {
+            max_invalid_steps: default_max_invalid_steps(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -125,9 +159,15 @@ pub struct OutputConsistencyConfig {
     #[serde(default = "default_min_consistency")]
     pub min_consistency: f64,
 }
-fn default_min_consistency() -> f64 { 0.4 }
+fn default_min_consistency() -> f64 {
+    0.4
+}
 impl Default for OutputConsistencyConfig {
-    fn default() -> Self { Self { min_consistency: default_min_consistency() } }
+    fn default() -> Self {
+        Self {
+            min_consistency: default_min_consistency(),
+        }
+    }
 }
 
 // ── Request ──
@@ -168,29 +208,29 @@ pub struct ReasoningEngineResult {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct CoherenceResult {
-    pub coherence_score: f64,      // 0.0-1.0
+    pub coherence_score: f64, // 0.0-1.0
     pub contradictions_detected: usize,
     pub non_sequiturs: usize,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct HallucinationResult {
-    pub hallucination_score: f64,  // 0.0-1.0
+    pub hallucination_score: f64, // 0.0-1.0
     pub implausible_claims: Vec<String>,
     pub fabricated_references: Vec<String>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DepthResult {
-    pub depth_score: f64,          // 0.0-1.0
+    pub depth_score: f64, // 0.0-1.0
     pub reasoning_length: usize,
     pub complexity_estimate: f64,
-    pub depth_assessment: String,  // "shallow" | "adequate" | "deep"
+    pub depth_assessment: String, // "shallow" | "adequate" | "deep"
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct BiasResult {
-    pub bias_score: f64,           // 0.0-1.0
+    pub bias_score: f64, // 0.0-1.0
     pub detected_biases: Vec<String>,
 }
 
@@ -203,7 +243,7 @@ pub struct StepValidationResult {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct OutputConsistencyResult {
-    pub consistency_score: f64,   // 0.0-1.0
+    pub consistency_score: f64, // 0.0-1.0
     pub mismatches: Vec<String>,
 }
 
@@ -224,8 +264,12 @@ pub struct ReasoningVerdict {
 }
 
 impl Verdict for ReasoningVerdict {
-    fn decision(&self) -> &Decision { &self.decision }
-    fn latency_ms(&self) -> f64 { self.latency_ms }
+    fn decision(&self) -> &Decision {
+        &self.decision
+    }
+    fn latency_ms(&self) -> f64 {
+        self.latency_ms
+    }
 }
 
 // ── Engines ──
@@ -235,7 +279,11 @@ struct CoherenceChecker {
 }
 
 impl CoherenceChecker {
-    fn new(config: &CoherenceCheckerConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &CoherenceCheckerConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, text: &str) -> (CoherenceResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
@@ -264,12 +312,19 @@ impl CoherenceChecker {
         }
 
         // Detect non-sequiturs: abrupt topic shifts (sentences that don't connect)
-        let sentences: Vec<&str> = text.split(&['.', '!', '?'][..])
+        let sentences: Vec<&str> = text
+            .split(&['.', '!', '?'][..])
             .filter(|s| s.trim().len() > 5)
             .collect();
         for window in sentences.windows(2) {
-            let words_a: std::collections::HashSet<String> = window[0].split_whitespace().map(|w| w.to_lowercase()).collect();
-            let words_b: std::collections::HashSet<String> = window[1].split_whitespace().map(|w| w.to_lowercase()).collect();
+            let words_a: std::collections::HashSet<String> = window[0]
+                .split_whitespace()
+                .map(|w| w.to_lowercase())
+                .collect();
+            let words_b: std::collections::HashSet<String> = window[1]
+                .split_whitespace()
+                .map(|w| w.to_lowercase())
+                .collect();
             let overlap = words_a.intersection(&words_b).count();
             let jaccard = if words_a.is_empty() || words_b.is_empty() {
                 1.0
@@ -305,7 +360,10 @@ impl CoherenceChecker {
         let engine_result = ReasoningEngineResult {
             engine_name: "coherence_checker".into(),
             decision: decision.into(),
-            reason: format!("coherence_score={:.3}, contradictions={}, non_sequiturs={}", coherence_score, contradictions, non_sequiturs),
+            reason: format!(
+                "coherence_score={:.3}, contradictions={}, non_sequiturs={}",
+                coherence_score, contradictions, non_sequiturs
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "coherence_score": coherence_score }),
         };
@@ -319,7 +377,11 @@ struct HallucinationDetector {
 }
 
 impl HallucinationDetector {
-    fn new(config: &HallucinationDetectorConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &HallucinationDetectorConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, text: &str) -> (HallucinationResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
@@ -334,7 +396,7 @@ impl HallucinationDetector {
             "as far as i can tell",
             "i might be wrong, but",
             "i recall that",
-            "studies have shown that",  // vague citation without reference
+            "studies have shown that", // vague citation without reference
             "research indicates that", // vague citation
             "experts agree that",      // appeal to unnamed authority
         ];
@@ -360,7 +422,8 @@ impl HallucinationDetector {
         }
 
         let total_signals = implausible_claims.len() + fabricated_references.len();
-        let hallucination_score = (total_signals as f64 * self.config.sensitivity / 10.0).clamp(0.0, 1.0);
+        let hallucination_score =
+            (total_signals as f64 * self.config.sensitivity / 10.0).clamp(0.0, 1.0);
 
         let result = HallucinationResult {
             hallucination_score,
@@ -379,7 +442,12 @@ impl HallucinationDetector {
         let engine_result = ReasoningEngineResult {
             engine_name: "hallucination_detector".into(),
             decision: decision.into(),
-            reason: format!("hallucination_score={:.3}, claims={}, refs={}", hallucination_score, implausible_claims.len(), fabricated_references.len()),
+            reason: format!(
+                "hallucination_score={:.3}, claims={}, refs={}",
+                hallucination_score,
+                implausible_claims.len(),
+                fabricated_references.len()
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "hallucination_score": hallucination_score }),
         };
@@ -393,17 +461,26 @@ struct DepthAnalyzer {
 }
 
 impl DepthAnalyzer {
-    fn new(config: &DepthAnalyzerConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &DepthAnalyzerConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, text: &str, task: Option<&str>) -> (DepthResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
 
         let word_count = text.split_whitespace().count();
-        let sentence_count = text.split(&['.', '!', '?'][..]).filter(|s| !s.trim().is_empty()).count();
+        let sentence_count = text
+            .split(&['.', '!', '?'][..])
+            .filter(|s| !s.trim().is_empty())
+            .count();
 
         // Estimate complexity based on task description
         let complexity_estimate = match task {
-            Some(t) if t.contains("explain") || t.contains("analyze") || t.contains("compare") => 0.7,
+            Some(t) if t.contains("explain") || t.contains("analyze") || t.contains("compare") => {
+                0.7
+            }
             Some(t) if t.contains("why") || t.contains("how") || t.contains("what if") => 0.6,
             Some(t) if t.contains("list") || t.contains("name") => 0.3,
             Some(t) if t.contains("yes") || t.contains("no") => 0.1,
@@ -420,7 +497,13 @@ impl DepthAnalyzer {
         };
 
         let depth_score = depth_ratio.clamp(0.0, 1.0);
-        let depth_assessment = if depth_score >= 0.7 { "deep" } else if depth_score >= self.config.min_depth_ratio { "adequate" } else { "shallow" };
+        let depth_assessment = if depth_score >= 0.7 {
+            "deep"
+        } else if depth_score >= self.config.min_depth_ratio {
+            "adequate"
+        } else {
+            "shallow"
+        };
 
         let result = DepthResult {
             depth_score,
@@ -438,7 +521,10 @@ impl DepthAnalyzer {
         let engine_result = ReasoningEngineResult {
             engine_name: "depth_analyzer".into(),
             decision: decision.into(),
-            reason: format!("depth_score={:.3}, words={}, sentences={}, complexity={:.2}, assessment={}", depth_score, word_count, sentence_count, complexity_estimate, depth_assessment),
+            reason: format!(
+                "depth_score={:.3}, words={}, sentences={}, complexity={:.2}, assessment={}",
+                depth_score, word_count, sentence_count, complexity_estimate, depth_assessment
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "depth_score": depth_score }),
         };
@@ -452,7 +538,11 @@ struct BiasDetector {
 }
 
 impl BiasDetector {
-    fn new(config: &BiasDetectorConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &BiasDetectorConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, text: &str) -> (BiasResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
@@ -479,7 +569,8 @@ impl BiasDetector {
             }
         }
 
-        let bias_score = (detected_biases.len() as f64 / bias_patterns.len() as f64).clamp(0.0, 1.0);
+        let bias_score =
+            (detected_biases.len() as f64 / bias_patterns.len() as f64).clamp(0.0, 1.0);
 
         let result = BiasResult {
             bias_score,
@@ -509,7 +600,11 @@ struct StepValidator {
 }
 
 impl StepValidator {
-    fn new(config: &StepValidatorConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &StepValidatorConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, steps: &[String]) -> (StepValidationResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
@@ -565,7 +660,12 @@ impl StepValidator {
         let engine_result = ReasoningEngineResult {
             engine_name: "step_validator".into(),
             decision: decision.into(),
-            reason: format!("invalid_steps={}/{}, total_steps={}", invalid_steps, self.config.max_invalid_steps, steps.len()),
+            reason: format!(
+                "invalid_steps={}/{}, total_steps={}",
+                invalid_steps,
+                self.config.max_invalid_steps,
+                steps.len()
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "invalid_steps": invalid_steps, "total_steps": steps.len() }),
         };
@@ -579,20 +679,34 @@ struct OutputConsistencyChecker {
 }
 
 impl OutputConsistencyChecker {
-    fn new(config: &OutputConsistencyConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &OutputConsistencyConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, reasoning: &str, output: Option<&str>) -> (OutputConsistencyResult, ReasoningEngineResult) {
+    fn evaluate(
+        &self,
+        reasoning: &str,
+        output: Option<&str>,
+    ) -> (OutputConsistencyResult, ReasoningEngineResult) {
         let start = std::time::Instant::now();
 
         let result = match output {
             Some(out) if !out.is_empty() => {
-                let reasoning_words: std::collections::HashSet<&str> = reasoning.split_whitespace().collect();
-                let output_words: std::collections::HashSet<&str> = out.split_whitespace().collect();
+                let reasoning_words: std::collections::HashSet<&str> =
+                    reasoning.split_whitespace().collect();
+                let output_words: std::collections::HashSet<&str> =
+                    out.split_whitespace().collect();
 
                 // Jaccard similarity between reasoning and output vocabulary
                 let overlap = reasoning_words.intersection(&output_words).count();
                 let union = reasoning_words.union(&output_words).count();
-                let consistency_score = if union == 0 { 1.0 } else { overlap as f64 / union as f64 };
+                let consistency_score = if union == 0 {
+                    1.0
+                } else {
+                    overlap as f64 / union as f64
+                };
 
                 // Also check for explicit contradictions
                 let reasoning_lower = reasoning.to_lowercase();
@@ -601,7 +715,9 @@ impl OutputConsistencyChecker {
 
                 // Check for negated conclusions
                 for conclusion_word in &["yes", "true", "correct", "valid", "confirmed"] {
-                    if reasoning_lower.contains(conclusion_word) && output_lower.contains(&format!("not {}", conclusion_word)) {
+                    if reasoning_lower.contains(conclusion_word)
+                        && output_lower.contains(&format!("not {}", conclusion_word))
+                    {
                         mismatches.push(format!("conclusion contradiction: {}", conclusion_word));
                     }
                 }
@@ -627,7 +743,11 @@ impl OutputConsistencyChecker {
         let engine_result = ReasoningEngineResult {
             engine_name: "output_consistency".into(),
             decision: decision.into(),
-            reason: format!("consistency={:.3}, mismatches={}", result.consistency_score, result.mismatches.len()),
+            reason: format!(
+                "consistency={:.3}, mismatches={}",
+                result.consistency_score,
+                result.mismatches.len()
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "consistency_score": result.consistency_score }),
         };
@@ -667,7 +787,9 @@ impl ReasoningRing {
         Ok(Self {
             config: Arc::new(config.clone()),
             coherence_checker: Arc::new(CoherenceChecker::new(&config.coherence_checker)),
-            hallucination_detector: Arc::new(HallucinationDetector::new(&config.hallucination_detector)),
+            hallucination_detector: Arc::new(HallucinationDetector::new(
+                &config.hallucination_detector,
+            )),
             depth_analyzer: Arc::new(DepthAnalyzer::new(&config.depth_analyzer)),
             bias_detector: Arc::new(BiasDetector::new(&config.bias_detector)),
             step_validator: Arc::new(StepValidator::new(&config.step_validator)),
@@ -701,7 +823,8 @@ impl ReasoningRing {
         let mut risk_accumulator = 0.0f64;
 
         // 1. Coherence Checker
-        let (coherence_result, coherence_eng) = self.coherence_checker.evaluate(&request.reasoning_text);
+        let (coherence_result, coherence_eng) =
+            self.coherence_checker.evaluate(&request.reasoning_text);
         match coherence_eng.decision.as_str() {
             "denied" => risk_accumulator += 3.0,
             "flagged" => risk_accumulator += 1.0,
@@ -710,7 +833,9 @@ impl ReasoningRing {
         engine_results.push(coherence_eng);
 
         // 2. Hallucination Detector
-        let (hallucination_result, hallucination_eng) = self.hallucination_detector.evaluate(&request.reasoning_text);
+        let (hallucination_result, hallucination_eng) = self
+            .hallucination_detector
+            .evaluate(&request.reasoning_text);
         match hallucination_eng.decision.as_str() {
             "denied" => risk_accumulator += 3.0,
             "flagged" => risk_accumulator += 1.0,
@@ -719,7 +844,9 @@ impl ReasoningRing {
         engine_results.push(hallucination_eng);
 
         // 3. Depth Analyzer
-        let (depth_result, depth_eng) = self.depth_analyzer.evaluate(&request.reasoning_text, request.task_description.as_deref());
+        let (depth_result, depth_eng) = self
+            .depth_analyzer
+            .evaluate(&request.reasoning_text, request.task_description.as_deref());
         match depth_eng.decision.as_str() {
             "denied" => risk_accumulator += 2.0,
             "flagged" => risk_accumulator += 0.5,
@@ -746,10 +873,9 @@ impl ReasoningRing {
         engine_results.push(step_eng);
 
         // 6. Output Consistency Checker
-        let (consistency_result, consistency_eng) = self.output_consistency.evaluate(
-            &request.reasoning_text,
-            request.output_text.as_deref(),
-        );
+        let (consistency_result, consistency_eng) = self
+            .output_consistency
+            .evaluate(&request.reasoning_text, request.output_text.as_deref());
         match consistency_eng.decision.as_str() {
             "denied" => risk_accumulator += 2.0,
             "flagged" => risk_accumulator += 0.5,
@@ -795,7 +921,9 @@ impl ReasoningRing {
     }
 
     /// Get the configuration reference.
-    pub fn config(&self) -> &ReasoningConfig { &self.config }
+    pub fn config(&self) -> &ReasoningConfig {
+        &self.config
+    }
 }
 
 #[cfg(test)]
@@ -819,7 +947,9 @@ mod tests {
         }
     }
 
-    fn default_config() -> ReasoningConfig { ReasoningConfig::default() }
+    fn default_config() -> ReasoningConfig {
+        ReasoningConfig::default()
+    }
 
     #[test]
     fn reasoning_ring_constructs() {
@@ -842,7 +972,14 @@ mod tests {
         req.reasoning_text = "However this is true. But also it is false. Although it is correct. Despite being wrong. On the other hand, clearly it is. While it is true, it is false.".into();
         let verdict = ring.evaluate(&req);
         assert!(verdict.coherence_result.is_some());
-        assert!(verdict.coherence_result.as_ref().unwrap().contradictions_detected > 0);
+        assert!(
+            verdict
+                .coherence_result
+                .as_ref()
+                .unwrap()
+                .contradictions_detected
+                > 0
+        );
     }
 
     #[test]
@@ -852,7 +989,15 @@ mod tests {
         req.reasoning_text = "According to my knowledge, I believe that studies have shown that experts agree that research indicates that as far as I can tell.".into();
         let verdict = ring.evaluate(&req);
         assert!(verdict.hallucination_result.is_some());
-        assert!(verdict.hallucination_result.as_ref().unwrap().implausible_claims.len() > 0);
+        assert!(
+            verdict
+                .hallucination_result
+                .as_ref()
+                .unwrap()
+                .implausible_claims
+                .len()
+                > 0
+        );
     }
 
     #[test]
@@ -863,7 +1008,10 @@ mod tests {
         req.task_description = Some("explain why the economy crashed in 2008".into());
         let verdict = ring.evaluate(&req);
         assert!(verdict.depth_result.is_some());
-        assert_eq!(verdict.depth_result.as_ref().unwrap().depth_assessment, "shallow");
+        assert_eq!(
+            verdict.depth_result.as_ref().unwrap().depth_assessment,
+            "shallow"
+        );
     }
 
     #[test]

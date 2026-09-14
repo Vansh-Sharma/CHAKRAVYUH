@@ -187,7 +187,10 @@ fn cmd_version() -> ExitCode {
     print_banner();
     let version = env!("CARGO_PKG_VERSION");
     let profile = std::env::var("BUILD_PROFILE").unwrap_or_else(|_| "debug".into());
-    let rust_version = format!("rustc {}", std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".into()));
+    let rust_version = format!(
+        "rustc {}",
+        std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".into())
+    );
 
     utils::sub_section("Build Information");
     utils::kv("Version", version);
@@ -233,56 +236,31 @@ mod tests {
 
     #[test]
     fn test_cli_parse_config_validate() {
-        let cli = Cli::try_parse_from([
-            "chakravyuh",
-            "config",
-            "validate",
-            "config.yaml",
-        ]);
+        let cli = Cli::try_parse_from(["chakravyuh", "config", "validate", "config.yaml"]);
         assert!(cli.is_ok());
     }
 
     #[test]
     fn test_cli_parse_policy_compile() {
-        let cli = Cli::try_parse_from([
-            "chakravyuh",
-            "policy",
-            "compile",
-            "policy.yaml",
-        ]);
+        let cli = Cli::try_parse_from(["chakravyuh", "policy", "compile", "policy.yaml"]);
         assert!(cli.is_ok());
     }
 
     #[test]
     fn test_cli_parse_evaluate_prompt() {
-        let cli = Cli::try_parse_from([
-            "chakravyuh",
-            "evaluate",
-            "prompt",
-            "What is 2+2?",
-        ]);
+        let cli = Cli::try_parse_from(["chakravyuh", "evaluate", "prompt", "What is 2+2?"]);
         assert!(cli.is_ok());
     }
 
     #[test]
     fn test_cli_parse_test_shield() {
-        let cli = Cli::try_parse_from([
-            "chakravyuh",
-            "test",
-            "shield",
-        ]);
+        let cli = Cli::try_parse_from(["chakravyuh", "test", "shield"]);
         assert!(cli.is_ok());
     }
 
     #[test]
     fn test_cli_parse_keys_generate() {
-        let cli = Cli::try_parse_from([
-            "chakravyuh",
-            "keys",
-            "generate",
-            "--name",
-            "test-key",
-        ]);
+        let cli = Cli::try_parse_from(["chakravyuh", "keys", "generate", "--name", "test-key"]);
         assert!(cli.is_ok());
     }
 

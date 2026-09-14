@@ -101,7 +101,7 @@ use std::sync::RwLock;
 #[derive(Clone)]
 pub struct WebhookRegistry {
     endpoints: Arc<RwLock<HashMap<Uuid, WebhookEndpoint>>>, // wh_id → endpoint
-    by_org: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>, // org_id → [wh_id]
+    by_org: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>,          // org_id → [wh_id]
 }
 
 impl WebhookRegistry {
@@ -156,7 +156,9 @@ impl WebhookRegistry {
         let ids = by_org.get(&org_id).cloned().unwrap_or_default();
         ids.iter()
             .filter_map(|id| endpoints.get(id).cloned())
-            .filter(|ep| ep.enabled && (ep.events.is_empty() || ep.events.iter().any(|e| e == event_type)))
+            .filter(|ep| {
+                ep.enabled && (ep.events.is_empty() || ep.events.iter().any(|e| e == event_type))
+            })
             .collect()
     }
 }
@@ -172,7 +174,8 @@ impl Default for WebhookRegistry {
 /// Compute HMAC-SHA256 signature for a webhook payload.
 pub fn sign_payload(payload: &str, secret: &str) -> String {
     type HmacSha256 = Hmac<Sha256>;
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepts any key length");
+    let mut mac =
+        HmacSha256::new_from_slice(secret.as_bytes()).expect("HMAC accepts any key length");
     mac.update(payload.as_bytes());
     let bytes = mac.finalize().into_bytes();
     format!("sha256={}", hex::encode(bytes))
@@ -356,7 +359,11 @@ pub async fn revoke_webhook(
     } else {
         (
             StatusCode::NOT_FOUND,
-            Json(ErrorBody::new("webhook_not_found", "Webhook not found", "n/a")),
+            Json(ErrorBody::new(
+                "webhook_not_found",
+                "Webhook not found",
+                "n/a",
+            )),
         )
             .into_response()
     }

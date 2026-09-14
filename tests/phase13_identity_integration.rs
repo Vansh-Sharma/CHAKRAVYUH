@@ -23,9 +23,10 @@ use serde_json::{json, Value};
 use tower::ServiceExt;
 
 use chakravyuh::{
-    api::{build_router as build_chakravyuh_router, PlatformState}, AgentRing, Config, CrossRingNetwork, ExecutionRing,
-    GovernanceRing, IdentityRing, KeshavDecide, KeshavLearn, KeshavOrchestrate, KeshavRisk,
-    MemoryRing, ReasoningRing, RecoveryRing, ShieldRing, ThreatRing,
+    api::{build_router as build_chakravyuh_router, PlatformState},
+    AgentRing, Config, CrossRingNetwork, ExecutionRing, GovernanceRing, IdentityRing, KeshavDecide,
+    KeshavLearn, KeshavOrchestrate, KeshavRisk, MemoryRing, ReasoningRing, RecoveryRing,
+    ShieldRing, ThreatRing,
 };
 
 // Each test thread gets its own router with its own PlatformState.
@@ -59,13 +60,34 @@ fn build_router() -> axum::Router {
     let orchestrate = KeshavOrchestrate::new(config.keshav.orchestrate.clone());
     let cross_ring = CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
     build_chakravyuh_router(
-        shield, threat, identity, memory, agent, execution, reasoning, governance, recovery_sec,
-        decide, risk, learn, orchestrate, cross_ring, None, None, None, None, None,
+        shield,
+        threat,
+        identity,
+        memory,
+        agent,
+        execution,
+        reasoning,
+        governance,
+        recovery_sec,
+        decide,
+        risk,
+        learn,
+        orchestrate,
+        cross_ring,
+        None,
+        None,
+        None,
+        None,
+        None,
         Some(PlatformState::new()),
     )
 }
 
-async fn post_json_with_token(path: &str, body: &Value, token: Option<&str>) -> (StatusCode, Value) {
+async fn post_json_with_token(
+    path: &str,
+    body: &Value,
+    token: Option<&str>,
+) -> (StatusCode, Value) {
     let mut builder = Request::builder()
         .method("POST")
         .uri(path)
@@ -102,7 +124,11 @@ async fn get_json_with_token(path: &str, token: Option<&str>) -> (StatusCode, Va
     (status, json)
 }
 
-async fn patch_json_with_token(path: &str, body: &Value, token: Option<&str>) -> (StatusCode, Value) {
+async fn patch_json_with_token(
+    path: &str,
+    body: &Value,
+    token: Option<&str>,
+) -> (StatusCode, Value) {
     let mut builder = Request::builder()
         .method("PATCH")
         .uri(path)
@@ -150,8 +176,14 @@ async fn test_signup_creates_user_and_returns_jwt() {
     });
     let (status, json) = post_json_with_token("/v1/auth/signup", &body, None).await;
     assert_eq!(status, StatusCode::CREATED, "signup should return 201");
-    assert!(json["access_token"].is_string(), "access_token must be present");
-    assert!(json["refresh_token"].is_string(), "refresh_token must be present");
+    assert!(
+        json["access_token"].is_string(),
+        "access_token must be present"
+    );
+    assert!(
+        json["refresh_token"].is_string(),
+        "refresh_token must be present"
+    );
     assert_eq!(json["expires_in"], 900); // 15 minutes
     assert_eq!(json["user"]["email"], "alice@example.com");
     assert_eq!(json["user"]["name"], "Alice");
@@ -243,7 +275,10 @@ async fn test_create_org_and_api_key() {
         post_json_with_token(&format!("/v1/orgs/{}/keys", org_id), &key_body, Some(token)).await;
     assert_eq!(status, StatusCode::CREATED);
     let api_key = key_json["api_key"].as_str().unwrap();
-    assert!(api_key.starts_with("ck_live_"), "API key should start with ck_live_");
+    assert!(
+        api_key.starts_with("ck_live_"),
+        "API key should start with ck_live_"
+    );
     assert!(api_key.len() > 20, "API key should be reasonably long");
 
     // List API keys — should show the key but NOT the plaintext.
@@ -288,8 +323,7 @@ async fn test_protect_with_api_key() {
 
     // Now call /v1/protect with the API key.
     let protect_body = json!({"input": "What is 2+2?", "tenant_id": "demo"});
-    let (status, json) =
-        post_json_with_token("/v1/protect", &protect_body, Some(api_key)).await;
+    let (status, json) = post_json_with_token("/v1/protect", &protect_body, Some(api_key)).await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(json["allowed"], true);
     assert_eq!(json["action"], "allow");
@@ -298,8 +332,12 @@ async fn test_protect_with_api_key() {
 #[tokio::test]
 async fn test_protect_with_invalid_api_key_returns_401() {
     let protect_body = json!({"input": "test", "tenant_id": "demo"});
-    let (status, _json) =
-        post_json_with_token("/v1/protect", &protect_body, Some("ck_live_invalid_key_12345")).await;
+    let (status, _json) = post_json_with_token(
+        "/v1/protect",
+        &protect_body,
+        Some("ck_live_invalid_key_12345"),
+    )
+    .await;
     assert_eq!(status, StatusCode::UNAUTHORIZED);
 }
 
@@ -426,7 +464,10 @@ async fn test_protect_creates_audit_log_entry() {
     assert_eq!(status, StatusCode::OK);
 
     let records = audit_json["records"].as_array().unwrap();
-    assert!(!records.is_empty(), "audit log should have at least one entry");
+    assert!(
+        !records.is_empty(),
+        "audit log should have at least one entry"
+    );
 
     let record = &records[0];
     assert!(record["request_id"].is_string());
@@ -466,11 +507,8 @@ async fn test_revoke_api_key() {
     let key_id = key_json["id"].as_str().unwrap();
 
     // Revoke.
-    let (status, _) = delete_with_token(
-        &format!("/v1/orgs/{}/keys/{}", org_id, key_id),
-        Some(token),
-    )
-    .await;
+    let (status, _) =
+        delete_with_token(&format!("/v1/orgs/{}/keys/{}", org_id, key_id), Some(token)).await;
     assert_eq!(status, StatusCode::OK);
 
     // Now the API key should no longer work.
@@ -506,8 +544,7 @@ async fn test_refresh_token_rotation() {
     assert!(refresh_json["access_token"].is_string());
     assert!(refresh_json["refresh_token"].is_string());
     assert_ne!(
-        refresh_json["refresh_token"],
-        refresh_token,
+        refresh_json["refresh_token"], refresh_token,
         "refresh token should be rotated"
     );
 

@@ -141,36 +141,55 @@ pub struct VerificationResult {
 
 impl VerificationResult {
     pub fn pass(explanation: &str) -> Self {
-        Self { verdict: Verdict::Pass, explanation: explanation.to_string() }
+        Self {
+            verdict: Verdict::Pass,
+            explanation: explanation.to_string(),
+        }
     }
 
     pub fn fail(explanation: &str) -> Self {
-        Self { verdict: Verdict::Fail, explanation: explanation.to_string() }
+        Self {
+            verdict: Verdict::Fail,
+            explanation: explanation.to_string(),
+        }
     }
 }
 
 /// Execute a comparison using the given strategy.
-pub fn verify_match(expected: &Value, observed: &Value, strategy: &MatchStrategy) -> VerificationResult {
+pub fn verify_match(
+    expected: &Value,
+    observed: &Value,
+    strategy: &MatchStrategy,
+) -> VerificationResult {
     match strategy {
         MatchStrategy::Exact => {
             if expected == observed {
                 VerificationResult::pass("Observed matches expected (exact).")
             } else {
-                VerificationResult::fail(&format!("Expected {:?} but observed {:?}", expected, observed))
+                VerificationResult::fail(&format!(
+                    "Expected {:?} but observed {:?}",
+                    expected, observed
+                ))
             }
         }
         MatchStrategy::Contains => {
             if json_contains(observed, expected) {
                 VerificationResult::pass("Observed contains expected subset.")
             } else {
-                VerificationResult::fail(&format!("Expected {:?} to be contained in {:?}", expected, observed))
+                VerificationResult::fail(&format!(
+                    "Expected {:?} to be contained in {:?}",
+                    expected, observed
+                ))
             }
         }
         MatchStrategy::NotContains => {
             if !json_contains(observed, expected) {
                 VerificationResult::pass("Observed does not contain the forbidden value.")
             } else {
-                VerificationResult::fail(&format!("Observed {:?} contains forbidden {:?}", observed, expected))
+                VerificationResult::fail(&format!(
+                    "Observed {:?} contains forbidden {:?}",
+                    observed, expected
+                ))
             }
         }
         MatchStrategy::Gte => {
@@ -193,9 +212,15 @@ pub fn verify_match(expected: &Value, observed: &Value, strategy: &MatchStrategy
             let (e, o) = numeric_pair(expected, observed);
             let diff = (o - e).abs();
             if diff <= *tolerance {
-                VerificationResult::pass(&format!("|{} - {}| = {} <= tolerance {}", o, e, diff, tolerance))
+                VerificationResult::pass(&format!(
+                    "|{} - {}| = {} <= tolerance {}",
+                    o, e, diff, tolerance
+                ))
             } else {
-                VerificationResult::fail(&format!("|{} - {}| = {} > tolerance {}", o, e, diff, tolerance))
+                VerificationResult::fail(&format!(
+                    "|{} - {}| = {} > tolerance {}",
+                    o, e, diff, tolerance
+                ))
             }
         }
         MatchStrategy::MatchesRegex => {
@@ -206,7 +231,10 @@ pub fn verify_match(expected: &Value, observed: &Value, strategy: &MatchStrategy
                     if re.is_match(text) {
                         VerificationResult::pass(&format!("Observed matches pattern /{}/", pattern))
                     } else {
-                        VerificationResult::fail(&format!("Observed {:?} does not match pattern /{}/", text, pattern))
+                        VerificationResult::fail(&format!(
+                            "Observed {:?} does not match pattern /{}/",
+                            text, pattern
+                        ))
                     }
                 }
                 Err(e) => VerificationResult::fail(&format!("Invalid regex /{}/: {}", pattern, e)),
@@ -217,27 +245,34 @@ pub fn verify_match(expected: &Value, observed: &Value, strategy: &MatchStrategy
                 if arr.iter().any(|item| item == observed) {
                     VerificationResult::pass("Observed is one of the allowed values.")
                 } else {
-                    VerificationResult::fail(&format!("Observed {:?} not in allowed set {:?}", observed, expected))
+                    VerificationResult::fail(&format!(
+                        "Observed {:?} not in allowed set {:?}",
+                        observed, expected
+                    ))
                 }
             } else {
                 VerificationResult::fail("Expected must be an array for OneOf strategy.")
             }
         }
-        MatchStrategy::Custom => {
-            VerificationResult::pass("Custom check passed.")
-        }
+        MatchStrategy::Custom => VerificationResult::pass("Custom check passed."),
         MatchStrategy::Truthy => {
             if is_truthy(observed) {
                 VerificationResult::pass("Observed is truthy.")
             } else {
-                VerificationResult::fail(&format!("Observed {:?} is falsy (expected truthy)", observed))
+                VerificationResult::fail(&format!(
+                    "Observed {:?} is falsy (expected truthy)",
+                    observed
+                ))
             }
         }
         MatchStrategy::Falsy => {
             if !is_truthy(observed) {
                 VerificationResult::pass("Observed is falsy.")
             } else {
-                VerificationResult::fail(&format!("Observed {:?} is truthy (expected falsy)", observed))
+                VerificationResult::fail(&format!(
+                    "Observed {:?} is truthy (expected falsy)",
+                    observed
+                ))
             }
         }
         MatchStrategy::IsType => {
@@ -255,16 +290,25 @@ pub fn verify_match(expected: &Value, observed: &Value, strategy: &MatchStrategy
             if ok {
                 VerificationResult::pass(&format!("Observed is of type {}.", expected_type))
             } else {
-                VerificationResult::fail(&format!("Expected type {} but observed {:?}", expected_type, observed))
+                VerificationResult::fail(&format!(
+                    "Expected type {} but observed {:?}",
+                    expected_type, observed
+                ))
             }
         }
         MatchStrategy::ArrayLenEq => {
             let expected_len = expected.as_u64().unwrap_or(0) as usize;
             let actual_len = observed.as_array().map_or(0, |a| a.len());
             if actual_len == expected_len {
-                VerificationResult::pass(&format!("Array length {} == expected {}", actual_len, expected_len))
+                VerificationResult::pass(&format!(
+                    "Array length {} == expected {}",
+                    actual_len, expected_len
+                ))
             } else {
-                VerificationResult::fail(&format!("Array length {} != expected {}", actual_len, expected_len))
+                VerificationResult::fail(&format!(
+                    "Array length {} != expected {}",
+                    actual_len, expected_len
+                ))
             }
         }
         MatchStrategy::ArrayLenGte => {
@@ -310,13 +354,23 @@ pub fn verify_and_record(
 
     let mut evidence = if verdict == Verdict::Pass {
         Evidence::pass(
-            &report.run_id, &spec.check_name, &spec.phase, &spec.subsystem,
-            spec.expected.clone(), observed,
+            &report.run_id,
+            &spec.check_name,
+            &spec.phase,
+            &spec.subsystem,
+            spec.expected.clone(),
+            observed,
         )
     } else {
         Evidence::fail(
-            &report.run_id, &spec.check_name, &spec.phase, &spec.subsystem,
-            spec.severity, spec.expected.clone(), observed, &explanation,
+            &report.run_id,
+            &spec.check_name,
+            &spec.phase,
+            &spec.subsystem,
+            spec.severity,
+            spec.expected.clone(),
+            observed,
+            &explanation,
         )
     };
 
@@ -328,8 +382,13 @@ pub fn verify_and_record(
     report.record_evidence(evidence);
 
     let replay = ReplayData::new(
-        &report.run_id, &spec.phase, &spec.check_name,
-        input, system_state, Verdict::Pass, verdict,
+        &report.run_id,
+        &spec.phase,
+        &spec.check_name,
+        input,
+        system_state,
+        Verdict::Pass,
+        verdict,
     );
     report.record_replay(replay);
 }
@@ -409,67 +468,127 @@ mod tests {
 
     #[test]
     fn gte_match() {
-        assert!(verify_match(&json!(5.0), &json!(10.0), &MatchStrategy::Gte).verdict.is_pass());
-        assert!(verify_match(&json!(15.0), &json!(10.0), &MatchStrategy::Gte).verdict.is_fail());
+        assert!(verify_match(&json!(5.0), &json!(10.0), &MatchStrategy::Gte)
+            .verdict
+            .is_pass());
+        assert!(
+            verify_match(&json!(15.0), &json!(10.0), &MatchStrategy::Gte)
+                .verdict
+                .is_fail()
+        );
     }
 
     #[test]
     fn within_tolerance() {
         let strat = MatchStrategy::WithinTolerance { tolerance: 3.0 };
-        assert!(verify_match(&json!(100.0), &json!(102.5), &strat).verdict.is_pass());
-        assert!(verify_match(&json!(100.0), &json!(104.0), &strat).verdict.is_fail());
+        assert!(verify_match(&json!(100.0), &json!(102.5), &strat)
+            .verdict
+            .is_pass());
+        assert!(verify_match(&json!(100.0), &json!(104.0), &strat)
+            .verdict
+            .is_fail());
     }
 
     #[test]
     fn one_of_match() {
         let _allowed = json!("[\"a\",\"b\",\"c\"]");
         let allowed = serde_json::from_str::<Value>("[\"a\",\"b\",\"c\"]").unwrap();
-        assert!(verify_match(&allowed, &json!("b"), &MatchStrategy::OneOf).verdict.is_pass());
-        assert!(verify_match(&allowed, &json!("z"), &MatchStrategy::OneOf).verdict.is_fail());
+        assert!(verify_match(&allowed, &json!("b"), &MatchStrategy::OneOf)
+            .verdict
+            .is_pass());
+        assert!(verify_match(&allowed, &json!("z"), &MatchStrategy::OneOf)
+            .verdict
+            .is_fail());
     }
 
     #[test]
     fn truthy_falsy() {
-        assert!(verify_match(&json!("null"), &json!("true"), &MatchStrategy::Truthy).verdict.is_pass());
-        assert!(verify_match(&json!("null"), &json!("false"), &MatchStrategy::Truthy).verdict.is_fail());
-        assert!(verify_match(&json!("null"), &json!("null"), &MatchStrategy::Falsy).verdict.is_pass());
-        assert!(verify_match(&json!("null"), &json!("1"), &MatchStrategy::Falsy).verdict.is_fail());
+        assert!(
+            verify_match(&json!("null"), &json!("true"), &MatchStrategy::Truthy)
+                .verdict
+                .is_pass()
+        );
+        assert!(
+            verify_match(&json!("null"), &json!("false"), &MatchStrategy::Truthy)
+                .verdict
+                .is_fail()
+        );
+        assert!(
+            verify_match(&json!("null"), &json!("null"), &MatchStrategy::Falsy)
+                .verdict
+                .is_pass()
+        );
+        assert!(
+            verify_match(&json!("null"), &json!("1"), &MatchStrategy::Falsy)
+                .verdict
+                .is_fail()
+        );
     }
 
     #[test]
     fn is_type_check() {
-        assert!(verify_match(&json!("string"), &json!("hello"), &MatchStrategy::IsType).verdict.is_pass());
-        assert!(verify_match(&json!("number"), &json!(42), &MatchStrategy::IsType).verdict.is_pass());
-        assert!(verify_match(&json!("string"), &json!(42), &MatchStrategy::IsType).verdict.is_fail());
+        assert!(
+            verify_match(&json!("string"), &json!("hello"), &MatchStrategy::IsType)
+                .verdict
+                .is_pass()
+        );
+        assert!(
+            verify_match(&json!("number"), &json!(42), &MatchStrategy::IsType)
+                .verdict
+                .is_pass()
+        );
+        assert!(
+            verify_match(&json!("string"), &json!(42), &MatchStrategy::IsType)
+                .verdict
+                .is_fail()
+        );
     }
 
     #[test]
     fn array_len_checks() {
         let _arr = json!("[1,2,3,4]");
         let arr: Value = serde_json::from_str("[1,2,3,4]").unwrap();
-        assert!(verify_match(&json!(4), &arr, &MatchStrategy::ArrayLenEq).verdict.is_pass());
-        assert!(verify_match(&json!(3), &arr, &MatchStrategy::ArrayLenEq).verdict.is_fail());
+        assert!(verify_match(&json!(4), &arr, &MatchStrategy::ArrayLenEq)
+            .verdict
+            .is_pass());
+        assert!(verify_match(&json!(3), &arr, &MatchStrategy::ArrayLenEq)
+            .verdict
+            .is_fail());
     }
 
     #[test]
     fn non_empty_check() {
         let non_empty: Value = serde_json::from_str("[1]").unwrap();
         let empty: Value = serde_json::from_str("[]").unwrap();
-        assert!(verify_match(&json!("null"), &non_empty, &MatchStrategy::NonEmpty).verdict.is_pass());
-        assert!(verify_match(&json!("null"), &empty, &MatchStrategy::NonEmpty).verdict.is_fail());
+        assert!(
+            verify_match(&json!("null"), &non_empty, &MatchStrategy::NonEmpty)
+                .verdict
+                .is_pass()
+        );
+        assert!(
+            verify_match(&json!("null"), &empty, &MatchStrategy::NonEmpty)
+                .verdict
+                .is_fail()
+        );
     }
 
     #[test]
     fn verify_and_record_integration() {
         let mut report = ValidationReport::new("test", vec!["D0".to_string()]);
         let spec = VerificationSpec::new(
-            "check-decision", "D0", "keshav",
+            "check-decision",
+            "D0",
+            "keshav",
             serde_json::json!({"verdict": "deny"}),
-        ).with_strategy(MatchStrategy::Contains).with_severity(Severity::High);
+        )
+        .with_strategy(MatchStrategy::Contains)
+        .with_severity(Severity::High);
 
         let observed = serde_json::json!({"verdict": "deny", "code": "WAF_SQLI"});
         verify_and_record(
-            &mut report, &spec, observed,
+            &mut report,
+            &spec,
+            observed,
             serde_json::json!({"payload": "select * from users"}),
             serde_json::json!({"mode": "strict"}),
         );
@@ -483,13 +602,18 @@ mod tests {
     fn verify_and_record_failure() {
         let mut report = ValidationReport::new("test", vec!["D0".to_string()]);
         let spec = VerificationSpec::new(
-            "check-blocked", "D0", "shield",
+            "check-blocked",
+            "D0",
+            "shield",
             serde_json::json!({"blocked": true}),
-        ).with_severity(Severity::Critical);
+        )
+        .with_severity(Severity::Critical);
 
         let observed = serde_json::json!({"blocked": false});
         verify_and_record(
-            &mut report, &spec, observed,
+            &mut report,
+            &spec,
+            observed,
             serde_json::json!({"payload": "attack"}),
             serde_json::json!({}),
         );

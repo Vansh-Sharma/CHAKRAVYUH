@@ -21,10 +21,17 @@ pub struct AgentPolicyConfig {
     pub custom_policies: HashMap<String, Vec<String>>,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 impl Default for AgentPolicyConfig {
-    fn default() -> Self { Self { enabled: default_enabled(), custom_policies: HashMap::new() } }
+    fn default() -> Self {
+        Self {
+            enabled: default_enabled(),
+            custom_policies: HashMap::new(),
+        }
+    }
 }
 
 pub struct AgentPolicyResult {
@@ -40,12 +47,19 @@ pub struct AgentPolicy {
 
 impl AgentPolicy {
     pub fn new(config: &AgentPolicyConfig) -> Self {
-        Self { config: config.clone(), known_agents: Mutex::new(HashMap::new()) }
+        Self {
+            config: config.clone(),
+            known_agents: Mutex::new(HashMap::new()),
+        }
     }
 
     pub fn evaluate(&self, agent_type: &AgentType, agent_id: &str) -> AgentPolicyResult {
         if !self.config.enabled {
-            return AgentPolicyResult { allowed: true, reason: "agent policy disabled".into(), risk_score: 0.0 };
+            return AgentPolicyResult {
+                allowed: true,
+                reason: "agent policy disabled".into(),
+                risk_score: 0.0,
+            };
         }
 
         // Check if agent is known.
@@ -63,17 +77,33 @@ impl AgentPolicy {
         };
         if let Some(policy) = self.config.custom_policies.get(&type_key) {
             if policy.is_empty() {
-                return AgentPolicyResult { allowed: false, reason: format!("agent type {:?} has no allowed capabilities", agent_type), risk_score: 5.0 };
+                return AgentPolicyResult {
+                    allowed: false,
+                    reason: format!("agent type {:?} has no allowed capabilities", agent_type),
+                    risk_score: 5.0,
+                };
             }
-            return AgentPolicyResult { allowed: true, reason: format!("{:?} policy: {} capabilities", agent_type, policy.len()), risk_score: 0.0 };
+            return AgentPolicyResult {
+                allowed: true,
+                reason: format!("{:?} policy: {} capabilities", agent_type, policy.len()),
+                risk_score: 0.0,
+            };
         }
 
         // Default policies per type — all known types are allowed.
         if !is_known {
-            return AgentPolicyResult { allowed: true, reason: format!("first encounter with agent {:?}, monitoring", agent_type), risk_score: 1.0 };
+            return AgentPolicyResult {
+                allowed: true,
+                reason: format!("first encounter with agent {:?}, monitoring", agent_type),
+                risk_score: 1.0,
+            };
         }
 
-        AgentPolicyResult { allowed: true, reason: format!("{:?} agent within policy", agent_type), risk_score: 0.0 }
+        AgentPolicyResult {
+            allowed: true,
+            reason: format!("{:?} agent within policy", agent_type),
+            risk_score: 0.0,
+        }
     }
 }
 
@@ -81,7 +111,9 @@ impl AgentPolicy {
 mod tests {
     use super::*;
 
-    fn default_policy() -> AgentPolicy { AgentPolicy::new(&AgentPolicyConfig::default()) }
+    fn default_policy() -> AgentPolicy {
+        AgentPolicy::new(&AgentPolicyConfig::default())
+    }
 
     #[test]
     fn known_agent_allowed() {
@@ -117,7 +149,10 @@ mod tests {
 
     #[test]
     fn disabled_allows_all() {
-        let p = AgentPolicy::new(&AgentPolicyConfig { enabled: false, ..Default::default() });
+        let p = AgentPolicy::new(&AgentPolicyConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let r = p.evaluate(&AgentType::Custom("anything".into()), "x");
         assert!(r.allowed);
     }

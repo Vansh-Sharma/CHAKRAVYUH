@@ -11,9 +11,9 @@
 //   5. Timestamp and proof ID
 
 use crate::ananta::anchor::AttestationReport;
+use crate::ananta::config::HashAlgorithm;
 use crate::ananta::crypto::hashing::{hash_combined, HashDigest};
 use crate::ananta::crypto::signing::{self, KeyPair, Signature};
-use crate::ananta::config::HashAlgorithm;
 use crate::ananta::trust::trust_state::TrustState;
 use serde::{Deserialize, Serialize};
 
@@ -67,7 +67,9 @@ impl TrustProof {
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         // Collect domain trust levels.
-        let domain_trust: Vec<DomainTrustEntry> = trust_state.domains.iter()
+        let domain_trust: Vec<DomainTrustEntry> = trust_state
+            .domains
+            .iter()
             .map(|(name, dt)| DomainTrustEntry {
                 domain: name.clone(),
                 level: dt.level,
@@ -141,7 +143,11 @@ impl TrustProof {
 
     /// Summary.
     pub fn summary(&self) -> String {
-        let status = if self.all_passed { "TRUSTED" } else { "COMPROMISED" };
+        let status = if self.all_passed {
+            "TRUSTED"
+        } else {
+            "COMPROMISED"
+        };
         format!(
             "[TRUST PROOF] {} — trust={:.3} passes={} merkle={}...",
             status,
@@ -193,9 +199,7 @@ mod tests {
         let trust_state = TrustState::new();
         let kp = KeyPair::generate_ed25519("key");
 
-        let mut proof = TrustProof::generate(
-            &attestation, &trust_state, "head", &kp,
-        );
+        let mut proof = TrustProof::generate(&attestation, &trust_state, "head", &kp);
 
         proof.trust_score = 0.0; // Tamper.
         assert!(!proof.verify(kp.public_key()));

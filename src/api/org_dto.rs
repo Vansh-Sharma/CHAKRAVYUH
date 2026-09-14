@@ -160,7 +160,7 @@ impl CreateApiKeyRequest {
 /// Returned ONCE at creation time — the plaintext key is never retrievable again.
 #[derive(Debug, Clone, Serialize)]
 pub struct CreateApiKeyResponse {
-    pub api_key: String,         // the plaintext ck_live_xxx (shown once)
+    pub api_key: String, // the plaintext ck_live_xxx (shown once)
     pub id: Uuid,
     pub name: String,
     pub is_live: bool,

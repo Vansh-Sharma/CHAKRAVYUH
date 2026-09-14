@@ -20,10 +20,10 @@
 //   5. Pareto-Optimal Selection — multi-objective frontier across objectives
 //   6. Statistics Utilities — mean, std_dev, confidence interval, t-test
 
+use rand::{Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
-use rand::{Rng, SeedableRng};
 
 // =============================================================================
 // Section 1: Statistics Utilities
@@ -80,7 +80,11 @@ impl SampleStatistics {
             0.0
         };
         let std_dev = variance.sqrt();
-        let standard_error = if n > 1 { std_dev / (n as f64).sqrt() } else { 0.0 };
+        let standard_error = if n > 1 {
+            std_dev / (n as f64).sqrt()
+        } else {
+            0.0
+        };
 
         let mut sorted = data.to_vec();
         sorted.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
@@ -122,8 +126,8 @@ impl SampleStatistics {
         let s1_sq = self.variance / self.n as f64;
         let s2_sq = other.variance / other.n as f64;
         let numerator = (s1_sq + s2_sq).powi(2);
-        let denominator = s1_sq.powi(2) / (self.n - 1) as f64
-            + s2_sq.powi(2) / (other.n - 1) as f64;
+        let denominator =
+            s1_sq.powi(2) / (self.n - 1) as f64 + s2_sq.powi(2) / (other.n - 1) as f64;
         if denominator == 0.0 {
             return None;
         }
@@ -141,7 +145,14 @@ impl SampleStatistics {
             p_value,
             significant_at_0_05: significant,
             mean_difference: self.mean - other.mean,
-            effect_size: cohen_d(self.mean, other.mean, self.variance, other.variance, self.n, other.n),
+            effect_size: cohen_d(
+                self.mean,
+                other.mean,
+                self.variance,
+                other.variance,
+                self.n,
+                other.n,
+            ),
         })
     }
 
@@ -252,7 +263,7 @@ pub fn t_test(a: &[f64], b: &[f64]) -> Option<TTestResult> {
 fn cohen_d(mean_a: f64, mean_b: f64, var_a: f64, var_b: f64, n_a: usize, n_b: usize) -> f64 {
     let pooled_std = ((var_a * (n_a - 1) as f64 + var_b * (n_b - 1) as f64)
         / (n_a + n_b - 2).max(1) as f64)
-    .sqrt();
+        .sqrt();
     if pooled_std == 0.0 {
         return 0.0;
     }
@@ -317,7 +328,11 @@ pub fn pearson_correlation(x: &[f64], y: &[f64]) -> Option<f64> {
     let n = x.len() as f64;
     let mx = mean(x);
     let my = mean(y);
-    let cov: f64 = x.iter().zip(y.iter()).map(|(a, b)| (a - mx) * (b - my)).sum();
+    let cov: f64 = x
+        .iter()
+        .zip(y.iter())
+        .map(|(a, b)| (a - mx) * (b - my))
+        .sum();
     let sx = std_dev(x);
     let sy = std_dev(y);
     if sx == 0.0 || sy == 0.0 {
@@ -570,7 +585,11 @@ impl SystemTopology {
         if self.components.is_empty() {
             return 1.0;
         }
-        let operational = self.components.values().filter(|c| c.state.is_operational()).count();
+        let operational = self
+            .components
+            .values()
+            .filter(|c| c.state.is_operational())
+            .count();
         operational as f64 / self.components.len() as f64
     }
 
@@ -1350,20 +1369,20 @@ impl RecoveryApplier {
         failure_type: FailureType,
         rng: &mut R,
     ) -> SimRecoveryOutcome {
-        let config = self
-            .configs
-            .get(strategy)
-            .cloned()
-            .unwrap_or_else(|| RecoveryStrategyConfig {
-                strategy: strategy.clone(),
-                base_success_probability: 0.5,
-                base_duration: 10.0,
-                duration_variance: 3.0,
-                trust_restoration: 0.1,
-                cost: 1.0,
-                works_on_degraded: true,
-                critical_modifier: 1.0,
-            });
+        let config =
+            self.configs
+                .get(strategy)
+                .cloned()
+                .unwrap_or_else(|| RecoveryStrategyConfig {
+                    strategy: strategy.clone(),
+                    base_success_probability: 0.5,
+                    base_duration: 10.0,
+                    duration_variance: 3.0,
+                    trust_restoration: 0.1,
+                    cost: 1.0,
+                    works_on_degraded: true,
+                    critical_modifier: 1.0,
+                });
 
         // Compute effective success probability.
         let mut success_prob = config.base_success_probability;
@@ -1386,9 +1405,10 @@ impl RecoveryApplier {
         // Sample duration from a truncated normal-ish distribution (Box-Muller-like).
         let u1: f64 = rng.random();
         let u2: f64 = rng.random();
-        let normal_sample = (-2.0 * u1.max(1e-10).ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
-        let duration = (config.base_duration + normal_sample * config.duration_variance.sqrt())
-            .max(1.0);
+        let normal_sample =
+            (-2.0 * u1.max(1e-10).ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
+        let duration =
+            (config.base_duration + normal_sample * config.duration_variance.sqrt()).max(1.0);
 
         // Trust delta depends on outcome.
         let trust_delta = if success {
@@ -1646,8 +1666,7 @@ impl MonteCarloEngine {
         let mut strategy_success: HashMap<String, (usize, usize)> = HashMap::new();
 
         for run_idx in 0..config.num_runs {
-            let run_result =
-                self.run_single(config, run_idx);
+            let run_result = self.run_single(config, run_idx);
 
             let success_count = run_result.successful_recoveries;
             let failure_count = run_result.failed_recoveries;
@@ -1687,7 +1706,11 @@ impl MonteCarloEngine {
         let strategy_rates: HashMap<String, f64> = strategy_success
             .into_iter()
             .map(|(k, (s, total))| {
-                let rate = if total > 0 { s as f64 / total as f64 } else { 0.0 };
+                let rate = if total > 0 {
+                    s as f64 / total as f64
+                } else {
+                    0.0
+                };
                 (k, rate)
             })
             .collect();
@@ -1702,8 +1725,8 @@ impl MonteCarloEngine {
         SimulationReport {
             config: config.clone(),
             total_runs: config.num_runs,
-            availability_stats: SampleStatistics::from_slice(&availabilities)
-                .unwrap_or_else(|| SampleStatistics {
+            availability_stats: SampleStatistics::from_slice(&availabilities).unwrap_or_else(
+                || SampleStatistics {
                     n: 0,
                     mean: 0.0,
                     std_dev: 0.0,
@@ -1714,7 +1737,8 @@ impl MonteCarloEngine {
                     q3: 0.0,
                     variance: 0.0,
                     standard_error: 0.0,
-                }),
+                },
+            ),
             trust_stats: SampleStatistics::from_slice(&trusts).unwrap_or_else(|| {
                 SampleStatistics {
                     n: 0,
@@ -1946,10 +1970,7 @@ impl SensitivityAnalyzer {
     /// and computes numerical derivatives using central differences.
     ///
     /// Returns a sweep result for each parameter.
-    pub fn sweep(
-        &self,
-        parameters: &[SensitivityParameter],
-    ) -> Vec<SensitivitySweepResult> {
+    pub fn sweep(&self, parameters: &[SensitivityParameter]) -> Vec<SensitivitySweepResult> {
         parameters
             .iter()
             .map(|param| self.sweep_parameter(param))
@@ -1989,22 +2010,19 @@ impl SensitivityAnalyzer {
             let report = modified_engine.run(&config);
 
             let (obj_value, obj_std) = match parameter.objective {
-                SensitivityObjective::Availability => {
-                    (report.availability_stats.mean, report.availability_stats.std_dev)
-                }
+                SensitivityObjective::Availability => (
+                    report.availability_stats.mean,
+                    report.availability_stats.std_dev,
+                ),
                 SensitivityObjective::Trust => {
                     (report.trust_stats.mean, report.trust_stats.std_dev)
                 }
-                SensitivityObjective::Cost => {
-                    (report.cost_stats.mean, report.cost_stats.std_dev)
-                }
+                SensitivityObjective::Cost => (report.cost_stats.mean, report.cost_stats.std_dev),
                 SensitivityObjective::RecoveryTime => (
                     report.recovery_time_stats.mean,
                     report.recovery_time_stats.std_dev,
                 ),
-                SensitivityObjective::SuccessRate => {
-                    (report.recovery_success_rate, 0.0)
-                }
+                SensitivityObjective::SuccessRate => (report.recovery_success_rate, 0.0),
             };
 
             objective_values.push(obj_value);
@@ -2141,7 +2159,10 @@ impl ParetoObjective {
 
     /// Returns true if higher values are better for this objective.
     pub fn is_maximize(&self) -> bool {
-        matches!(self, ParetoObjective::Speed | ParetoObjective::Reliability | ParetoObjective::Trust)
+        matches!(
+            self,
+            ParetoObjective::Speed | ParetoObjective::Reliability | ParetoObjective::Trust
+        )
     }
 }
 
@@ -2234,25 +2255,18 @@ impl ParetoFrontier {
     ///
     /// Weights are provided for each objective. The strategy with the
     /// highest weighted score is selected.
-    pub fn select_best(
-        &self,
-        weights: &HashMap<ParetoObjective, f64>,
-    ) -> Option<&ParetoPoint> {
-        self.frontier_points
-            .iter()
-            .max_by(|a, b| {
-                let score_a = self.weighted_score(a, weights);
-                let score_b = self.weighted_score(b, weights);
-                score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
-            })
+    pub fn select_best(&self, weights: &HashMap<ParetoObjective, f64>) -> Option<&ParetoPoint> {
+        self.frontier_points.iter().max_by(|a, b| {
+            let score_a = self.weighted_score(a, weights);
+            let score_b = self.weighted_score(b, weights);
+            score_a
+                .partial_cmp(&score_b)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
     }
 
     /// Compute the weighted score for a point.
-    fn weighted_score(
-        &self,
-        point: &ParetoPoint,
-        weights: &HashMap<ParetoObjective, f64>,
-    ) -> f64 {
+    fn weighted_score(&self, point: &ParetoPoint, weights: &HashMap<ParetoObjective, f64>) -> f64 {
         let mut score = 0.0;
         for (obj, &weight) in weights {
             if let Some(&value) = point.objectives.get(obj) {
@@ -2370,7 +2384,9 @@ impl ParetoFrontier {
 
     /// Get the number of dominated points.
     pub fn dominated_count(&self) -> usize {
-        self.all_points.len().saturating_sub(self.frontier_points.len())
+        self.all_points
+            .len()
+            .saturating_sub(self.frontier_points.len())
     }
 }
 
@@ -2471,10 +2487,8 @@ impl StrategyEvaluator {
                 ParetoObjective::Speed,
                 1.0 / report.recovery_time_stats.mean.max(0.01),
             );
-            point = point.with_objective(
-                ParetoObjective::Reliability,
-                report.recovery_success_rate,
-            );
+            point =
+                point.with_objective(ParetoObjective::Reliability, report.recovery_success_rate);
             point = point.with_objective(ParetoObjective::Trust, report.trust_stats.mean);
             point = point.with_objective(ParetoObjective::Cost, report.cost_stats.mean);
 
@@ -2600,7 +2614,6 @@ pub fn standard_scenarios() -> Vec<RecoveryScenario> {
         )
         .expect_availability(0.8)
         .expect_success_rate(0.7),
-
         RecoveryScenario::new(
             "dual_random_restart",
             "Two random component failures with restart recovery",
@@ -2609,7 +2622,6 @@ pub fn standard_scenarios() -> Vec<RecoveryScenario> {
         )
         .expect_availability(0.6)
         .expect_success_rate(0.6),
-
         RecoveryScenario::new(
             "cascading_failover",
             "Cascading failure with failover strategy",
@@ -2622,7 +2634,6 @@ pub fn standard_scenarios() -> Vec<RecoveryScenario> {
         )
         .expect_availability(0.5)
         .expect_success_rate(0.6),
-
         RecoveryScenario::new(
             "targeted_rollback",
             "Targeted critical component failure with rollback",
@@ -2633,7 +2644,6 @@ pub fn standard_scenarios() -> Vec<RecoveryScenario> {
         )
         .expect_availability(0.8)
         .expect_success_rate(0.7),
-
         RecoveryScenario::new(
             "correlated_rebuild",
             "Correlated failures with rebuild strategy",
@@ -2645,7 +2655,6 @@ pub fn standard_scenarios() -> Vec<RecoveryScenario> {
         )
         .expect_availability(0.5)
         .expect_success_rate(0.8),
-
         RecoveryScenario::new(
             "common_cause_restart",
             "Common cause failure in shield_ring with restart",
@@ -2870,10 +2879,7 @@ mod tests {
     #[test]
     fn test_random_failure_injection() {
         let mut topo = SystemTopology::default_trust_plane();
-        let injector = FailureInjector::with_seed(
-            FailurePattern::Random { count: 2 },
-            42,
-        );
+        let injector = FailureInjector::with_seed(FailurePattern::Random { count: 2 }, 42);
         let events = injector.inject(&mut topo, 0);
         assert_eq!(events.len(), 2);
         // Exactly 2 components should now be failed.
@@ -2894,7 +2900,9 @@ mod tests {
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].component_id.0, "trust_evaluator");
         assert_eq!(
-            topo.get(&ComponentId::new("trust_evaluator")).unwrap().state,
+            topo.get(&ComponentId::new("trust_evaluator"))
+                .unwrap()
+                .state,
             ComponentState::Failed
         );
     }
@@ -2940,7 +2948,9 @@ mod tests {
     #[test]
     fn test_failure_type_severity() {
         assert!(FailureType::DataCorruption.severity() > FailureType::Degradation.severity());
-        assert!(FailureType::Crash.trust_impact() > FailureType::PerformanceDegradation.trust_impact());
+        assert!(
+            FailureType::Crash.trust_impact() > FailureType::PerformanceDegradation.trust_impact()
+        );
     }
 
     // -------------------------------------------------------------------------
@@ -3033,9 +3043,7 @@ mod tests {
     fn test_monte_carlo_reproducible() {
         let topo = SystemTopology::default_trust_plane();
         let engine = MonteCarloEngine::new(topo);
-        let config = SimulationConfig::new()
-            .with_runs(30)
-            .with_seed(99);
+        let config = SimulationConfig::new().with_runs(30).with_seed(99);
 
         let report1 = engine.run(&config);
         let report2 = engine.run(&config);
@@ -3345,10 +3353,8 @@ mod tests {
         if let Some(comp) = topo.get_mut(&ComponentId::new("threat_analyzer")) {
             comp.base_failure_probability = 0.99;
         }
-        let injector = FailureInjector::with_seed(
-            FailurePattern::ProbabilityWeighted { count: 1 },
-            42,
-        );
+        let injector =
+            FailureInjector::with_seed(FailurePattern::ProbabilityWeighted { count: 1 }, 42);
         let events = injector.inject(&mut topo, 0);
         assert_eq!(events.len(), 1);
         // The high-probability component should be the one that fails.
@@ -3427,8 +3433,14 @@ mod tests {
         let defaults = RecoveryStrategyConfig::defaults();
         assert_eq!(defaults.len(), 4);
         // Check Rebuild is the most expensive.
-        let rebuild = defaults.iter().find(|c| c.strategy == SimRecoveryStrategy::Rebuild).unwrap();
-        let restart = defaults.iter().find(|c| c.strategy == SimRecoveryStrategy::Restart).unwrap();
+        let rebuild = defaults
+            .iter()
+            .find(|c| c.strategy == SimRecoveryStrategy::Rebuild)
+            .unwrap();
+        let restart = defaults
+            .iter()
+            .find(|c| c.strategy == SimRecoveryStrategy::Restart)
+            .unwrap();
         assert!(rebuild.cost > restart.cost);
         assert!(rebuild.base_success_probability > restart.base_success_probability);
     }

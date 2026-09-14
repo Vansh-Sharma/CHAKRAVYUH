@@ -88,7 +88,11 @@ impl TraceContext {
         let start_offset = if self.spans.is_empty() {
             0
         } else {
-            self.spans.iter().map(|s| s.start_us + s.duration_us).max().unwrap_or(0)
+            self.spans
+                .iter()
+                .map(|s| s.start_us + s.duration_us)
+                .max()
+                .unwrap_or(0)
         };
 
         self.spans.push(Span {
@@ -159,13 +163,16 @@ pub struct TraceStats {
 /// Get trace buffer statistics.
 pub fn trace_stats() -> TraceStats {
     let buffer = RECENT_TRACES.get_or_init(|| RwLock::new(Vec::new()));
-    buffer.read().map(|buf| TraceStats {
-        total_traces: buf.len(),
-        buffer_capacity: MAX_RECENT_TRACES,
-    }).unwrap_or(TraceStats {
-        total_traces: 0,
-        buffer_capacity: MAX_RECENT_TRACES,
-    })
+    buffer
+        .read()
+        .map(|buf| TraceStats {
+            total_traces: buf.len(),
+            buffer_capacity: MAX_RECENT_TRACES,
+        })
+        .unwrap_or(TraceStats {
+            total_traces: 0,
+            buffer_capacity: MAX_RECENT_TRACES,
+        })
 }
 
 #[cfg(test)]

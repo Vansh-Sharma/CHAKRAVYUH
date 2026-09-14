@@ -271,7 +271,8 @@ impl ThreatSignatureSync {
                     // Conflict resolution: higher confidence wins.
                     // Ties broken by newer timestamp (higher created_at).
                     if sig.confidence > existing.confidence
-                        || (sig.confidence == existing.confidence && sig.created_at > existing.created_at)
+                        || (sig.confidence == existing.confidence
+                            && sig.created_at > existing.created_at)
                     {
                         by_hash.insert(sig.signature_hash.clone(), sig.clone());
                     }
@@ -325,10 +326,14 @@ impl ThreatSignatureSync {
         // and those with different data (different id for same pattern) as updated.
         // Here we use a content-based comparison: if a hash exists in both
         // but the full signature differs, it's an update.
-        let before_map: HashMap<&str, &ThreatSignature> =
-            before.iter().map(|s| (s.signature_hash.as_str(), s)).collect();
-        let after_map: HashMap<&str, &ThreatSignature> =
-            after.iter().map(|s| (s.signature_hash.as_str(), s)).collect();
+        let before_map: HashMap<&str, &ThreatSignature> = before
+            .iter()
+            .map(|s| (s.signature_hash.as_str(), s))
+            .collect();
+        let after_map: HashMap<&str, &ThreatSignature> = after
+            .iter()
+            .map(|s| (s.signature_hash.as_str(), s))
+            .collect();
 
         let mut updated = 0usize;
         let mut unchanged = 0usize;
@@ -455,7 +460,14 @@ mod tests {
 
     #[test]
     fn test_signature_creation() {
-        let sig = make_sig("s1", "ignore all.*instructions", "prompt_injection", 8.0, 0.95, "peer-a");
+        let sig = make_sig(
+            "s1",
+            "ignore all.*instructions",
+            "prompt_injection",
+            8.0,
+            0.95,
+            "peer-a",
+        );
         assert_eq!(sig.pattern, "ignore all.*instructions");
         assert!((sig.severity - 8.0).abs() < 1e-9);
         assert!((sig.confidence - 0.95).abs() < 1e-9);
@@ -559,7 +571,7 @@ mod tests {
 
         // before has s1, s2; after has s2, s3.
         let diff = sync.compute_signature_diff(&[sig1, sig2.clone()], &[sig2, sig3]);
-        assert_eq!(diff.added, 1);   // s3 is new
+        assert_eq!(diff.added, 1); // s3 is new
         assert_eq!(diff.removed, 1); // s1 was removed
         assert_eq!(diff.unchanged, 1); // s2 unchanged
     }
@@ -614,10 +626,28 @@ mod tests {
 
         // Generate 500 local + 500 remote unique signatures.
         let local: Vec<ThreatSignature> = (0..500)
-            .map(|i| make_sig(&format!("l-{}", i), &format!("lp-{}", i), "xss", 5.0, 0.9, "peer-local"))
+            .map(|i| {
+                make_sig(
+                    &format!("l-{}", i),
+                    &format!("lp-{}", i),
+                    "xss",
+                    5.0,
+                    0.9,
+                    "peer-local",
+                )
+            })
             .collect();
         let remote: Vec<ThreatSignature> = (0..500)
-            .map(|i| make_sig(&format!("r-{}", i), &format!("rp-{}", i), "sqli", 6.0, 0.8, "peer-remote"))
+            .map(|i| {
+                make_sig(
+                    &format!("r-{}", i),
+                    &format!("rp-{}", i),
+                    "sqli",
+                    6.0,
+                    0.8,
+                    "peer-remote",
+                )
+            })
             .collect();
 
         let merged = sync.merge_signatures(&local, &remote);
@@ -670,8 +700,8 @@ mod tests {
             "s1".into(),
             "p1".into(),
             "xss".into(),
-            15.0,  // Above max of 10.0
-            2.0,   // Above max of 1.0
+            15.0, // Above max of 10.0
+            2.0,  // Above max of 1.0
             "peer-1".into(),
             86400,
         );

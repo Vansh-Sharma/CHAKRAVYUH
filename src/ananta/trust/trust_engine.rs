@@ -231,10 +231,7 @@ impl BetaTrustParams {
         let mean = self.posterior_mean();
         let std = self.posterior_std();
         let half_width = z * std;
-        (
-            (mean - half_width).max(0.0),
-            (mean + half_width).min(1.0),
-        )
+        ((mean - half_width).max(0.0), (mean + half_width).min(1.0))
     }
 
     /// Compute the probability that trust exceeds a threshold.
@@ -244,7 +241,11 @@ impl BetaTrustParams {
         let mean = self.posterior_mean();
         let std = self.posterior_std();
         if std < 1e-12 {
-            if mean >= threshold { 1.0 } else { 0.0 }
+            if mean >= threshold {
+                1.0
+            } else {
+                0.0
+            }
         } else {
             let z = (mean - threshold) / std;
             normal_cdf(z)
@@ -353,12 +354,8 @@ impl DecayConfig {
     pub fn decay_multiplier(&self, dt_secs: f64) -> f64 {
         let dt = dt_secs.max(0.0);
         let multiplier = match self.function {
-            DecayFunction::Exponential => {
-                (-self.lambda * dt).exp()
-            }
-            DecayFunction::Linear => {
-                (1.0 - self.linear_rate * dt).max(0.0)
-            }
+            DecayFunction::Exponential => (-self.lambda * dt).exp(),
+            DecayFunction::Linear => (1.0 - self.linear_rate * dt).max(0.0),
             DecayFunction::Step => {
                 let steps = (dt / self.step_interval_secs).floor() as u64;
                 self.step_factor.powi(steps as i32)
@@ -532,12 +529,7 @@ impl BayesianTrustEdge {
     }
 
     /// Create with a custom prior and decay config.
-    pub fn with_config(
-        from: &str,
-        to: &str,
-        prior: BetaPrior,
-        decay_config: DecayConfig,
-    ) -> Self {
+    pub fn with_config(from: &str, to: &str, prior: BetaPrior, decay_config: DecayConfig) -> Self {
         Self {
             from: from.into(),
             to: to.into(),
@@ -555,12 +547,9 @@ impl BayesianTrustEdge {
 
     /// Get the trust score after applying temporal decay.
     pub fn decayed_trust_score(&mut self, now_secs: f64) -> f64 {
-        let (decayed_alpha, decayed_beta) =
-            self.evidence_store.compute_decayed_params(now_secs);
-        let total = decayed_alpha
-            + decayed_beta
-            + self.params.prior.alpha_0
-            + self.params.prior.beta_0;
+        let (decayed_alpha, decayed_beta) = self.evidence_store.compute_decayed_params(now_secs);
+        let total =
+            decayed_alpha + decayed_beta + self.params.prior.alpha_0 + self.params.prior.beta_0;
         if total == 0.0 {
             return self.params.prior.mean();
         }
@@ -647,7 +636,8 @@ impl PropagationResult {
 
     /// Get the top N most trusted nodes.
     pub fn top_nodes(&self, n: usize) -> Vec<(String, f64)> {
-        let mut sorted: Vec<(String, f64)> = self.node_trust
+        let mut sorted: Vec<(String, f64)> = self
+            .node_trust
             .iter()
             .map(|(k, &v)| (k.clone(), v))
             .collect();
@@ -735,7 +725,6 @@ impl TrustPropagator {
         for edge in &self.edges {
             outgoing
                 .entry(edge.from.clone())
-            
                 .or_insert_with(Vec::new)
                 .push((edge.to.clone(), edge.weight));
         }
@@ -757,7 +746,6 @@ impl TrustPropagator {
         for edge in &self.edges {
             incoming
                 .entry(edge.to.clone())
-            
                 .or_insert_with(Vec::new)
                 .push((edge.from.clone(), edge.weight));
         }
@@ -826,10 +814,7 @@ impl TrustPropagator {
                     .unwrap_or(prior_mean);
 
                 // Propagated trust from incoming neighbors.
-                let incoming_edges = incoming
-                    .get(node)
-                    .cloned()
-                    .unwrap_or_default();
+                let incoming_edges = incoming.get(node).cloned().unwrap_or_default();
                 let mut propagated = 0.0;
                 for (source, _raw_weight) in &incoming_edges {
                     let source_trust = current.get(source).copied().unwrap_or(prior_mean);
@@ -924,7 +909,7 @@ impl BeliefFunction {
     /// Create from Beta distribution parameters.
     ///
     /// The trust mass is the posterior mean. The uncertainty mass is
-       /// inversely proportional to the total evidence: more evidence = less
+    /// inversely proportional to the total evidence: more evidence = less
     /// uncertainty. Specifically: uncertainty = 1 / (1 + total_evidence / k)
     /// where k is a scaling constant.
     pub fn from_beta(alpha: f64, beta: f64, evidence_scale: f64) -> Self {
@@ -952,8 +937,7 @@ impl BeliefFunction {
     /// Conflict K = m1_trusted * m2_not_trusted + m1_not_trusted * m2_trusted.
     /// High conflict means the two sources disagree strongly.
     pub fn conflict_with(&self, other: &BeliefFunction) -> f64 {
-        self.m_trusted * other.m_not_trusted
-            + self.m_not_trusted * other.m_trusted
+        self.m_trusted * other.m_not_trusted + self.m_not_trusted * other.m_trusted
     }
 
     /// Dempster's combination rule for two belief functions.
@@ -1117,19 +1101,12 @@ impl TrustFusionEngine {
 
     /// Convert a Beta trust parameter to a belief function.
     pub fn beta_to_belief(&self, params: &BetaTrustParams) -> BeliefFunction {
-        BeliefFunction::from_beta(
-            params.alpha,
-            params.beta,
-            self.evidence_scale,
-        )
+        BeliefFunction::from_beta(params.alpha, params.beta, self.evidence_scale)
     }
 
     /// Fuse trust from multiple Beta trust parameters.
     pub fn fuse_betas(&self, params: &[BetaTrustParams]) -> FusionResult {
-        let beliefs: Vec<BeliefFunction> = params
-            .iter()
-            .map(|p| self.beta_to_belief(p))
-            .collect();
+        let beliefs: Vec<BeliefFunction> = params.iter().map(|p| self.beta_to_belief(p)).collect();
         FusionResult::from_beliefs(&beliefs)
     }
 
@@ -1294,13 +1271,13 @@ impl TrustPredictor {
         if self.state.is_none() {
             // Initialize the model.
             let window: Vec<f64> = self
-                        .history
-                        .iter()
-                        .rev()
-                        .take(self.config.init_window)
-                        .rev()
-                        .copied()
-                        .collect();
+                .history
+                .iter()
+                .rev()
+                .take(self.config.init_window)
+                .rev()
+                .copied()
+                .collect();
             self.state = Some(HoltWintersState::initialize(&window));
             return;
         }
@@ -1359,8 +1336,7 @@ impl TrustPredictor {
                 let forecast = state.level + (h as f64) * state.trend;
                 let forecast = forecast.clamp(0.0, 1.0);
                 // Variance grows with the square of the forecast horizon.
-                let forecast_variance =
-                    residual_variance * (h as f64).powi(2);
+                let forecast_variance = residual_variance * (h as f64).powi(2);
                 let half_width = z * forecast_variance.sqrt();
                 PredictionPoint {
                     value: forecast,
@@ -1378,9 +1354,12 @@ impl TrustPredictor {
             Some(state) if !state.residuals.is_empty() => {
                 let n = state.residuals.len() as f64;
                 let mean = state.residuals.iter().sum::<f64>() / n;
-                let variance =
-                    state.residuals.iter().map(|r| (r - mean).powi(2)).sum::<f64>()
-                        / (n - 1.0).max(1.0);
+                let variance = state
+                    .residuals
+                    .iter()
+                    .map(|r| (r - mean).powi(2))
+                    .sum::<f64>()
+                    / (n - 1.0).max(1.0);
                 variance.max(1e-12) // Floor to avoid zero variance.
             }
             _ => 0.01, // Default variance when no data.
@@ -1488,8 +1467,7 @@ impl BayesianTrustEngine {
 
     /// Create a new trust engine with custom configuration.
     pub fn with_config(config: TrustEngineConfig) -> Self {
-        let fusion_engine =
-            TrustFusionEngine::new(config.fusion_evidence_scale);
+        let fusion_engine = TrustFusionEngine::new(config.fusion_evidence_scale);
         Self {
             propagator: TrustPropagator::new(config.propagation.clone()),
             fusion_engine,
@@ -1521,9 +1499,7 @@ impl BayesianTrustEngine {
             );
             EdgeEntry {
                 edge,
-                predictor: TrustPredictor::with_config(
-                    self.config.prediction.clone(),
-                ),
+                predictor: TrustPredictor::with_config(self.config.prediction.clone()),
             }
         });
         entry.edge.record_evidence(evidence);
@@ -1548,12 +1524,7 @@ impl BayesianTrustEngine {
     }
 
     /// Get the decayed trust score for an edge.
-    pub fn decayed_trust_score(
-        &mut self,
-        from: &str,
-        to: &str,
-        now_secs: f64,
-    ) -> Option<f64> {
+    pub fn decayed_trust_score(&mut self, from: &str, to: &str, now_secs: f64) -> Option<f64> {
         self.edges
             .get_mut(&(from.into(), to.into()))
             .map(|e| e.edge.decayed_trust_score(now_secs))
@@ -1574,23 +1545,14 @@ impl BayesianTrustEngine {
     }
 
     /// Predict the trust trend for an edge.
-    pub fn predict(
-        &self,
-        from: &str,
-        to: &str,
-        steps: u32,
-    ) -> Option<Vec<PredictionPoint>> {
+    pub fn predict(&self, from: &str, to: &str, steps: u32) -> Option<Vec<PredictionPoint>> {
         self.edges
             .get(&(from.into(), to.into()))
             .map(|e| e.predictor.predict(steps))
     }
 
     /// Get the trend direction for an edge.
-    pub fn trend_direction(
-        &self,
-        from: &str,
-        to: &str,
-    ) -> Option<TrendDirection> {
+    pub fn trend_direction(&self, from: &str, to: &str) -> Option<TrendDirection> {
         self.edges
             .get(&(from.into(), to.into()))
             .map(|e| e.predictor.trend_direction())
@@ -1707,9 +1669,7 @@ pub fn normal_cdf(x: f64) -> f64 {
     let p = 0.3275911;
 
     let t = 1.0 / (1.0 + p * x_abs);
-    let y = 1.0
-        - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t
-            * (-x_abs * x_abs).exp();
+    let y = 1.0 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * (-x_abs * x_abs).exp();
 
     0.5 * (1.0 + sign * y)
 }
@@ -1727,9 +1687,7 @@ pub fn parse_rfc3339_to_secs(timestamp: &str) -> f64 {
 // 9. Trust Alert Generation
 // ---------------------------------------------------------------------------
 
-use super::trust_state::{
-    AlertSeverity, AlertType, TrustAlert,
-};
+use super::trust_state::{AlertSeverity, AlertType, TrustAlert};
 
 /// Generate trust alerts based on the engine state.
 ///
@@ -2701,9 +2659,7 @@ mod tests {
         let alerts = gen.generate_alerts(&engine);
         assert!(!alerts.is_empty());
         // Should have at least a critical alert.
-        let has_critical = alerts
-            .iter()
-            .any(|a| a.severity == AlertSeverity::Critical);
+        let has_critical = alerts.iter().any(|a| a.severity == AlertSeverity::Critical);
         assert!(has_critical);
     }
 
@@ -2711,15 +2667,19 @@ mod tests {
     fn test_audit_trail() {
         let mut trail = TrustAuditTrail::with_defaults();
         trail.record(TrustAuditEntry::new(
-            "A", "B",
+            "A",
+            "B",
             AuditAction::EvidenceRecorded,
-            0.5, 0.6,
+            0.5,
+            0.6,
             "test",
         ));
         trail.record(TrustAuditEntry::new(
-            "A", "B",
+            "A",
+            "B",
             AuditAction::EvidenceRecorded,
-            0.6, 0.7,
+            0.6,
+            0.7,
             "test",
         ));
         assert_eq!(trail.len(), 2);
@@ -2732,9 +2692,11 @@ mod tests {
         let mut trail = TrustAuditTrail::new(5);
         for i in 0..10 {
             trail.record(TrustAuditEntry::new(
-                "A", "B",
+                "A",
+                "B",
                 AuditAction::EvidenceRecorded,
-                0.5, 0.5 + i as f64 * 0.01,
+                0.5,
+                0.5 + i as f64 * 0.01,
                 &format!("ev{}", i),
             ));
         }

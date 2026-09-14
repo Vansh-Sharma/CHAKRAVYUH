@@ -10,10 +10,8 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 
-use crate::policy_compiler::{
-    PolicyCompiler, PolicyCompilerConfig, PolicyInput, VersionDiff,
-};
 use crate::cli::utils::{self, Color, ExitCode};
+use crate::policy_compiler::{PolicyCompiler, PolicyCompilerConfig, PolicyInput, VersionDiff};
 
 #[derive(Subcommand, Debug)]
 pub enum PolicyCommand {
@@ -65,10 +63,22 @@ pub enum PolicyCommand {
 /// Execute a policy subcommand. Returns the exit code.
 pub async fn run(cmd: PolicyCommand) -> ExitCode {
     match cmd {
-        PolicyCommand::Compile { policy, format, output } => cmd_compile(&policy, &format, output),
+        PolicyCommand::Compile {
+            policy,
+            format,
+            output,
+        } => cmd_compile(&policy, &format, output),
         PolicyCommand::Inspect { policy, trace } => cmd_inspect(&policy, trace),
-        PolicyCommand::Version { base, modified, format } => cmd_version(&base, modified.as_ref(), &format),
-        PolicyCommand::Bytecode { policy, format, output } => cmd_bytecode(&policy, &format, output),
+        PolicyCommand::Version {
+            base,
+            modified,
+            format,
+        } => cmd_version(&base, modified.as_ref(), &format),
+        PolicyCommand::Bytecode {
+            policy,
+            format,
+            output,
+        } => cmd_bytecode(&policy, &format, output),
     }
 }
 
@@ -89,19 +99,32 @@ fn cmd_compile(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCod
     let compiled = match compiler.compile_yaml(&yaml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} Compilation failed: {}", utils::StatusIndicator::fail(""), e);
+            eprintln!(
+                "{} Compilation failed: {}",
+                utils::StatusIndicator::fail(""),
+                e
+            );
             return ExitCode::PolicyError;
         }
     };
 
-    println!("{} Policy compiled successfully", utils::StatusIndicator::ok(""));
+    println!(
+        "{} Policy compiled successfully",
+        utils::StatusIndicator::ok("")
+    );
     utils::sub_section("Compilation Result");
     utils::kv("Version", &compiled.version);
     utils::kv("Source Hash", &compiled.source_hash);
     utils::kv("Rule Count", &compiled.rule_count.to_string());
-    utils::kv("Instructions", &compiled.bytecode.instruction_count().to_string());
+    utils::kv(
+        "Instructions",
+        &compiled.bytecode.instruction_count().to_string(),
+    );
     utils::kv("Constants", &compiled.bytecode.constant_count().to_string());
-    utils::kv("Bytecode Size", &utils::format_size(compiled.bytecode_bytes.len()));
+    utils::kv(
+        "Bytecode Size",
+        &utils::format_size(compiled.bytecode_bytes.len()),
+    );
 
     let store = compiler.version_store();
     utils::kv("Versions in Store", &store.len().to_string());
@@ -117,7 +140,11 @@ fn cmd_compile(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCod
         let mut file = match std::fs::File::create(out_path) {
             Ok(f) => f,
             Err(e) => {
-                eprintln!("{} Cannot create output file: {}", utils::StatusIndicator::fail(""), e);
+                eprintln!(
+                    "{} Cannot create output file: {}",
+                    utils::StatusIndicator::fail(""),
+                    e
+                );
                 return ExitCode::GeneralError;
             }
         };
@@ -125,7 +152,11 @@ fn cmd_compile(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCod
             eprintln!("{} Write failed: {}", utils::StatusIndicator::fail(""), e);
             return ExitCode::GeneralError;
         }
-        println!("\n{} Bytecode written to {}", utils::StatusIndicator::ok(""), out_path.display());
+        println!(
+            "\n{} Bytecode written to {}",
+            utils::StatusIndicator::ok(""),
+            out_path.display()
+        );
     }
 
     if format == "json" {
@@ -138,7 +169,11 @@ fn cmd_compile(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCod
             "bytecode_size": compiled.bytecode_bytes.len(),
         });
         println!("\n{}", serde_json::to_string_pretty(&summary).unwrap());
-        println!("\n{}", serde_json::to_string_pretty(&output.as_ref().map(|p| p.display().to_string())).unwrap());
+        println!(
+            "\n{}",
+            serde_json::to_string_pretty(&output.as_ref().map(|p| p.display().to_string()))
+                .unwrap()
+        );
     }
 
     ExitCode::Ok
@@ -159,7 +194,11 @@ fn cmd_inspect(path: &PathBuf, trace: bool) -> ExitCode {
     let compiled = match compiler.compile_yaml(&yaml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} Compilation failed: {}", utils::StatusIndicator::fail(""), e);
+            eprintln!(
+                "{} Compilation failed: {}",
+                utils::StatusIndicator::fail(""),
+                e
+            );
             return ExitCode::PolicyError;
         }
     };
@@ -204,7 +243,8 @@ fn cmd_inspect(path: &PathBuf, trace: bool) -> ExitCode {
             "cli-trace-001",
             "192.168.1.1",
             "SELECT * FROM users WHERE 1=1",
-        ).with_user("test_user");
+        )
+        .with_user("test_user");
 
         match compiler.execute(&compiled, &input) {
             Ok(output) => {
@@ -212,12 +252,19 @@ fn cmd_inspect(path: &PathBuf, trace: bool) -> ExitCode {
                 utils::kv("Risk Score", &output.risk_score.to_string());
                 utils::kv("Rules Matched", &output.rules_matched.join(", "));
                 utils::kv("Policy Version", &output.policy_version);
-                utils::kv("Execution Time", &utils::format_duration(
-                    std::time::Duration::from_nanos(output.execution_time_ns)
-                ));
+                utils::kv(
+                    "Execution Time",
+                    &utils::format_duration(std::time::Duration::from_nanos(
+                        output.execution_time_ns,
+                    )),
+                );
             }
             Err(e) => {
-                eprintln!("  {} Execution error: {}", utils::StatusIndicator::fail(""), e);
+                eprintln!(
+                    "  {} Execution error: {}",
+                    utils::StatusIndicator::fail(""),
+                    e
+                );
             }
         }
     }
@@ -241,7 +288,11 @@ fn cmd_version(base_path: &PathBuf, modified_path: Option<&PathBuf>, format: &st
     let base = match compiler.compile_yaml(&base_yaml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} Base compile failed: {}", utils::StatusIndicator::fail(""), e);
+            eprintln!(
+                "{} Base compile failed: {}",
+                utils::StatusIndicator::fail(""),
+                e
+            );
             return ExitCode::PolicyError;
         }
     };
@@ -260,7 +311,11 @@ fn cmd_version(base_path: &PathBuf, modified_path: Option<&PathBuf>, format: &st
         let reload_result = match compiler.hot_reload(&mod_yaml) {
             Ok(r) => r,
             Err(e) => {
-                eprintln!("{} Modified compile failed: {}", utils::StatusIndicator::fail(""), e);
+                eprintln!(
+                    "{} Modified compile failed: {}",
+                    utils::StatusIndicator::fail(""),
+                    e
+                );
                 return ExitCode::PolicyError;
             }
         };
@@ -269,10 +324,16 @@ fn cmd_version(base_path: &PathBuf, modified_path: Option<&PathBuf>, format: &st
         utils::kv("Old Version", &reload_result.old_version);
         utils::kv("New Version", &reload_result.new_version);
         utils::kv("Rules Changed", &reload_result.rules_changed.to_string());
-        utils::kv("Signatures Changed", &reload_result.signatures_changed.to_string());
-        utils::kv("Reload Time", &utils::format_duration(
-            std::time::Duration::from_nanos(reload_result.reload_time_ns)
-        ));
+        utils::kv(
+            "Signatures Changed",
+            &reload_result.signatures_changed.to_string(),
+        );
+        utils::kv(
+            "Reload Time",
+            &utils::format_duration(std::time::Duration::from_nanos(
+                reload_result.reload_time_ns,
+            )),
+        );
 
         // Show version store history.
         let store = compiler.version_store();
@@ -284,11 +345,14 @@ fn cmd_version(base_path: &PathBuf, modified_path: Option<&PathBuf>, format: &st
                 String::new()
             };
             if let Some(policy) = store.get(v) {
-                utils::kv(&format!("v{}{}", v, marker), &format!(
-                    "rules={}, bytecode_hash={}...",
-                    policy.rule_count,
-                    &policy.bytecode_hash[..8.min(policy.bytecode_hash.len())]
-                ));
+                utils::kv(
+                    &format!("v{}{}", v, marker),
+                    &format!(
+                        "rules={}, bytecode_hash={}...",
+                        policy.rule_count,
+                        &policy.bytecode_hash[..8.min(policy.bytecode_hash.len())]
+                    ),
+                );
             }
         }
 
@@ -303,10 +367,7 @@ fn cmd_version(base_path: &PathBuf, modified_path: Option<&PathBuf>, format: &st
                 added_rule_names: vec![],
                 removed_rule_names: vec![],
             };
-            println!(
-                "\n{}",
-                serde_json::to_string_pretty(&diff).unwrap()
-            );
+            println!("\n{}", serde_json::to_string_pretty(&diff).unwrap());
         }
     } else {
         // Single policy: show version store.
@@ -335,7 +396,11 @@ fn cmd_bytecode(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCo
     let compiled = match compiler.compile_yaml(&yaml) {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("{} Compilation failed: {}", utils::StatusIndicator::fail(""), e);
+            eprintln!(
+                "{} Compilation failed: {}",
+                utils::StatusIndicator::fail(""),
+                e
+            );
             return ExitCode::PolicyError;
         }
     };
@@ -350,7 +415,13 @@ fn cmd_bytecode(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCo
                 let hex: Vec<String> = chunk.iter().map(|b| format!("{:02x}", b)).collect();
                 let ascii: String = chunk
                     .iter()
-                    .map(|b| if *b >= 0x20 && *b < 0x7f { *b as char } else { '.' })
+                    .map(|b| {
+                        if *b >= 0x20 && *b < 0x7f {
+                            *b as char
+                        } else {
+                            '.'
+                        }
+                    })
                     .collect();
                 println!("  {:04x}: {:<48} |{}|", i * 16, hex.join(" "), ascii);
             }
@@ -368,8 +439,7 @@ fn cmd_bytecode(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCo
                 } else {
                     String::new()
                 };
-                println!("  {:04x}: {:?}{}{}",
-                    i, instr.opcode, arg_str, const_str);
+                println!("  {:04x}: {:?}{}{}", i, instr.opcode, arg_str, const_str);
             }
         }
     }
@@ -389,7 +459,11 @@ fn cmd_bytecode(path: &PathBuf, format: &str, output: Option<PathBuf>) -> ExitCo
             eprintln!("{} Write failed: {}", utils::StatusIndicator::fail(""), e);
             return ExitCode::GeneralError;
         }
-        println!("\n{} Hex dump written to {}", utils::StatusIndicator::ok(""), out_path.display());
+        println!(
+            "\n{} Hex dump written to {}",
+            utils::StatusIndicator::ok(""),
+            out_path.display()
+        );
     }
 
     ExitCode::Ok
@@ -410,7 +484,11 @@ fn make_compiler() -> PolicyCompiler {
 
 fn read_policy_file(path: &PathBuf) -> Result<String, ExitCode> {
     std::fs::read_to_string(path).map_err(|e| {
-        eprintln!("{} Cannot read policy: {}", utils::StatusIndicator::fail(""), e);
+        eprintln!(
+            "{} Cannot read policy: {}",
+            utils::StatusIndicator::fail(""),
+            e
+        );
         ExitCode::GeneralError
     })
 }
@@ -450,7 +528,8 @@ rules:
             policy: f.path().to_path_buf(),
             format: "text".to_string(),
             output: None,
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 
@@ -460,7 +539,8 @@ rules:
             policy: PathBuf::from("/nonexistent/policy.yaml"),
             format: "text".to_string(),
             output: None,
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::GeneralError);
     }
 
@@ -470,7 +550,8 @@ rules:
         let code = run(PolicyCommand::Inspect {
             policy: f.path().to_path_buf(),
             trace: false,
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 
@@ -481,7 +562,8 @@ rules:
             policy: f.path().to_path_buf(),
             format: "hex".to_string(),
             output: None,
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 
@@ -492,7 +574,8 @@ rules:
             base: f.path().to_path_buf(),
             modified: None,
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 }

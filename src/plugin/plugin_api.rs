@@ -275,10 +275,14 @@ impl PluginApi {
         match result {
             Ok(wasm_val) => {
                 let decision = self.wasm_value_to_decision(&wasm_val, &input);
-                let output = PluginOutput::new(decision.clone(), 0.8, &format!(
-                    "plugin {} evaluated, wasm returned {}",
-                    plugin_name, wasm_val
-                ))
+                let output = PluginOutput::new(
+                    decision.clone(),
+                    0.8,
+                    &format!(
+                        "plugin {} evaluated, wasm returned {}",
+                        plugin_name, wasm_val
+                    ),
+                )
                 .with_execution_time(elapsed.as_secs_f64() * 1000.0)
                 .with_memory_used(self.runtime.fuel_consumed());
                 SandboxResult::Success(output)
@@ -371,11 +375,8 @@ mod tests {
     fn make_api_with_module() -> PluginApi {
         let mut runtime = WasmRuntime::new(WasmRuntimeConfig::default());
         // Simple module: evaluate function returns param 0 (risk score as i32)
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::LocalGet(0),
-            WasmOpcode::End,
-        ])
-        .with_param(WasmValue::I32(0));
+        let func = WasmFunction::new("evaluate", vec![WasmOpcode::LocalGet(0), WasmOpcode::End])
+            .with_param(WasmValue::I32(0));
         let module = WasmModule::new("test-plugin")
             .with_function(func)
             .with_export("evaluate")
@@ -413,7 +414,10 @@ mod tests {
         assert_eq!(HostFunction::Log.as_str(), "log");
         assert_eq!(HostFunction::GetConfig.as_str(), "get_config");
         assert_eq!(HostFunction::EmitMetric.as_str(), "emit_metric");
-        assert_eq!(HostFunction::GetRequestHeader.as_str(), "get_request_header");
+        assert_eq!(
+            HostFunction::GetRequestHeader.as_str(),
+            "get_request_header"
+        );
         assert_eq!(HostFunction::ReportDecision.as_str(), "report_decision");
         assert_eq!(HostFunction::GetCurrentTime.as_str(), "get_current_time");
     }
@@ -485,8 +489,7 @@ mod tests {
 
     #[test]
     fn test_output_with_metric() {
-        let out = PluginOutput::allow("ok")
-            .with_metric(MetricEvent::new("eval", 1.0));
+        let out = PluginOutput::allow("ok").with_metric(MetricEvent::new("eval", 1.0));
         assert_eq!(out.metrics_emitted.len(), 1);
     }
 
@@ -596,7 +599,10 @@ mod tests {
         let runtime = WasmRuntime::new(WasmRuntimeConfig::default());
         let mut api = PluginApi::new(config, runtime);
         api.register_host_function(HostFunction::Log);
-        assert!(api.config.allowed_host_functions.contains(&"log".to_string()));
+        assert!(api
+            .config
+            .allowed_host_functions
+            .contains(&"log".to_string()));
     }
 
     #[test]

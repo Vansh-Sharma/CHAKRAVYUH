@@ -26,12 +26,20 @@ pub struct ProvenanceValidatorConfig {
     pub trusted_sources: Vec<String>,
 }
 
-fn default_enabled() -> bool { true }
-fn default_max_age_secs() -> u64 { 30 * 24 * 3600 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_max_age_secs() -> u64 {
+    30 * 24 * 3600
+}
 
 impl Default for ProvenanceValidatorConfig {
     fn default() -> Self {
-        Self { enabled: default_enabled(), max_age_secs: default_max_age_secs(), trusted_sources: vec!["docs".into(), "verified".into(), "official".into()] }
+        Self {
+            enabled: default_enabled(),
+            max_age_secs: default_max_age_secs(),
+            trusted_sources: vec!["docs".into(), "verified".into(), "official".into()],
+        }
     }
 }
 
@@ -51,12 +59,21 @@ pub struct ProvenanceValidator {
 
 impl ProvenanceValidator {
     pub fn new(config: &ProvenanceValidatorConfig) -> Self {
-        Self { config: config.clone() }
+        Self {
+            config: config.clone(),
+        }
     }
 
     pub fn validate(&self, entries: &[MemoryEntry]) -> ProvenanceVerdict {
         if !self.config.enabled {
-            return ProvenanceVerdict { valid_count: entries.len(), stale_count: 0, tampered_count: 0, untrusted_count: 0, risk_score: 0.0, summary: "provenance validator disabled".into() };
+            return ProvenanceVerdict {
+                valid_count: entries.len(),
+                stale_count: 0,
+                tampered_count: 0,
+                untrusted_count: 0,
+                risk_score: 0.0,
+                summary: "provenance validator disabled".into(),
+            };
         }
 
         let mut valid = 0usize;
@@ -91,19 +108,33 @@ impl ProvenanceValidator {
 
             // Check source trust.
             let source_lower = entry.source.to_lowercase();
-            if !self.config.trusted_sources.iter().any(|t| source_lower.contains(&t.to_lowercase())) && source_lower != "docs" && source_lower != "verified" {
+            if !self
+                .config
+                .trusted_sources
+                .iter()
+                .any(|t| source_lower.contains(&t.to_lowercase()))
+                && source_lower != "docs"
+                && source_lower != "verified"
+            {
                 untrusted += 1;
                 entry_valid = false;
             }
 
-            if entry_valid { valid += 1; }
+            if entry_valid {
+                valid += 1;
+            }
         }
 
         let total = entries.len().max(1);
-        let risk_score = ((tampered as f64 * 10.0 + stale as f64 * 3.0 + untrusted as f64 * 2.0) / total as f64).clamp(0.0, 10.0);
+        let risk_score = ((tampered as f64 * 10.0 + stale as f64 * 3.0 + untrusted as f64 * 2.0)
+            / total as f64)
+            .clamp(0.0, 10.0);
 
         let summary = if tampered > 0 {
-            format!("{} tampered, {} stale, {} untrusted of {} entries", tampered, stale, untrusted, total)
+            format!(
+                "{} tampered, {} stale, {} untrusted of {} entries",
+                tampered, stale, untrusted, total
+            )
         } else if stale > 0 {
             format!("{} stale entries detected", stale)
         } else if untrusted > 0 {
@@ -112,7 +143,14 @@ impl ProvenanceValidator {
             "all entries have valid provenance".into()
         };
 
-        ProvenanceVerdict { valid_count: valid, stale_count: stale, tampered_count: tampered, untrusted_count: untrusted, risk_score, summary }
+        ProvenanceVerdict {
+            valid_count: valid,
+            stale_count: stale,
+            tampered_count: tampered,
+            untrusted_count: untrusted,
+            risk_score,
+            summary,
+        }
     }
 }
 
@@ -124,8 +162,20 @@ mod tests {
         ProvenanceValidator::new(&ProvenanceValidatorConfig::default())
     }
 
-    fn make_entry(id: &str, content: &str, source: &str, ts: &str, hash: Option<String>) -> MemoryEntry {
-        MemoryEntry { id: id.into(), content: content.into(), source: source.into(), timestamp: ts.into(), hash }
+    fn make_entry(
+        id: &str,
+        content: &str,
+        source: &str,
+        ts: &str,
+        hash: Option<String>,
+    ) -> MemoryEntry {
+        MemoryEntry {
+            id: id.into(),
+            content: content.into(),
+            source: source.into(),
+            timestamp: ts.into(),
+            hash,
+        }
     }
 
     fn compute_hash(content: &str) -> String {
@@ -158,7 +208,13 @@ mod tests {
     fn tampered_hash_detected() {
         let v = default_validator();
         let ts = fresh_ts();
-        let entries = vec![make_entry("e1", "Hello world", "docs", &ts, Some("wrong_hash".into()))];
+        let entries = vec![make_entry(
+            "e1",
+            "Hello world",
+            "docs",
+            &ts,
+            Some("wrong_hash".into()),
+        )];
         let r = v.validate(&entries);
         assert_eq!(r.tampered_count, 1);
         assert!(r.risk_score > 5.0);
@@ -167,7 +223,13 @@ mod tests {
     #[test]
     fn stale_entry_detected() {
         let v = default_validator();
-        let entries = vec![make_entry("e1", "Old data", "docs", "2020-01-01T00:00:00Z", None)];
+        let entries = vec![make_entry(
+            "e1",
+            "Old data",
+            "docs",
+            "2020-01-01T00:00:00Z",
+            None,
+        )];
         let r = v.validate(&entries);
         assert_eq!(r.stale_count, 1);
     }
@@ -176,7 +238,13 @@ mod tests {
     fn untrusted_source_detected() {
         let v = default_validator();
         let ts = fresh_ts();
-        let entries = vec![make_entry("e1", "Data", "unknown-malicious-source", &ts, None)];
+        let entries = vec![make_entry(
+            "e1",
+            "Data",
+            "unknown-malicious-source",
+            &ts,
+            None,
+        )];
         let r = v.validate(&entries);
         assert_eq!(r.untrusted_count, 1);
     }
@@ -191,8 +259,17 @@ mod tests {
 
     #[test]
     fn disabled_skips_all() {
-        let v = ProvenanceValidator::new(&ProvenanceValidatorConfig { enabled: false, ..Default::default() });
-        let entries = vec![make_entry("e1", "data", "unknown", "2020-01-01", Some("wrong".into()))];
+        let v = ProvenanceValidator::new(&ProvenanceValidatorConfig {
+            enabled: false,
+            ..Default::default()
+        });
+        let entries = vec![make_entry(
+            "e1",
+            "data",
+            "unknown",
+            "2020-01-01",
+            Some("wrong".into()),
+        )];
         let r = v.validate(&entries);
         assert_eq!(r.risk_score, 0.0);
     }

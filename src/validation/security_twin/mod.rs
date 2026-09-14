@@ -8,9 +8,9 @@
 //   Attack → Security Twin (Predict) → Real System (Run)
 //        → Compare (Prediction vs Reality) → Learn (Update Model)
 
-pub mod predictor;
 pub mod comparator;
 pub mod learner;
+pub mod predictor;
 pub mod twin_runner;
 
 pub use comparator::{ComparisonResult, ComparisonSummary, TwinDiscrepancy};

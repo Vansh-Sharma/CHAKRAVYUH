@@ -12,9 +12,7 @@
 //   - Refresh tokens expire in 7 days
 
 use argon2::{
-    password_hash::{
-        rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString,
-    },
+    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
 };
 use chrono::{DateTime, Duration, Utc};
@@ -60,7 +58,7 @@ impl Default for JwtConfig {
             // In production, this MUST be loaded from env var or secret manager.
             secret: "dev_secret_change_me_in_production".to_string(),
             issuer: "chakravyuh".to_string(),
-            access_token_ttl_secs: 15 * 60,         // 15 minutes
+            access_token_ttl_secs: 15 * 60,           // 15 minutes
             refresh_token_ttl_secs: 7 * 24 * 60 * 60, // 7 days
         }
     }
@@ -182,11 +180,7 @@ impl AuthService {
 
     // ── Token Issuance ──
 
-    fn issue_tokens(
-        &self,
-        user_id: Uuid,
-        email: String,
-    ) -> Result<TokenPair, AuthError> {
+    fn issue_tokens(&self, user_id: Uuid, email: String) -> Result<TokenPair, AuthError> {
         let now = Utc::now();
         let access_exp = now + Duration::seconds(self.config.access_token_ttl_secs);
         let refresh_exp = now + Duration::seconds(self.config.refresh_token_ttl_secs);
@@ -214,12 +208,8 @@ impl AuthService {
         let refresh_hash = hash_refresh_token(&refresh_token);
 
         // Store the refresh token.
-        self.store.store_refresh_token(
-            &refresh_hash,
-            user_id,
-            None,
-            refresh_exp,
-        );
+        self.store
+            .store_refresh_token(&refresh_hash, user_id, None, refresh_exp);
 
         Ok(TokenPair {
             access_token,
@@ -290,10 +280,7 @@ impl AuthService {
         token: &str,
     ) -> Result<crate::identity::platform::User, AuthError> {
         let claims = self.verify_access_token(token)?;
-        let user_id: Uuid = claims
-            .sub
-            .parse()
-            .map_err(|_| AuthError::InvalidToken)?;
+        let user_id: Uuid = claims.sub.parse().map_err(|_| AuthError::InvalidToken)?;
         self.store
             .get_user_by_id(user_id)
             .ok_or(AuthError::UserNotFound)
@@ -356,7 +343,8 @@ mod tests {
     #[test]
     fn signup_rejects_duplicate_email() {
         let svc = test_service();
-        svc.signup("carol@example.com", "password123", None).unwrap();
+        svc.signup("carol@example.com", "password123", None)
+            .unwrap();
         let result = svc.signup("carol@example.com", "different_password", None);
         assert!(matches!(result, Err(AuthError::UserExists)));
     }
@@ -439,9 +427,7 @@ mod tests {
     #[test]
     fn get_user_from_token_returns_user() {
         let svc = test_service();
-        let (tokens, user) = svc
-            .signup("ivan@example.com", "password123", None)
-            .unwrap();
+        let (tokens, user) = svc.signup("ivan@example.com", "password123", None).unwrap();
 
         let fetched = svc.get_user_from_token(&tokens.access_token).unwrap();
         assert_eq!(fetched.id, user.id);

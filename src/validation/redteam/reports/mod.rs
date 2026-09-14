@@ -3,6 +3,6 @@
 pub mod redteam_report;
 
 pub use redteam_report::{
-    RedTeamReportSummary, RingDetectionMatrix, RingCell,
-    generate_report, detection_rate_per_ring, missed_attacks,
+    detection_rate_per_ring, generate_report, missed_attacks, RedTeamReportSummary, RingCell,
+    RingDetectionMatrix,
 };

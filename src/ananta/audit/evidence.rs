@@ -212,13 +212,22 @@ impl EvidenceGraph {
             (&[AuditCategory::Integrity, AuditCategory::Trust], 0.6),
             (&[AuditCategory::KeyManagement, AuditCategory::Trust], 0.5),
             (&[AuditCategory::Configuration, AuditCategory::Drift], 0.6),
-            (&[AuditCategory::Configuration, AuditCategory::KeyManagement], 0.5),
+            (
+                &[AuditCategory::Configuration, AuditCategory::KeyManagement],
+                0.5,
+            ),
             (&[AuditCategory::Health, AuditCategory::Trust], 0.4),
-            (&[AuditCategory::Adaptation, AuditCategory::Configuration], 0.5),
+            (
+                &[AuditCategory::Adaptation, AuditCategory::Configuration],
+                0.5,
+            ),
             (&[AuditCategory::Recovery, AuditCategory::Trust], 0.6),
             (&[AuditCategory::Recovery, AuditCategory::Integrity], 0.7),
             (&[AuditCategory::Consensus, AuditCategory::Trust], 0.4),
-            (&[AuditCategory::Lifecycle, AuditCategory::Configuration], 0.3),
+            (
+                &[AuditCategory::Lifecycle, AuditCategory::Configuration],
+                0.3,
+            ),
         ];
         for (cats, score) in pairs {
             let key_ab = (cats[0].clone(), cats[1].clone());
@@ -515,76 +524,235 @@ impl MitreMapper {
             CategoryMitreMapping {
                 category: AuditCategory::Trust,
                 techniques: vec![
-                    (MitreTechnique::new("T1078", "Valid Accounts", MitreTactic::InitialAccess), 0.7),
-                    (MitreTechnique::new("T1550", "Use Alternate Authentication Material", MitreTactic::LateralMovement), 0.5),
-                    (MitreTechnique::new("T1133", "External Remote Services", MitreTactic::InitialAccess), 0.6),
+                    (
+                        MitreTechnique::new("T1078", "Valid Accounts", MitreTactic::InitialAccess),
+                        0.7,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1550",
+                            "Use Alternate Authentication Material",
+                            MitreTactic::LateralMovement,
+                        ),
+                        0.5,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1133",
+                            "External Remote Services",
+                            MitreTactic::InitialAccess,
+                        ),
+                        0.6,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Drift,
                 techniques: vec![
-                    (MitreTechnique::new("T1059", "Command and Scripting Interpreter", MitreTactic::Execution), 0.8),
-                    (MitreTechnique::new("T1112", "Modify Registry", MitreTactic::DefenseEvasion), 0.6),
-                    (MitreTechnique::new("T1547", "Boot or Logon Autostart Execution", MitreTactic::Persistence), 0.5),
+                    (
+                        MitreTechnique::new(
+                            "T1059",
+                            "Command and Scripting Interpreter",
+                            MitreTactic::Execution,
+                        ),
+                        0.8,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1112",
+                            "Modify Registry",
+                            MitreTactic::DefenseEvasion,
+                        ),
+                        0.6,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1547",
+                            "Boot or Logon Autostart Execution",
+                            MitreTactic::Persistence,
+                        ),
+                        0.5,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Integrity,
                 techniques: vec![
-                    (MitreTechnique::new("T1486", "Data Encrypted for Impact", MitreTactic::Impact), 0.8),
-                    (MitreTechnique::new("T1565", "Data Manipulation", MitreTactic::Impact), 0.7),
-                    (MitreTechnique::new("T1070", "Indicator Removal", MitreTactic::DefenseEvasion), 0.6),
+                    (
+                        MitreTechnique::new(
+                            "T1486",
+                            "Data Encrypted for Impact",
+                            MitreTactic::Impact,
+                        ),
+                        0.8,
+                    ),
+                    (
+                        MitreTechnique::new("T1565", "Data Manipulation", MitreTactic::Impact),
+                        0.7,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1070",
+                            "Indicator Removal",
+                            MitreTactic::DefenseEvasion,
+                        ),
+                        0.6,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Configuration,
                 techniques: vec![
-                    (MitreTechnique::new("T1578", "Modify Cloud Compute Infrastructure", MitreTactic::Persistence), 0.7),
-                    (MitreTechnique::new("T1562", "Impair Defenses", MitreTactic::DefenseEvasion), 0.8),
-                    (MitreTechnique::new("T1078.004", "Cloud Account", MitreTactic::InitialAccess), 0.5),
+                    (
+                        MitreTechnique::new(
+                            "T1578",
+                            "Modify Cloud Compute Infrastructure",
+                            MitreTactic::Persistence,
+                        ),
+                        0.7,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1562",
+                            "Impair Defenses",
+                            MitreTactic::DefenseEvasion,
+                        ),
+                        0.8,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1078.004",
+                            "Cloud Account",
+                            MitreTactic::InitialAccess,
+                        ),
+                        0.5,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::KeyManagement,
                 techniques: vec![
-                    (MitreTechnique::new("T1552", "Unsecured Credentials", MitreTactic::CredentialAccess), 0.9),
-                    (MitreTechnique::new("T1555", "Credentials from Password Stores", MitreTactic::CredentialAccess), 0.7),
-                    (MitreTechnique::new("T1606", "Forge Web Credentials", MitreTactic::CredentialAccess), 0.6),
+                    (
+                        MitreTechnique::new(
+                            "T1552",
+                            "Unsecured Credentials",
+                            MitreTactic::CredentialAccess,
+                        ),
+                        0.9,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1555",
+                            "Credentials from Password Stores",
+                            MitreTactic::CredentialAccess,
+                        ),
+                        0.7,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1606",
+                            "Forge Web Credentials",
+                            MitreTactic::CredentialAccess,
+                        ),
+                        0.6,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Adaptation,
                 techniques: vec![
-                    (MitreTechnique::new("T1027", "Obfuscated Files or Information", MitreTactic::DefenseEvasion), 0.6),
-                    (MitreTechnique::new("T1567", "Exfiltration Over Web Service", MitreTactic::Exfiltration), 0.5),
+                    (
+                        MitreTechnique::new(
+                            "T1027",
+                            "Obfuscated Files or Information",
+                            MitreTactic::DefenseEvasion,
+                        ),
+                        0.6,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1567",
+                            "Exfiltration Over Web Service",
+                            MitreTactic::Exfiltration,
+                        ),
+                        0.5,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Recovery,
                 techniques: vec![
-                    (MitreTechnique::new("T1490", "Inhibit System Recovery", MitreTactic::Impact), 0.8),
-                    (MitreTechnique::new("T1489", "Service Stop", MitreTactic::Impact), 0.6),
+                    (
+                        MitreTechnique::new(
+                            "T1490",
+                            "Inhibit System Recovery",
+                            MitreTactic::Impact,
+                        ),
+                        0.8,
+                    ),
+                    (
+                        MitreTechnique::new("T1489", "Service Stop", MitreTactic::Impact),
+                        0.6,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Health,
                 techniques: vec![
-                    (MitreTechnique::new("T1498", "Network Denial of Service", MitreTactic::Impact), 0.6),
-                    (MitreTechnique::new("T1499", "Endpoint Denial of Service", MitreTactic::Impact), 0.6),
+                    (
+                        MitreTechnique::new(
+                            "T1498",
+                            "Network Denial of Service",
+                            MitreTactic::Impact,
+                        ),
+                        0.6,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1499",
+                            "Endpoint Denial of Service",
+                            MitreTactic::Impact,
+                        ),
+                        0.6,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Consensus,
                 techniques: vec![
-                    (MitreTechnique::new("T0882", "Compromised Host Software", MitreTactic::CommandAndControl), 0.4),
-                    (MitreTechnique::new("T1053", "Scheduled Task/Job", MitreTactic::Persistence), 0.3),
+                    (
+                        MitreTechnique::new(
+                            "T0882",
+                            "Compromised Host Software",
+                            MitreTactic::CommandAndControl,
+                        ),
+                        0.4,
+                    ),
+                    (
+                        MitreTechnique::new(
+                            "T1053",
+                            "Scheduled Task/Job",
+                            MitreTactic::Persistence,
+                        ),
+                        0.3,
+                    ),
                 ],
             },
             CategoryMitreMapping {
                 category: AuditCategory::Lifecycle,
                 techniques: vec![
-                    (MitreTechnique::new("T1543", "Create or Modify System Process", MitreTactic::Persistence), 0.5),
-                    (MitreTechnique::new("T1036", "Masquerading", MitreTactic::DefenseEvasion), 0.4),
+                    (
+                        MitreTechnique::new(
+                            "T1543",
+                            "Create or Modify System Process",
+                            MitreTactic::Persistence,
+                        ),
+                        0.5,
+                    ),
+                    (
+                        MitreTechnique::new("T1036", "Masquerading", MitreTactic::DefenseEvasion),
+                        0.4,
+                    ),
                 ],
             },
         ]
@@ -599,17 +767,12 @@ impl MitreMapper {
             if let Some(techniques) = self.lookup.get(&node.category) {
                 for (technique, mapping_conf) in techniques {
                     let entry = tactic_scores.entry(technique.tactic.clone()).or_insert(0.0);
-                    *entry += node.severity.score()
-                        * node.confidence
-                        * mapping_conf;
+                    *entry += node.severity.score() * node.confidence * mapping_conf;
                 }
             }
         }
         // Normalize scores to [0, 1] range.
-        let max_score = tactic_scores
-            .values()
-            .copied()
-            .fold(0.0_f64, f64::max);
+        let max_score = tactic_scores.values().copied().fold(0.0_f64, f64::max);
         if max_score > 0.0 {
             for v in tactic_scores.values_mut() {
                 *v /= max_score;
@@ -868,10 +1031,7 @@ impl ChainReconstructor {
                     .unwrap_or(0)
             })
             .collect();
-        let monotonic_violations = tactic_orders
-            .windows(2)
-            .filter(|w| w[1] < w[0])
-            .count();
+        let monotonic_violations = tactic_orders.windows(2).filter(|w| w[1] < w[0]).count();
         let max_violations = tactic_orders.len().saturating_sub(1);
         let temporal_coherence = if max_violations > 0 {
             1.0 - (monotonic_violations as f64 / max_violations as f64)
@@ -1363,11 +1523,7 @@ impl EvidenceTimeline {
         let intervals: Vec<f64> = self
             .events
             .windows(2)
-            .map(|w| {
-                (w[1].timestamp - w[0].timestamp)
-                    .num_seconds()
-                    .abs() as f64
-            })
+            .map(|w| (w[1].timestamp - w[0].timestamp).num_seconds().abs() as f64)
             .collect();
 
         // Compute median and median absolute deviation (MAD) for robust
@@ -1376,8 +1532,7 @@ impl EvidenceTimeline {
         sorted_intervals.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let median = sorted_intervals[sorted_intervals.len() / 2];
 
-        let mut abs_devs: Vec<f64> =
-            intervals.iter().map(|x| (x - median).abs()).collect();
+        let mut abs_devs: Vec<f64> = intervals.iter().map(|x| (x - median).abs()).collect();
         abs_devs.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let mad = abs_devs[abs_devs.len() / 2];
 
@@ -1443,7 +1598,8 @@ impl EvidenceTimeline {
                         let end_idx = start_idx + current_burst_ids.len() - 1;
                         let start_time = self.events[start_idx].timestamp;
                         let end_time = self.events[end_idx].timestamp;
-                        let duration_secs = (end_time - start_time).num_seconds().unsigned_abs() as f64;
+                        let duration_secs =
+                            (end_time - start_time).num_seconds().unsigned_abs() as f64;
 
                         self.bursts.push(BurstPattern {
                             evidence_ids: current_burst_ids.clone(),
@@ -1519,11 +1675,7 @@ impl EvidenceTimeline {
     }
 
     /// Get all events within a time range.
-    pub fn events_in_range(
-        &self,
-        start: DateTime<Utc>,
-        end: DateTime<Utc>,
-    ) -> Vec<&TimelineEvent> {
+    pub fn events_in_range(&self, start: DateTime<Utc>, end: DateTime<Utc>) -> Vec<&TimelineEvent> {
         self.events
             .iter()
             .filter(|e| e.timestamp >= start && e.timestamp <= end)
@@ -1705,7 +1857,12 @@ mod tests {
 
     #[test]
     fn evidence_node_serialization_roundtrip() {
-        let node = make_node("n-ser", AuditCategory::Trust, EvidenceSeverity::Critical, 100);
+        let node = make_node(
+            "n-ser",
+            AuditCategory::Trust,
+            EvidenceSeverity::Critical,
+            100,
+        );
         let json = serde_json::to_string(&node).expect("serialize");
         let back: EvidenceNode = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(back.id, node.id);
@@ -1736,18 +1893,30 @@ mod tests {
     #[test]
     fn graph_jaccard_identical_entities() {
         let g = EvidenceGraph::new();
-        let a = make_node("a", AuditCategory::Drift, EvidenceSeverity::High, 0)
-            .with_entity("user-1");
-        let b = make_node("b", AuditCategory::Trust, EvidenceSeverity::High, 10)
-            .with_entity("user-1");
+        let a =
+            make_node("a", AuditCategory::Drift, EvidenceSeverity::High, 0).with_entity("user-1");
+        let b =
+            make_node("b", AuditCategory::Trust, EvidenceSeverity::High, 10).with_entity("user-1");
         assert!((g.entity_jaccard(&a, &b) - 1.0).abs() < 1e-10);
     }
 
     #[test]
     fn graph_jaccard_empty_entities() {
         let g = EvidenceGraph::new();
-        let a = EvidenceNode::new("a", "desc", AuditCategory::Drift, EvidenceSeverity::High, Utc::now());
-        let b = EvidenceNode::new("b", "desc", AuditCategory::Trust, EvidenceSeverity::High, Utc::now());
+        let a = EvidenceNode::new(
+            "a",
+            "desc",
+            AuditCategory::Drift,
+            EvidenceSeverity::High,
+            Utc::now(),
+        );
+        let b = EvidenceNode::new(
+            "b",
+            "desc",
+            AuditCategory::Trust,
+            EvidenceSeverity::High,
+            Utc::now(),
+        );
         assert!((g.entity_jaccard(&a, &b)).abs() < f64::EPSILON);
     }
 
@@ -1755,8 +1924,18 @@ mod tests {
     fn graph_compute_edges_filters_by_threshold() {
         let mut g = EvidenceGraph::new();
         g.min_weight_threshold = 0.9; // Very high threshold.
-        g.add_node(make_node("a", AuditCategory::Drift, EvidenceSeverity::High, 0));
-        g.add_node(make_node("b", AuditCategory::Trust, EvidenceSeverity::High, 6000));
+        g.add_node(make_node(
+            "a",
+            AuditCategory::Drift,
+            EvidenceSeverity::High,
+            0,
+        ));
+        g.add_node(make_node(
+            "b",
+            AuditCategory::Trust,
+            EvidenceSeverity::High,
+            6000,
+        ));
         g.compute_edges();
         // With a 6000-second gap and 0.9 threshold, should have zero edges.
         assert_eq!(g.edge_count(), 0);
@@ -1765,8 +1944,18 @@ mod tests {
     #[test]
     fn graph_predecessors_and_successors() {
         let mut g = EvidenceGraph::new();
-        g.add_node(make_node("a", AuditCategory::Drift, EvidenceSeverity::High, 0));
-        g.add_node(make_node("b", AuditCategory::Trust, EvidenceSeverity::High, 5));
+        g.add_node(make_node(
+            "a",
+            AuditCategory::Drift,
+            EvidenceSeverity::High,
+            0,
+        ));
+        g.add_node(make_node(
+            "b",
+            AuditCategory::Trust,
+            EvidenceSeverity::High,
+            5,
+        ));
         g.compute_edges();
         let preds_of_b = g.predecessors("b");
         let succs_of_a = g.successors("a");
@@ -1796,7 +1985,12 @@ mod tests {
         let mapper = MitreMapper::new();
         let nodes = vec![
             make_node("e1", AuditCategory::Drift, EvidenceSeverity::High, 0),
-            make_node("e2", AuditCategory::Integrity, EvidenceSeverity::Critical, 10),
+            make_node(
+                "e2",
+                AuditCategory::Integrity,
+                EvidenceSeverity::Critical,
+                10,
+            ),
         ];
         let tactics = mapper.likely_tactics(&nodes);
         assert!(!tactics.is_empty());
@@ -1809,7 +2003,12 @@ mod tests {
     #[test]
     fn mitre_mapper_techniques_limited_by_top_k() {
         let mapper = MitreMapper::new();
-        let nodes = vec![make_node("e1", AuditCategory::Drift, EvidenceSeverity::High, 0)];
+        let nodes = vec![make_node(
+            "e1",
+            AuditCategory::Drift,
+            EvidenceSeverity::High,
+            0,
+        )];
         let techniques = mapper.likely_techniques(&nodes, 2);
         assert!(techniques.len() <= 2);
     }
@@ -1817,11 +2016,18 @@ mod tests {
     #[test]
     fn mitre_map_single_node() {
         let mapper = MitreMapper::new();
-        let node = make_node("e1", AuditCategory::KeyManagement, EvidenceSeverity::Critical, 0);
+        let node = make_node(
+            "e1",
+            AuditCategory::KeyManagement,
+            EvidenceSeverity::Critical,
+            0,
+        );
         let mapped = mapper.map_node(&node);
         assert!(!mapped.is_empty());
         // KeyManagement should map to CredentialAccess tactics.
-        let has_cred_access = mapped.iter().any(|(t, _)| t.tactic == MitreTactic::CredentialAccess);
+        let has_cred_access = mapped
+            .iter()
+            .any(|(t, _)| t.tactic == MitreTactic::CredentialAccess);
         assert!(has_cred_access);
     }
 
@@ -1901,8 +2107,18 @@ mod tests {
     #[test]
     fn fusion_engine_full_pipeline() {
         let mut engine = EvidenceFusionEngine::new();
-        engine.add_evidence(&make_node("e1", AuditCategory::Drift, EvidenceSeverity::Critical, 0));
-        engine.add_evidence(&make_node("e2", AuditCategory::Integrity, EvidenceSeverity::High, 10));
+        engine.add_evidence(&make_node(
+            "e1",
+            AuditCategory::Drift,
+            EvidenceSeverity::Critical,
+            0,
+        ));
+        engine.add_evidence(&make_node(
+            "e2",
+            AuditCategory::Integrity,
+            EvidenceSeverity::High,
+            10,
+        ));
         let result = engine.fuse();
         assert_eq!(result.evidence_count, 2);
         // High-severity evidence should push toward Attack decision.
@@ -2011,8 +2227,13 @@ mod tests {
                 .with_entity(shared_entity),
         );
         reconstructor.graph.add_node(
-            make_node("e2", AuditCategory::Integrity, EvidenceSeverity::Critical, 10)
-                .with_entity(shared_entity),
+            make_node(
+                "e2",
+                AuditCategory::Integrity,
+                EvidenceSeverity::Critical,
+                10,
+            )
+            .with_entity(shared_entity),
         );
         reconstructor.graph.add_node(
             make_node("e3", AuditCategory::Trust, EvidenceSeverity::Medium, 20)
@@ -2053,15 +2274,35 @@ mod tests {
             make_node("e1", AuditCategory::Drift, EvidenceSeverity::High, 0)
                 .with_entity("host-01")
                 .with_entity("user-admin"),
-            make_node("e2", AuditCategory::Integrity, EvidenceSeverity::Critical, 5)
-                .with_entity("host-01"),
-            make_node("e3", AuditCategory::KeyManagement, EvidenceSeverity::High, 15)
-                .with_entity("host-01")
-                .with_entity("user-admin"),
-            make_node("e4", AuditCategory::Configuration, EvidenceSeverity::Medium, 100)
-                .with_entity("host-02"),
-            make_node("e5", AuditCategory::Recovery, EvidenceSeverity::Critical, 110)
-                .with_entity("host-02"),
+            make_node(
+                "e2",
+                AuditCategory::Integrity,
+                EvidenceSeverity::Critical,
+                5,
+            )
+            .with_entity("host-01"),
+            make_node(
+                "e3",
+                AuditCategory::KeyManagement,
+                EvidenceSeverity::High,
+                15,
+            )
+            .with_entity("host-01")
+            .with_entity("user-admin"),
+            make_node(
+                "e4",
+                AuditCategory::Configuration,
+                EvidenceSeverity::Medium,
+                100,
+            )
+            .with_entity("host-02"),
+            make_node(
+                "e5",
+                AuditCategory::Recovery,
+                EvidenceSeverity::Critical,
+                110,
+            )
+            .with_entity("host-02"),
         ];
         let report = correlator.analyze(nodes);
         assert_eq!(report.total_evidence, 5);
@@ -2073,7 +2314,12 @@ mod tests {
     #[test]
     fn correlator_serialization_roundtrip() {
         let mut correlator = EvidenceCorrelator::new();
-        let nodes = vec![make_node("e1", AuditCategory::Drift, EvidenceSeverity::High, 0)];
+        let nodes = vec![make_node(
+            "e1",
+            AuditCategory::Drift,
+            EvidenceSeverity::High,
+            0,
+        )];
         correlator.analyze(nodes);
         let json = serde_json::to_string(&correlator).expect("serialize");
         let back: EvidenceCorrelator = serde_json::from_str(&json).expect("deserialize");

@@ -80,7 +80,8 @@ pub struct ToolAllowlistResult {
 pub struct ToolAllowlist {
     config: ToolAllowlistConfig,
     /// Tracks call counts per tool per request (keyed by request_id).
-    call_counts: std::sync::Mutex<std::collections::HashMap<String, std::collections::HashMap<String, u32>>>,
+    call_counts:
+        std::sync::Mutex<std::collections::HashMap<String, std::collections::HashMap<String, u32>>>,
 }
 
 impl Clone for ToolAllowlist {
@@ -107,11 +108,7 @@ impl ToolAllowlist {
     ///
     /// If the tool is on the allowlist, enabled, and within the call limit, returns Allow.
     /// Otherwise returns Deny with a specific reason.
-    pub fn evaluate(
-        &self,
-        tool_name: &str,
-        request_id: &str,
-    ) -> ToolAllowlistResult {
+    pub fn evaluate(&self, tool_name: &str, request_id: &str) -> ToolAllowlistResult {
         let start = std::time::Instant::now();
 
         if !self.config.enabled {

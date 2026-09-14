@@ -40,7 +40,9 @@ impl AttestationReport {
         consecutive_passes: u64,
         consecutive_failures: u64,
     ) -> Self {
-        let trust_level = if snapshot.passed { 1.0 } else {
+        let trust_level = if snapshot.passed {
+            1.0
+        } else {
             let total = snapshot.results.len().max(1);
             let passed = snapshot.results.iter().filter(|r| r.passed).count();
             passed as f64 / total as f64
@@ -87,15 +89,23 @@ impl AttestationReport {
             self.trust_level,
             self.consecutive_passes,
             self.consecutive_failures,
-        ).into_bytes()
+        )
+        .into_bytes()
     }
 
     /// Summary for logging.
     pub fn summary(&self) -> String {
-        let status = if self.integrity.passed { "TRUSTED" } else { "COMPROMISED" };
+        let status = if self.integrity.passed {
+            "TRUSTED"
+        } else {
+            "COMPROMISED"
+        };
         format!(
             "[ANANTA ATTESTATION] {} — trust={:.3} passes={} failures={} — {}",
-            status, self.trust_level, self.consecutive_passes, self.consecutive_failures,
+            status,
+            self.trust_level,
+            self.consecutive_passes,
+            self.consecutive_failures,
             self.integrity.summary(),
         )
     }

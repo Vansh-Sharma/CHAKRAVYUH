@@ -10,7 +10,7 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::{HashMap, HashSet, BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 // ═══════════════════════════════════════════════════════════════
 // Section 1: Schema Validation Engine
@@ -87,7 +87,8 @@ impl StringConstraints {
 
     /// Set a regex pattern constraint. Compiles the pattern immediately.
     pub fn pattern(mut self, pat: &str) -> Result<Self, String> {
-        let compiled = Regex::new(pat).map_err(|e| format!("invalid regex pattern '{}': {}", pat, e))?;
+        let compiled =
+            Regex::new(pat).map_err(|e| format!("invalid regex pattern '{}': {}", pat, e))?;
         self.pattern = Some(pat.to_string());
         self.compiled_pattern = Some(compiled);
         Ok(self)
@@ -141,9 +142,8 @@ impl StringConstraints {
                         return Err(format!("'{}' is not a valid IPv4 address", value));
                     }
                     for part in &parts {
-                        part.parse::<u8>().map_err(|_| {
-                            format!("'{}' is not a valid IPv4 address", value)
-                        })?;
+                        part.parse::<u8>()
+                            .map_err(|_| format!("'{}' is not a valid IPv4 address", value))?;
                     }
                 }
                 _ => {}
@@ -254,10 +254,7 @@ impl NumberConstraints {
                 let remainder = value % mult;
                 // Use an epsilon for floating point comparison
                 if (remainder.abs() > 1e-9) && ((mult - remainder).abs() > 1e-9) {
-                    return Err(format!(
-                        "value {} is not a multiple of {}",
-                        value, mult
-                    ));
+                    return Err(format!("value {} is not a multiple of {}", value, mult));
                 }
             }
         }
@@ -399,7 +396,9 @@ impl SchemaNode {
 
     /// Builder-style: mark a property as required.
     pub fn required(mut self, fields: &[&str]) -> Self {
-        let obj = self.object_constraints.get_or_insert_with(ObjectConstraints::default);
+        let obj = self
+            .object_constraints
+            .get_or_insert_with(ObjectConstraints::default);
         obj.required = fields.iter().map(|s| s.to_string()).collect();
         self
     }
@@ -430,7 +429,9 @@ impl SchemaNode {
 
     /// Builder-style: disallow additional properties.
     pub fn no_additional_properties(mut self) -> Self {
-        let obj = self.object_constraints.get_or_insert_with(ObjectConstraints::default);
+        let obj = self
+            .object_constraints
+            .get_or_insert_with(ObjectConstraints::default);
         obj.additional_properties = false;
         self
     }
@@ -553,7 +554,11 @@ impl SchemaValidator {
     /// Validate a value against a specific schema node at the given path.
     fn validate_node(&self, value: &Value, schema: &SchemaNode, path: &str) -> ValidationResult {
         let mut result = ValidationResult::valid();
-        let display_path = if path.is_empty() { "(root)".to_string() } else { path.to_string() };
+        let display_path = if path.is_empty() {
+            "(root)".to_string()
+        } else {
+            path.to_string()
+        };
 
         // Check type
         if let Some(ref expected_type) = schema.schema_type {
@@ -579,10 +584,7 @@ impl SchemaValidator {
             if !matches {
                 result.errors.push(ValidationError {
                     path: display_path.clone(),
-                    message: format!(
-                        "value '{}' is not one of: {:?}",
-                        value, schema.enum_values
-                    ),
+                    message: format!("value '{}' is not one of: {:?}", value, schema.enum_values),
                     code: ValidationErrorCode::EnumViolation,
                 });
                 if !self.collect_all_errors {
@@ -763,7 +765,10 @@ impl SchemaValidator {
                             prop_schema.schema_type.as_ref().map(|_| value)
                         {
                             // Recurse into nested object schemas even if no default
-                            let filled = self.apply_defaults_to_value(&Value::Object(serde_json::Map::new()), prop_schema);
+                            let filled = self.apply_defaults_to_value(
+                                &Value::Object(serde_json::Map::new()),
+                                prop_schema,
+                            );
                             if let Value::Object(inner) = filled {
                                 if !inner.is_empty() {
                                     new_map.insert(prop_name.clone(), Value::Object(inner));
@@ -818,29 +823,18 @@ impl SchemaValidator {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MigrationStep {
     /// Add a new field with a default value at the given dot-path.
-    AddField {
-        path: String,
-        default_value: Value,
-    },
+    AddField { path: String, default_value: Value },
     /// Remove a field at the given dot-path.
-    RemoveField {
-        path: String,
-    },
+    RemoveField { path: String },
     /// Rename a field from old_path to new_path.
-    RenameField {
-        old_path: String,
-        new_path: String,
-    },
+    RenameField { old_path: String, new_path: String },
     /// Transform a field's value using a built-in transformation.
     TransformValue {
         path: String,
         transformation: ValueTransformation,
     },
     /// Set a field to a specific value (overwrite).
-    SetDefault {
-        path: String,
-        value: Value,
-    },
+    SetDefault { path: String, value: Value },
 }
 
 /// Built-in value transformations for migration.
@@ -857,10 +851,7 @@ pub enum ValueTransformation {
     /// Add a numeric offset to a value.
     Add(f64),
     /// Rename an enum variant.
-    RenameVariant {
-        from: String,
-        to: String,
-    },
+    RenameVariant { from: String, to: String },
     /// Convert a string to an integer.
     ParseInt,
     /// Convert milliseconds to seconds (divide by 1000).
@@ -1016,10 +1007,7 @@ impl ConfigMigrator {
             success: false,
             config: config.clone(),
             applied_steps: Vec::new(),
-            errors: vec![format!(
-                "no migration path from '{}' to '{}'",
-                from, to
-            )],
+            errors: vec![format!("no migration path from '{}' to '{}'", from, to)],
         }
     }
 
@@ -1076,7 +1064,10 @@ impl ConfigMigrator {
     /// Apply a single migration step, mutating the config in place.
     fn apply_step(&self, config: &mut Value, step: &MigrationStep) -> Result<String, String> {
         match step {
-            MigrationStep::AddField { path, default_value } => {
+            MigrationStep::AddField {
+                path,
+                default_value,
+            } => {
                 self.set_at_path(config, path, default_value.clone())?;
                 Ok(format!("added field '{}' with default", path))
             }
@@ -1085,15 +1076,20 @@ impl ConfigMigrator {
                 Ok(format!("removed field '{}'", path))
             }
             MigrationStep::RenameField { old_path, new_path } => {
-                let value = self.get_at_path(config, old_path)
+                let value = self
+                    .get_at_path(config, old_path)
                     .ok_or_else(|| format!("field '{}' not found for rename", old_path))?
                     .clone();
                 self.remove_at_path(config, old_path)?;
                 self.set_at_path(config, new_path, value)?;
                 Ok(format!("renamed '{}' to '{}'", old_path, new_path))
             }
-            MigrationStep::TransformValue { path, transformation } => {
-                let current = self.get_at_path_mut(config, path)
+            MigrationStep::TransformValue {
+                path,
+                transformation,
+            } => {
+                let current = self
+                    .get_at_path_mut(config, path)
                     .ok_or_else(|| format!("field '{}' not found for transform", path))?;
                 let transformed = self.apply_transformation(current, transformation)?;
                 *current = transformed;
@@ -1104,42 +1100,49 @@ impl ConfigMigrator {
                     self.set_at_path(config, path, value.clone())?;
                     Ok(format!("set default for '{}' (field was absent)", path))
                 } else {
-                    Ok(format!("skipped default for '{}' (field already present)", path))
+                    Ok(format!(
+                        "skipped default for '{}' (field already present)",
+                        path
+                    ))
                 }
             }
         }
     }
 
     /// Apply a value transformation to a JSON value.
-    fn apply_transformation(&self, value: &Value, tx: &ValueTransformation) -> Result<Value, String> {
+    fn apply_transformation(
+        &self,
+        value: &Value,
+        tx: &ValueTransformation,
+    ) -> Result<Value, String> {
         match tx {
             ValueTransformation::ToLowercase => {
-                let s = value.as_str()
+                let s = value
+                    .as_str()
                     .ok_or("ToLowercase requires a string value")?;
                 Ok(Value::String(s.to_lowercase()))
             }
             ValueTransformation::ToUppercase => {
-                let s = value.as_str()
+                let s = value
+                    .as_str()
                     .ok_or("ToUppercase requires a string value")?;
                 Ok(Value::String(s.to_uppercase()))
             }
             ValueTransformation::Trim => {
-                let s = value.as_str()
-                    .ok_or("Trim requires a string value")?;
+                let s = value.as_str().ok_or("Trim requires a string value")?;
                 Ok(Value::String(s.trim().to_string()))
             }
             ValueTransformation::Multiply(factor) => {
-                let n = value.as_f64()
-                    .ok_or("Multiply requires a numeric value")?;
+                let n = value.as_f64().ok_or("Multiply requires a numeric value")?;
                 Ok(Value::from(n * factor))
             }
             ValueTransformation::Add(offset) => {
-                let n = value.as_f64()
-                    .ok_or("Add requires a numeric value")?;
+                let n = value.as_f64().ok_or("Add requires a numeric value")?;
                 Ok(Value::from(n + offset))
             }
             ValueTransformation::RenameVariant { from, to } => {
-                let s = value.as_str()
+                let s = value
+                    .as_str()
                     .ok_or("RenameVariant requires a string value")?;
                 if s == from {
                     Ok(Value::String(to.clone()))
@@ -1148,19 +1151,21 @@ impl ConfigMigrator {
                 }
             }
             ValueTransformation::ParseInt => {
-                let s = value.as_str()
-                    .ok_or("ParseInt requires a string value")?;
-                let n: i64 = s.parse()
+                let s = value.as_str().ok_or("ParseInt requires a string value")?;
+                let n: i64 = s
+                    .parse()
                     .map_err(|e| format!("failed to parse '{}' as integer: {}", s, e))?;
                 Ok(Value::from(n))
             }
             ValueTransformation::MsToSeconds => {
-                let n = value.as_f64()
+                let n = value
+                    .as_f64()
                     .ok_or("MsToSeconds requires a numeric value")?;
                 Ok(Value::from(n / 1000.0))
             }
             ValueTransformation::SecondsToMs => {
-                let n = value.as_f64()
+                let n = value
+                    .as_f64()
                     .ok_or("SecondsToMs requires a numeric value")?;
                 Ok(Value::from(n * 1000.0))
             }
@@ -1244,7 +1249,8 @@ impl ConfigMigrator {
                         map.remove(*part);
                         return Ok(());
                     }
-                    current = map.get_mut(*part)
+                    current = map
+                        .get_mut(*part)
                         .ok_or_else(|| format!("path '{}' does not exist", path))?;
                 }
                 _ => return Err(format!("cannot traverse '{}' through non-object", path)),
@@ -1438,7 +1444,8 @@ impl EnvInterpolator {
                 // For nested interpolation: check if var_name itself contains ${}
                 let var_name = if env_ref.var_name.contains("${") {
                     // Recursively interpolate the variable name
-                    let name_val = self.interpolate_string(&env_ref.var_name, resolved, errors, depth + 1);
+                    let name_val =
+                        self.interpolate_string(&env_ref.var_name, resolved, errors, depth + 1);
                     match name_val {
                         Value::String(s) => s,
                         other => format!("{}", other),
@@ -1466,7 +1473,10 @@ impl EnvInterpolator {
                         let msg = format!(
                             "required environment variable '{}' is not set: {}",
                             var_name,
-                            resolved_ref.required_message.as_deref().unwrap_or("(no message)")
+                            resolved_ref
+                                .required_message
+                                .as_deref()
+                                .unwrap_or("(no message)")
                         );
                         errors.push(msg.clone());
                         result.push_str(&format!("${{{}}}", inner));
@@ -1590,8 +1600,15 @@ impl EnvInterpolator {
                         }
                         // Recurse into var_name for nested refs
                         if has_nested {
-                            let var_name = required.last().map(|r| r.var_name.clone()).unwrap_or_default();
-                            self.collect_required_refs(&Value::String(var_name), required, depth + 1);
+                            let var_name = required
+                                .last()
+                                .map(|r| r.var_name.clone())
+                                .unwrap_or_default();
+                            self.collect_required_refs(
+                                &Value::String(var_name),
+                                required,
+                                depth + 1,
+                            );
                         }
                     }
                 }
@@ -1755,9 +1772,18 @@ impl ConfigDiffer {
             self.classify_entry(entry);
         }
 
-        let breaking_count = entries.iter().filter(|e| e.classification == ChangeClassification::Breaking).count();
-        let non_breaking_count = entries.iter().filter(|e| e.classification == ChangeClassification::NonBreaking).count();
-        let neutral_count = entries.iter().filter(|e| e.classification == ChangeClassification::Neutral).count();
+        let breaking_count = entries
+            .iter()
+            .filter(|e| e.classification == ChangeClassification::Breaking)
+            .count();
+        let non_breaking_count = entries
+            .iter()
+            .filter(|e| e.classification == ChangeClassification::NonBreaking)
+            .count();
+        let neutral_count = entries
+            .iter()
+            .filter(|e| e.classification == ChangeClassification::Neutral)
+            .count();
         let has_breaking = breaking_count > 0;
 
         let summary = if has_breaking {
@@ -1933,7 +1959,9 @@ impl ConfigDiffer {
         }
 
         // Schema-aware classification override
-        if let (Some(old_schema), Some(new_schema)) = (self.old_schema.as_ref(), self.new_schema.as_ref()) {
+        if let (Some(old_schema), Some(new_schema)) =
+            (self.old_schema.as_ref(), self.new_schema.as_ref())
+        {
             self.schema_aware_classify(entry, old_schema, new_schema);
         }
     }
@@ -2026,8 +2054,14 @@ impl ConfigDiffer {
                 path: path.to_string(),
                 kind: DiffKind::TypeChanged,
                 classification: ChangeClassification::Breaking,
-                old_value: old.schema_type.as_ref().map(|t| Value::String(t.to_string())),
-                new_value: new.schema_type.as_ref().map(|t| Value::String(t.to_string())),
+                old_value: old
+                    .schema_type
+                    .as_ref()
+                    .map(|t| Value::String(t.to_string())),
+                new_value: new
+                    .schema_type
+                    .as_ref()
+                    .map(|t| Value::String(t.to_string())),
                 description: format!("type at '{}' changed", path),
             });
         }
@@ -2224,7 +2258,9 @@ impl TemplateEngine {
     /// Resolve template inheritance: merge base template with overrides.
     fn resolve_inheritance(&self, template: &ConfigTemplate) -> Result<Value, String> {
         if let Some(ref base_name) = template.extends {
-            let base = self.templates.get(base_name)
+            let base = self
+                .templates
+                .get(base_name)
                 .ok_or_else(|| format!("base template '{}' not found", base_name))?
                 .clone();
 
@@ -2339,8 +2375,7 @@ impl TemplateEngine {
             None
         };
 
-        let success = errors.is_empty()
-            && validation.as_ref().map_or(true, |v| v.is_valid);
+        let success = errors.is_empty() && validation.as_ref().map_or(true, |v| v.is_valid);
 
         TemplateInstanceResult {
             config,
@@ -2401,7 +2436,10 @@ impl TemplateEngine {
     }
 
     /// Extract a placeholder name between `{{` and `}}`.
-    fn extract_placeholder_name(&self, chars: &mut std::iter::Peekable<std::str::Chars<'_>>) -> String {
+    fn extract_placeholder_name(
+        &self,
+        chars: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    ) -> String {
         let mut name = String::new();
         while let Some(ch) = chars.next() {
             if ch == '}' && chars.peek() == Some(&'}') {
@@ -2545,9 +2583,21 @@ pub struct ReloadPlan {
 impl ReloadPlan {
     /// Generate a human-readable summary.
     pub fn generate_summary(&self) -> String {
-        let restart_count = self.actions.iter().filter(|a| a.strategy == ReloadStrategy::Restart).count();
-        let hot_count = self.actions.iter().filter(|a| a.strategy == ReloadStrategy::HotReload).count();
-        let no_action_count = self.actions.iter().filter(|a| a.strategy == ReloadStrategy::NoAction).count();
+        let restart_count = self
+            .actions
+            .iter()
+            .filter(|a| a.strategy == ReloadStrategy::Restart)
+            .count();
+        let hot_count = self
+            .actions
+            .iter()
+            .filter(|a| a.strategy == ReloadStrategy::HotReload)
+            .count();
+        let no_action_count = self
+            .actions
+            .iter()
+            .filter(|a| a.strategy == ReloadStrategy::NoAction)
+            .count();
         format!(
             "reload plan: {} restart(s), {} hot-reload(s), {} no-action(s)",
             restart_count, hot_count, no_action_count
@@ -2619,9 +2669,7 @@ impl HotReloadManager {
                     "anchor.enable_hardware_root".to_string(),
                     "anchor.manifest_path".to_string(),
                 ],
-                hot_reload_fields: vec![
-                    "anchor.key_rotation_hours".to_string(),
-                ],
+                hot_reload_fields: vec!["anchor.key_rotation_hours".to_string()],
             },
             SubsystemMapping {
                 path_prefix: "adapter".to_string(),
@@ -2658,9 +2706,7 @@ impl HotReloadManager {
                 subsystem: SubsystemId::Audit,
                 default_strategy: ReloadStrategy::HotReload,
                 restart_fields: vec!["audit.chained_entries".to_string()],
-                hot_reload_fields: vec![
-                    "audit.max_entries_before_compaction".to_string(),
-                ],
+                hot_reload_fields: vec!["audit.max_entries_before_compaction".to_string()],
             },
             SubsystemMapping {
                 path_prefix: "distributed".to_string(),
@@ -2712,10 +2758,7 @@ impl HotReloadManager {
 
         for entry in &config_diff.entries {
             let subsystem = self.resolve_subsystem(&entry.path);
-            subsystem_changes
-                .entry(subsystem)
-                .or_default()
-                .push(entry);
+            subsystem_changes.entry(subsystem).or_default().push(entry);
         }
 
         // Generate reload actions
@@ -2723,7 +2766,8 @@ impl HotReloadManager {
         let mut priority_counter = 0u32;
 
         for (subsystem, changes) in &subsystem_changes {
-            let mapping = self.subsystem_mappings
+            let mapping = self
+                .subsystem_mappings
                 .iter()
                 .find(|m| m.subsystem == *subsystem);
 
@@ -2764,7 +2808,10 @@ impl HotReloadManager {
         } else if requires_restart {
             format!(
                 "restart required for {} subsystem(s)",
-                actions.iter().filter(|a| a.strategy == ReloadStrategy::Restart).count()
+                actions
+                    .iter()
+                    .filter(|a| a.strategy == ReloadStrategy::Restart)
+                    .count()
             )
         } else if actions.is_empty() {
             "no changes detected".to_string()
@@ -2813,7 +2860,9 @@ impl HotReloadManager {
         };
 
         // Check if any change is a breaking change
-        let has_breaking = changes.iter().any(|c| c.classification == ChangeClassification::Breaking);
+        let has_breaking = changes
+            .iter()
+            .any(|c| c.classification == ChangeClassification::Breaking);
         if has_breaking {
             return ReloadStrategy::Restart;
         }
@@ -2901,7 +2950,10 @@ mod tests {
         let validator = SchemaValidator::new(schema);
         let result = validator.validate(&Value::Object(serde_json::Map::new()));
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.code == ValidationErrorCode::RequiredFieldMissing));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.code == ValidationErrorCode::RequiredFieldMissing));
     }
 
     #[test]
@@ -2955,8 +3007,14 @@ mod tests {
                 SchemaNode::new()
                     .typed(SchemaType::Object)
                     .property("host", SchemaNode::new().typed(SchemaType::String))
-                    .property("port", SchemaNode::new().typed(SchemaType::Integer)
-                        .number_constraints(NumberConstraints::new().minimum(1.0).maximum(65535.0)))
+                    .property(
+                        "port",
+                        SchemaNode::new()
+                            .typed(SchemaType::Integer)
+                            .number_constraints(
+                                NumberConstraints::new().minimum(1.0).maximum(65535.0),
+                            ),
+                    )
                     .required(&["host", "port"]),
             )
             .required(&["server"]);
@@ -3014,7 +3072,10 @@ mod tests {
 
         let extra = validator.validate(&serde_json::json!({"name": "test", "extra": true}));
         assert!(!extra.is_valid);
-        assert!(extra.errors.iter().any(|e| e.code == ValidationErrorCode::AdditionalPropertyNotAllowed));
+        assert!(extra
+            .errors
+            .iter()
+            .any(|e| e.code == ValidationErrorCode::AdditionalPropertyNotAllowed));
     }
 
     #[test]
@@ -3025,9 +3086,17 @@ mod tests {
         let validator = SchemaValidator::new(schema);
 
         assert!(validator.validate(&Value::String("abc".into())).is_valid);
-        assert!(validator.validate(&Value::String("abcdefghij".into())).is_valid);
+        assert!(
+            validator
+                .validate(&Value::String("abcdefghij".into()))
+                .is_valid
+        );
         assert!(!validator.validate(&Value::String("ab".into())).is_valid);
-        assert!(!validator.validate(&Value::String("abcdefghijk".into())).is_valid);
+        assert!(
+            !validator
+                .validate(&Value::String("abcdefghijk".into()))
+                .is_valid
+        );
     }
 
     #[test]
@@ -3048,11 +3117,15 @@ mod tests {
             .typed(SchemaType::Object)
             .property(
                 "name",
-                SchemaNode::new().typed(SchemaType::String).default_value(Value::String("default".into())),
+                SchemaNode::new()
+                    .typed(SchemaType::String)
+                    .default_value(Value::String("default".into())),
             )
             .property(
                 "count",
-                SchemaNode::new().typed(SchemaType::Integer).default_value(Value::from(42)),
+                SchemaNode::new()
+                    .typed(SchemaType::Integer)
+                    .default_value(Value::from(42)),
             );
         let validator = SchemaValidator::new(schema.clone());
         let input = serde_json::json!({"name": "custom"});
@@ -3066,12 +3139,14 @@ mod tests {
     #[test]
     fn test_migration_add_field() {
         let mut migrator = ConfigMigrator::new();
-        let plan = MigrationPlan::new("v1", "v2", vec![
-            MigrationStep::AddField {
+        let plan = MigrationPlan::new(
+            "v1",
+            "v2",
+            vec![MigrationStep::AddField {
                 path: "new_field".into(),
                 default_value: Value::String("default".into()),
-            },
-        ]);
+            }],
+        );
         migrator.register_plan(plan);
 
         let config = serde_json::json!({"existing": true});
@@ -3084,12 +3159,14 @@ mod tests {
     #[test]
     fn test_migration_rename_field() {
         let mut migrator = ConfigMigrator::new();
-        let plan = MigrationPlan::new("v1", "v2", vec![
-            MigrationStep::RenameField {
+        let plan = MigrationPlan::new(
+            "v1",
+            "v2",
+            vec![MigrationStep::RenameField {
                 old_path: "old_name".into(),
                 new_path: "new_name".into(),
-            },
-        ]);
+            }],
+        );
         migrator.register_plan(plan);
 
         let config = serde_json::json!({"old_name": "value"});
@@ -3102,12 +3179,14 @@ mod tests {
     #[test]
     fn test_migration_transform_value() {
         let mut migrator = ConfigMigrator::new();
-        let plan = MigrationPlan::new("v1", "v2", vec![
-            MigrationStep::TransformValue {
+        let plan = MigrationPlan::new(
+            "v1",
+            "v2",
+            vec![MigrationStep::TransformValue {
                 path: "interval_ms".into(),
                 transformation: ValueTransformation::MsToSeconds,
-            },
-        ]);
+            }],
+        );
         migrator.register_plan(plan);
 
         let config = serde_json::json!({"interval_ms": 5000});
@@ -3119,21 +3198,23 @@ mod tests {
     #[test]
     fn test_migration_chain() {
         let mut migrator = ConfigMigrator::new();
-        migrator.set_version_chain(vec![
-            "v1".into(), "v2".into(), "v3".into(),
-        ]);
-        migrator.register_plan(MigrationPlan::new("v1", "v2", vec![
-            MigrationStep::AddField {
+        migrator.set_version_chain(vec!["v1".into(), "v2".into(), "v3".into()]);
+        migrator.register_plan(MigrationPlan::new(
+            "v1",
+            "v2",
+            vec![MigrationStep::AddField {
                 path: "v2_field".into(),
                 default_value: Value::from(true),
-            },
-        ]));
-        migrator.register_plan(MigrationPlan::new("v2", "v3", vec![
-            MigrationStep::AddField {
+            }],
+        ));
+        migrator.register_plan(MigrationPlan::new(
+            "v2",
+            "v3",
+            vec![MigrationStep::AddField {
                 path: "v3_field".into(),
                 default_value: Value::from(42),
-            },
-        ]));
+            }],
+        ));
 
         let config = serde_json::json!({"original": "data"});
         let result = migrator.migrate(&config, "v1", "v3");
@@ -3146,11 +3227,13 @@ mod tests {
     #[test]
     fn test_migration_remove_field() {
         let mut migrator = ConfigMigrator::new();
-        let plan = MigrationPlan::new("v1", "v2", vec![
-            MigrationStep::RemoveField {
+        let plan = MigrationPlan::new(
+            "v1",
+            "v2",
+            vec![MigrationStep::RemoveField {
                 path: "deprecated".into(),
-            },
-        ]);
+            }],
+        );
         migrator.register_plan(plan);
 
         let config = serde_json::json!({"deprecated": "old", "keep": "this"});
@@ -3170,7 +3253,10 @@ mod tests {
         let value = Value::String("${DATABASE_URL}".into());
         let result = interpolator.interpolate(&value);
         assert!(result.success);
-        assert_eq!(result.value, Value::String("postgres://localhost/db".into()));
+        assert_eq!(
+            result.value,
+            Value::String("postgres://localhost/db".into())
+        );
     }
 
     #[test]
@@ -3205,8 +3291,14 @@ mod tests {
         });
         let result = interpolator.interpolate(&value);
         assert!(result.success);
-        assert_eq!(result.value["server"]["host"], Value::String("example.com".into()));
-        assert_eq!(result.value["server"]["port"], Value::Number(serde_json::Number::from(8443)));
+        assert_eq!(
+            result.value["server"]["host"],
+            Value::String("example.com".into())
+        );
+        assert_eq!(
+            result.value["server"]["port"],
+            Value::Number(serde_json::Number::from(8443))
+        );
     }
 
     #[test]
@@ -3287,18 +3379,24 @@ mod tests {
             overrides: BTreeMap::new(),
             placeholders: {
                 let mut m = BTreeMap::new();
-                m.insert("host".into(), PlaceholderDef {
-                    description: "server host".into(),
-                    default_value: None,
-                    required: true,
-                    expected_type: Some(SchemaType::String),
-                });
-                m.insert("port".into(), PlaceholderDef {
-                    description: "server port".into(),
-                    default_value: None,
-                    required: true,
-                    expected_type: Some(SchemaType::Integer),
-                });
+                m.insert(
+                    "host".into(),
+                    PlaceholderDef {
+                        description: "server host".into(),
+                        default_value: None,
+                        required: true,
+                        expected_type: Some(SchemaType::String),
+                    },
+                );
+                m.insert(
+                    "port".into(),
+                    PlaceholderDef {
+                        description: "server port".into(),
+                        default_value: None,
+                        required: true,
+                        expected_type: Some(SchemaType::Integer),
+                    },
+                );
                 m
             },
             validation_schema: None,
@@ -3363,12 +3461,15 @@ mod tests {
             overrides: BTreeMap::new(),
             placeholders: {
                 let mut m = BTreeMap::new();
-                m.insert("host".into(), PlaceholderDef {
-                    description: "host".into(),
-                    default_value: None,
-                    required: true,
-                    expected_type: Some(SchemaType::String),
-                });
+                m.insert(
+                    "host".into(),
+                    PlaceholderDef {
+                        description: "host".into(),
+                        default_value: None,
+                        required: true,
+                        expected_type: Some(SchemaType::String),
+                    },
+                );
                 m
             },
             validation_schema: None,
@@ -3424,15 +3525,13 @@ mod tests {
     #[test]
     fn test_reload_plan_summary() {
         let plan = ReloadPlan {
-            actions: vec![
-                ReloadAction {
-                    subsystem: SubsystemId::Sentinel,
-                    strategy: ReloadStrategy::HotReload,
-                    changed_fields: vec!["sentinel.check_interval_ms".into()],
-                    reason: "values changed".into(),
-                    priority: 1,
-                },
-            ],
+            actions: vec![ReloadAction {
+                subsystem: SubsystemId::Sentinel,
+                strategy: ReloadStrategy::HotReload,
+                changed_fields: vec!["sentinel.check_interval_ms".into()],
+                reason: "values changed".into(),
+                priority: 1,
+            }],
             requires_full_restart: false,
             requires_restart: false,
             hot_reload_sufficient: true,

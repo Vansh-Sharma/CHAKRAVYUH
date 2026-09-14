@@ -25,8 +25,8 @@ use std::time::Instant;
 
 use super::message::CrossRingMessage;
 use super::transport::{
-    RingTransport, TransportErrorKind, TransportMetricsCollector,
-    InProcessTransport, TransportMetrics,
+    InProcessTransport, RingTransport, TransportErrorKind, TransportMetrics,
+    TransportMetricsCollector,
 };
 
 // ─── Configuration ────────────────────────────────────────────────
@@ -85,18 +85,42 @@ pub struct RecoveryRingConfig {
     pub buffer_size: usize,
 }
 
-fn default_enabled() -> bool { true }
-fn default_failure_threshold() -> u32 { 5 }
-fn default_recovery_timeout_secs() -> u64 { 30 }
-fn default_latency_threshold_ms() -> f64 { 50.0 }
-fn default_error_rate_threshold() -> f64 { 0.5 }
-fn default_max_rings_down() -> u32 { 3 }
-fn default_history_window() -> usize { 100 }
-fn default_max_events() -> usize { 10_000 }
-fn default_persist_path() -> String { "/var/lib/chakravyuh/recovery_state.json".into() }
-fn default_persist_interval_secs() -> u64 { 10 }
-fn default_transport() -> String { "in_process".into() }
-fn default_buffer_size() -> usize { 500 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_failure_threshold() -> u32 {
+    5
+}
+fn default_recovery_timeout_secs() -> u64 {
+    30
+}
+fn default_latency_threshold_ms() -> f64 {
+    50.0
+}
+fn default_error_rate_threshold() -> f64 {
+    0.5
+}
+fn default_max_rings_down() -> u32 {
+    3
+}
+fn default_history_window() -> usize {
+    100
+}
+fn default_max_events() -> usize {
+    10_000
+}
+fn default_persist_path() -> String {
+    "/var/lib/chakravyuh/recovery_state.json".into()
+}
+fn default_persist_interval_secs() -> u64 {
+    10
+}
+fn default_transport() -> String {
+    "in_process".into()
+}
+fn default_buffer_size() -> usize {
+    500
+}
 
 impl Default for RecoveryRingConfig {
     fn default() -> Self {
@@ -386,7 +410,9 @@ impl RecoveryRing {
                 tracing::error!("recovery ring health lock poisoned: {}", e);
                 panic!("recovery ring health lock poisoned — fail closed");
             });
-            let entry = health.entry(ring_name.to_string()).or_insert_with(|| RingHealth::new(ring_name));
+            let entry = health
+                .entry(ring_name.to_string())
+                .or_insert_with(|| RingHealth::new(ring_name));
             prev_state = entry.state.clone();
             entry.record_success(latency_ms);
             new_state = entry.state.clone();
@@ -420,7 +446,9 @@ impl RecoveryRing {
                 tracing::error!("recovery ring health lock poisoned: {}", e);
                 panic!("recovery ring health lock poisoned — fail closed");
             });
-            let entry = health.entry(ring_name.to_string()).or_insert_with(|| RingHealth::new(ring_name));
+            let entry = health
+                .entry(ring_name.to_string())
+                .or_insert_with(|| RingHealth::new(ring_name));
             prev_state = entry.state.clone();
             entry.record_failure();
 
@@ -538,12 +566,16 @@ impl RecoveryRing {
         let summary = if lockdown {
             format!(
                 "FULL LOCKDOWN: {} rings down (max: {}): {}",
-                rings_down, self.config.max_rings_down, open_rings.join(", ")
+                rings_down,
+                self.config.max_rings_down,
+                open_rings.join(", ")
             )
         } else if degraded {
             format!(
                 "DEGRADED: {} rings open, {} slow: {}",
-                rings_down, slow_rings.len(), open_rings.join(", ")
+                rings_down,
+                slow_rings.len(),
+                open_rings.join(", ")
             )
         } else {
             "all rings operational".into()
@@ -571,19 +603,19 @@ impl RecoveryRing {
             .iter()
             .map(|name| {
                 let entry = health.get(*name);
-                let (state, cons_fail, total_req, total_fail, err_rate, avg_lat, slow) =
-                    match entry {
-                        Some(h) => (
-                            h.state.clone(),
-                            h.consecutive_failures,
-                            h.total_requests,
-                            h.total_failures,
-                            h.error_rate(),
-                            h.avg_latency(),
-                            h.is_slow(self.config.latency_threshold_ms),
-                        ),
-                        None => (CircuitState::Closed, 0, 0, 0, 0.0, 0.0, false),
-                    };
+                let (state, cons_fail, total_req, total_fail, err_rate, avg_lat, slow) = match entry
+                {
+                    Some(h) => (
+                        h.state.clone(),
+                        h.consecutive_failures,
+                        h.total_requests,
+                        h.total_failures,
+                        h.error_rate(),
+                        h.avg_latency(),
+                        h.is_slow(self.config.latency_threshold_ms),
+                    ),
+                    None => (CircuitState::Closed, 0, 0, 0, 0.0, 0.0, false),
+                };
                 let healthy = state == CircuitState::Closed && !slow;
                 RingHealthSnapshot {
                     ring_name: name.to_string(),
@@ -655,10 +687,7 @@ impl RecoveryRing {
 
     /// Get all recovery events (for audit/export).
     pub fn events(&self) -> Vec<RecoveryEvent> {
-        self.events
-            .lock()
-            .map(|e| e.clone())
-            .unwrap_or_default()
+        self.events.lock().map(|e| e.clone()).unwrap_or_default()
     }
 
     // ── Persistence ──
@@ -699,12 +728,14 @@ impl RecoveryRing {
 
     /// Save current state to disk.
     fn save_state(&self) -> crate::Result<()> {
-        let health = self.health.lock().map_err(|e| {
-            crate::error::Error::Other(format!("health lock poisoned: {}", e))
-        })?;
-        let events = self.events.lock().map_err(|e| {
-            crate::error::Error::Other(format!("events lock poisoned: {}", e))
-        })?;
+        let health = self
+            .health
+            .lock()
+            .map_err(|e| crate::error::Error::Other(format!("health lock poisoned: {}", e)))?;
+        let events = self
+            .events
+            .lock()
+            .map_err(|e| crate::error::Error::Other(format!("events lock poisoned: {}", e)))?;
 
         let state = PersistentRecoveryState {
             ring_health: health.clone(),
@@ -802,8 +833,12 @@ impl RecoveryRing {
     /// Clear all health data and events (for testing).
     #[cfg(test)]
     pub fn clear(&self) {
-        if let Ok(mut h) = self.health.lock() { h.clear(); }
-        if let Ok(mut e) = self.events.lock() { e.clear(); }
+        if let Ok(mut h) = self.health.lock() {
+            h.clear();
+        }
+        if let Ok(mut e) = self.events.lock() {
+            e.clear();
+        }
     }
 }
 
@@ -818,7 +853,8 @@ mod tests {
         RecoveryRing::new(&RecoveryRingConfig {
             persist: false,
             ..Default::default()
-        }).unwrap()
+        })
+        .unwrap()
     }
 
     #[test]
@@ -852,7 +888,8 @@ mod tests {
             failure_threshold: 3,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         r.record_failure("threat");
@@ -872,7 +909,8 @@ mod tests {
             recovery_timeout_secs: 86400, // 24 hours — won't expire in test
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         r.record_failure("threat");
@@ -886,7 +924,8 @@ mod tests {
             recovery_timeout_secs: 0, // Instant half-open via chrono
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         // With timeout=0, chrono-based check should allow immediately.
@@ -900,7 +939,8 @@ mod tests {
             recovery_timeout_secs: 0,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         assert!(r.should_allow("threat")); // half-open
@@ -919,7 +959,14 @@ mod tests {
     #[test]
     fn assessment_normal_when_healthy() {
         let r = default_ring();
-        let assessment = r.assess(&["shield", "threat", "identity", "memory", "agent", "execution"]);
+        let assessment = r.assess(&[
+            "shield",
+            "threat",
+            "identity",
+            "memory",
+            "agent",
+            "execution",
+        ]);
         assert!(!assessment.degraded);
         assert!(!assessment.lockdown);
         assert_eq!(assessment.action, RecoveryAction::Normal);
@@ -931,10 +978,18 @@ mod tests {
             failure_threshold: 1,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
-        let assessment = r.assess(&["shield", "threat", "identity", "memory", "agent", "execution"]);
+        let assessment = r.assess(&[
+            "shield",
+            "threat",
+            "identity",
+            "memory",
+            "agent",
+            "execution",
+        ]);
         assert!(assessment.degraded);
         assert!(!assessment.lockdown);
         assert_eq!(assessment.action, RecoveryAction::BypassFailed);
@@ -948,12 +1003,20 @@ mod tests {
             max_rings_down: 2,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         r.record_failure("identity");
         r.record_failure("memory");
-        let assessment = r.assess(&["shield", "threat", "identity", "memory", "agent", "execution"]);
+        let assessment = r.assess(&[
+            "shield",
+            "threat",
+            "identity",
+            "memory",
+            "agent",
+            "execution",
+        ]);
         assert!(assessment.lockdown);
         assert_eq!(assessment.action, RecoveryAction::FullLockdown);
     }
@@ -965,11 +1028,19 @@ mod tests {
             max_rings_down: 3,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         r.record_failure("identity");
-        let assessment = r.assess(&["shield", "threat", "identity", "memory", "agent", "execution"]);
+        let assessment = r.assess(&[
+            "shield",
+            "threat",
+            "identity",
+            "memory",
+            "agent",
+            "execution",
+        ]);
         assert_eq!(assessment.action, RecoveryAction::MinimalSecurity);
     }
 
@@ -979,7 +1050,8 @@ mod tests {
             latency_threshold_ms: 5.0,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         for _ in 0..10 {
             r.record_success("shield", 20.0);
@@ -1011,7 +1083,8 @@ mod tests {
             failure_threshold: 1,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         r.record_failure("threat");
         let events = r.events();
@@ -1027,7 +1100,8 @@ mod tests {
             max_events: 3,
             persist: false,
             ..Default::default()
-        }, ).unwrap();
+        })
+        .unwrap();
 
         // Generate more events than max.
         r.record_failure("threat");
@@ -1091,7 +1165,10 @@ mod tests {
     #[test]
     fn custom_transport() {
         let transport = Arc::new(InProcessTransport::new(50));
-        let config = RecoveryRingConfig { persist: false, ..Default::default() };
+        let config = RecoveryRingConfig {
+            persist: false,
+            ..Default::default()
+        };
         let r = RecoveryRing::with_transport(&config, transport);
         r.record_success("shield", 1.0);
         let snap = r.health_snapshot(&["shield"]);

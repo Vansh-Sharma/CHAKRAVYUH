@@ -39,17 +39,21 @@ pub mod transport;
 use std::sync::Arc;
 
 pub use command_ring::{CommandRing, CommandRingConfig, CommandStatus};
-pub use communication_ring::{CommunicationRing, CommunicationRingConfig, CommunicationSubscription, TopicStats};
-pub use control_ring::{ControlRing, ControlRingConfig, EscalationMeta, EscalationStats, EscalationStatus};
+pub use communication_ring::{
+    CommunicationRing, CommunicationRingConfig, CommunicationSubscription, TopicStats,
+};
+pub use control_ring::{
+    ControlRing, ControlRingConfig, EscalationMeta, EscalationStats, EscalationStatus,
+};
 pub use intel_ring::{IntelRing, IntelRingConfig, IntelSubscription};
 pub use message::{CrossRingMessage, CrossRingType, MessagePriority};
 pub use recovery_ring::{
-    CircuitState, DegradedAssessment, RecoveryAction, RecoveryEvent,
-    RecoveryRing, RecoveryRingConfig, RingHealthSnapshot,
+    CircuitState, DegradedAssessment, RecoveryAction, RecoveryEvent, RecoveryRing,
+    RecoveryRingConfig, RingHealthSnapshot,
 };
 pub use transport::{
-    InProcessTransport, RingSubscriber, RingTransport,
-    TransportError, TransportErrorKind, TransportMetrics,
+    InProcessTransport, RingSubscriber, RingTransport, TransportError, TransportErrorKind,
+    TransportMetrics,
 };
 
 // ─── Configuration ────────────────────────────────────────────────
@@ -416,9 +420,13 @@ mod tests {
 
     fn default_network() -> CrossRingNetwork {
         CrossRingNetwork::new(&CrossRingConfig {
-            recovery: RecoveryRingConfig { persist: false, ..Default::default() },
+            recovery: RecoveryRingConfig {
+                persist: false,
+                ..Default::default()
+            },
             ..Default::default()
-        }).unwrap()
+        })
+        .unwrap()
     }
 
     #[test]
@@ -530,9 +538,15 @@ mod tests {
     #[test]
     fn drain_all_clears_all_rings() {
         let network = default_network();
-        network.send_command(CrossRingMessage::new(
-            CrossRingType::Command, "keshav", "shield", "drain", serde_json::json!({}),
-        )).unwrap();
+        network
+            .send_command(CrossRingMessage::new(
+                CrossRingType::Command,
+                "keshav",
+                "shield",
+                "drain",
+                serde_json::json!({}),
+            ))
+            .unwrap();
         network.drain_all();
         assert!(network.recv_command().unwrap().is_none());
     }
@@ -577,12 +591,24 @@ mod tests {
     #[test]
     fn broadcast_topic_stats() {
         let network = default_network();
-        network.broadcast(CrossRingMessage::new(
-            CrossRingType::Communication, "system", "broadcast", "alert", serde_json::json!({}),
-        )).unwrap();
-        network.broadcast(CrossRingMessage::new(
-            CrossRingType::Communication, "system", "broadcast", "alert", serde_json::json!({}),
-        )).unwrap();
+        network
+            .broadcast(CrossRingMessage::new(
+                CrossRingType::Communication,
+                "system",
+                "broadcast",
+                "alert",
+                serde_json::json!({}),
+            ))
+            .unwrap();
+        network
+            .broadcast(CrossRingMessage::new(
+                CrossRingType::Communication,
+                "system",
+                "broadcast",
+                "alert",
+                serde_json::json!({}),
+            ))
+            .unwrap();
 
         let stats = network.broadcast_topic_stats("alert").unwrap();
         assert_eq!(stats.message_count, 2);
@@ -591,7 +617,9 @@ mod tests {
     #[test]
     fn intel_subscription_via_network() {
         let network = default_network();
-        let _sub = network.subscribe_intel("threat", Some("attack_pattern")).unwrap();
+        let _sub = network
+            .subscribe_intel("threat", Some("attack_pattern"))
+            .unwrap();
         assert_eq!(network.intel_subscriber_count(), 1);
         network.unsubscribe_intel("threat").unwrap();
         assert_eq!(network.intel_subscriber_count(), 0);
@@ -601,9 +629,15 @@ mod tests {
     fn total_broadcasts_counted() {
         let network = default_network();
         assert_eq!(network.total_broadcasts(), 0);
-        network.broadcast(CrossRingMessage::new(
-            CrossRingType::Communication, "s", "b", "t", serde_json::json!({}),
-        )).unwrap();
+        network
+            .broadcast(CrossRingMessage::new(
+                CrossRingType::Communication,
+                "s",
+                "b",
+                "t",
+                serde_json::json!({}),
+            ))
+            .unwrap();
         assert_eq!(network.total_broadcasts(), 1);
     }
 }

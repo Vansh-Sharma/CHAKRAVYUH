@@ -18,8 +18,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::error::{Error, Result};
 use super::fedavg::GlobalModel;
+use crate::error::{Error, Result};
 
 // ── Model Version ─────────────────────────────────────────────────
 
@@ -212,7 +212,7 @@ pub struct RegistryStats {
 
 /// Tracks all known model versions, their lineage, and metadata.
 struct ModelRegistry {
- /// All versions indexed by version string.
+    /// All versions indexed by version string.
     versions: HashMap<String, ModelVersion>,
     /// Version lineage: child -> parent.
     lineage: HashMap<String, String>,
@@ -246,7 +246,8 @@ impl ModelRegistry {
             checkpoint_hash: checkpoint.checkpoint_hash.clone(),
             timestamp: checkpoint.timestamp,
         };
-        self.checkpoints.insert(checkpoint.checkpoint_hash.clone(), checkpoint);
+        self.checkpoints
+            .insert(checkpoint.checkpoint_hash.clone(), checkpoint);
         id
     }
 
@@ -358,12 +359,13 @@ impl FederatedModelManager {
 
         let parent_version = {
             let reg = self.registry.read().unwrap();
-            reg.get_latest_checkpoint()
-                .map(|(id, _)| id.version)
+            reg.get_latest_checkpoint().map(|(id, _)| id.version)
         };
 
         let version = {
-            let parts: Vec<u32> = model.version.split('.')
+            let parts: Vec<u32> = model
+                .version
+                .split('.')
                 .filter_map(|s| s.parse().ok())
                 .collect();
             let mut v = if parts.len() == 3 {
@@ -430,15 +432,19 @@ impl FederatedModelManager {
 
     /// Compute the diff between two global models.
     pub fn compute_model_diff(v1: &GlobalModel, v2: &GlobalModel) -> ModelDiff {
-        let v1_layers: HashMap<&str, &super::fedavg::ModelWeight> =
-            v1.weights.iter().map(|w| (w.layer_name.as_str(), w)).collect();
-        let v2_layers: HashMap<&str, &super::fedavg::ModelWeight> =
-            v2.weights.iter().map(|w| (w.layer_name.as_str(), w)).collect();
+        let v1_layers: HashMap<&str, &super::fedavg::ModelWeight> = v1
+            .weights
+            .iter()
+            .map(|w| (w.layer_name.as_str(), w))
+            .collect();
+        let v2_layers: HashMap<&str, &super::fedavg::ModelWeight> = v2
+            .weights
+            .iter()
+            .map(|w| (w.layer_name.as_str(), w))
+            .collect();
 
-        let v1_names: std::collections::HashSet<&str> =
-            v1_layers.keys().copied().collect();
-        let v2_names: std::collections::HashSet<&str> =
-            v2_layers.keys().copied().collect();
+        let v1_names: std::collections::HashSet<&str> = v1_layers.keys().copied().collect();
+        let v2_names: std::collections::HashSet<&str> = v2_layers.keys().copied().collect();
 
         let mut added: Vec<String> = v2_names
             .difference(&v1_names)
@@ -463,8 +469,8 @@ impl FederatedModelManager {
                 .collect();
 
             let l2: f64 = changes.iter().map(|d| d * d).sum::<f64>().sqrt();
-            let mean_abs: f64 = changes.iter().map(|d| d.abs()).sum::<f64>()
-                / changes.len().max(1) as f64;
+            let mean_abs: f64 =
+                changes.iter().map(|d| d.abs()).sum::<f64>() / changes.len().max(1) as f64;
             let max_abs: f64 = changes.iter().map(|d| d.abs()).fold(0.0_f64, f64::max);
 
             modified.push(WeightChange {
@@ -545,8 +551,16 @@ impl FederatedModelManager {
         }
 
         let total = (tp + fp + tn + fn_count) as f64;
-        let accuracy = if total > 0.0 { (tp + tn) as f64 / total } else { 0.0 };
-        let precision = if (tp + fp) > 0 { tp as f64 / (tp + fp) as f64 } else { 0.0 };
+        let accuracy = if total > 0.0 {
+            (tp + tn) as f64 / total
+        } else {
+            0.0
+        };
+        let precision = if (tp + fp) > 0 {
+            tp as f64 / (tp + fp) as f64
+        } else {
+            0.0
+        };
         let recall = if (tp + fn_count) > 0 {
             tp as f64 / (tp + fn_count) as f64
         } else {
@@ -620,8 +634,7 @@ impl FederatedModelManager {
         entry.last_seen = now;
         // Compute a simple quality metric: inverse of rounds (earlier peers
         // get higher quality to simulate "foundational" contributions).
-        entry.average_update_quality =
-            1.0 / (entry.rounds_participated as f64).sqrt();
+        entry.average_update_quality = 1.0 / (entry.rounds_participated as f64).sqrt();
     }
 }
 
@@ -633,8 +646,8 @@ impl Default for FederatedModelManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::fedavg::{AggregationMetadata, ModelWeight};
+    use super::*;
 
     fn now_ts() -> u64 {
         SystemTime::now()
@@ -801,7 +814,15 @@ mod tests {
         // Benign patterns (empty or short) * weights → low score → predicted benign.
         let test_data: Vec<(Vec<String>, bool)> = vec![
             // Long pattern with 4 elements → should predict threat.
-            (vec!["longthreat".to_string(), "a".to_string(), "b".to_string(), "c".to_string()], true),
+            (
+                vec![
+                    "longthreat".to_string(),
+                    "a".to_string(),
+                    "b".to_string(),
+                    "c".to_string(),
+                ],
+                true,
+            ),
             // Empty → score 0 → not threat.
             (vec![], false),
         ];
@@ -868,10 +889,10 @@ mod tests {
 
         let lb = mgr.leaderboard();
         assert_eq!(lb.len(), 3); // peer-a, peer-b, peer-c.
-        // peer-a participated in 2 rounds, so quality = 1/sqrt(2) ≈ 0.707.
-        // peer-b participated in 1 round, so quality = 1/sqrt(1) = 1.0.
-        // peer-c participated in 1 round, so quality = 1/sqrt(1) = 1.0.
-        // Top peer(s) should have quality 1.0.
+                                 // peer-a participated in 2 rounds, so quality = 1/sqrt(2) ≈ 0.707.
+                                 // peer-b participated in 1 round, so quality = 1/sqrt(1) = 1.0.
+                                 // peer-c participated in 1 round, so quality = 1/sqrt(1) = 1.0.
+                                 // Top peer(s) should have quality 1.0.
         assert!(lb[0].average_update_quality >= lb[1].average_update_quality);
     }
 
@@ -927,10 +948,7 @@ mod tests {
         for i in 0..4 {
             let mgr_clone = Arc::clone(&mgr);
             handles.push(thread::spawn(move || {
-                let model = make_global_model(
-                    &format!("1.{}.0", i),
-                    vec!["p1", "p2", "p3"],
-                );
+                let model = make_global_model(&format!("1.{}.0", i), vec!["p1", "p2", "p3"]);
                 mgr_clone.save_checkpoint(&model);
             }));
         }

@@ -41,7 +41,11 @@ pub enum EnclaveError {
     /// A measurement is on the deny-list and cannot be registered.
     MeasurementDenied(String),
     /// A measurement failed verification against expected values.
-    MeasurementMismatch { name: String, expected: String, actual: String },
+    MeasurementMismatch {
+        name: String,
+        expected: String,
+        actual: String,
+    },
     /// The attestation quote signature is invalid.
     InvalidQuoteSignature,
     /// The attestation nonce does not match the expected value.
@@ -71,8 +75,16 @@ impl std::fmt::Display for EnclaveError {
             EnclaveError::InvalidState(s) => write!(f, "Invalid enclave state: {}", s),
             EnclaveError::MeasurementNotFound(s) => write!(f, "Measurement not found: {}", s),
             EnclaveError::MeasurementDenied(s) => write!(f, "Measurement denied: {}", s),
-            EnclaveError::MeasurementMismatch { name, expected, actual } => {
-                write!(f, "Measurement mismatch for '{}': expected {}, got {}", name, expected, actual)
+            EnclaveError::MeasurementMismatch {
+                name,
+                expected,
+                actual,
+            } => {
+                write!(
+                    f,
+                    "Measurement mismatch for '{}': expected {}, got {}",
+                    name, expected, actual
+                )
             }
             EnclaveError::InvalidQuoteSignature => write!(f, "Invalid quote signature"),
             EnclaveError::NonceMismatch => write!(f, "Nonce mismatch"),
@@ -251,7 +263,11 @@ pub fn hkdf_expand(prk: &[u8], info: &[u8], length: usize) -> Result<Vec<u8>, En
     }
 
     let n = ((length as f64) / (hash_len as f64)).ceil() as usize;
-    let prk_bytes = if prk.len() == 32 { prk.to_vec() } else { hex_to_bytes(&sha256_digest(prk)) };
+    let prk_bytes = if prk.len() == 32 {
+        prk.to_vec()
+    } else {
+        hex_to_bytes(&sha256_digest(prk))
+    };
 
     let mut okm = Vec::with_capacity(n * hash_len);
     let mut prev = Vec::new();
@@ -722,10 +738,7 @@ impl MeasurementRegistry {
 
     /// Verifies a batch of measurements. Returns the first mismatch found, or Ok(())
     /// if all measurements match.
-    pub fn verify_all(
-        &self,
-        measurements: &[(String, HashDigest)],
-    ) -> Result<(), EnclaveError> {
+    pub fn verify_all(&self, measurements: &[(String, HashDigest)]) -> Result<(), EnclaveError> {
         for (name, hash) in measurements {
             self.verify_measurement(name, hash)?;
         }
@@ -837,7 +850,10 @@ pub struct DerivedKey {
 impl DerivedKey {
     /// Returns the hex-encoded representation of the key material.
     pub fn hex_key(&self) -> String {
-        self.key_material.iter().map(|b| format!("{:02x}", b)).collect()
+        self.key_material
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect()
     }
 }
 
@@ -894,8 +910,11 @@ impl KeyDerivationManager {
         let key_material = hkdf(&identity_bytes, &ikm, info.as_bytes(), key_length)?;
 
         let key_id = sha256_digest(
-            format!("{}-{}-{}-{}", purpose, attestation_generation, self.derivation_counter, key_length)
-                .as_bytes(),
+            format!(
+                "{}-{}-{}-{}",
+                purpose, attestation_generation, self.derivation_counter, key_length
+            )
+            .as_bytes(),
         );
 
         let derived_key = DerivedKey {
@@ -923,10 +942,9 @@ impl KeyDerivationManager {
         attestation_generation: u64,
         key_length: usize,
     ) -> Result<DerivedKey, EnclaveError> {
-        let old_key = self
-            .keys
-            .get(old_key_id)
-            .ok_or_else(|| EnclaveError::SealedObjectNotFound(format!("Key '{}' not found", old_key_id)))?;
+        let old_key = self.keys.get(old_key_id).ok_or_else(|| {
+            EnclaveError::SealedObjectNotFound(format!("Key '{}' not found", old_key_id))
+        })?;
 
         if !old_key.is_active {
             return Err(EnclaveError::RotationNotAllowed(format!(
@@ -1140,7 +1158,10 @@ impl SecureEnclave {
     /// Performs a measured boot by registering a set of initial measurements
     /// and transitioning the enclave to the Active state.
     /// Transitions from Initialized → Active.
-    pub fn measured_boot(&mut self, measurements: Vec<MeasurementEntry>) -> Result<(), EnclaveError> {
+    pub fn measured_boot(
+        &mut self,
+        measurements: Vec<MeasurementEntry>,
+    ) -> Result<(), EnclaveError> {
         self.require_state(EnclaveState::Initialized)?;
         self.require_attestation_key()?;
 
@@ -1209,10 +1230,7 @@ impl SecureEnclave {
 
         // Simulate encryption: XOR with derived seal key
         let seal_ikm = format!("seal-key-{}-{}", self.enclave_id, self.seal_version_counter);
-        let seal_key_hex = hkdf_extract(
-            &hex_to_bytes(&att_key.private_key),
-            seal_ikm.as_bytes(),
-        );
+        let seal_key_hex = hkdf_extract(&hex_to_bytes(&att_key.private_key), seal_ikm.as_bytes());
         let seal_key_bytes = hex_to_bytes(&seal_key_hex);
         let mut ciphertext = Vec::with_capacity(plaintext.len());
         for (i, &byte) in plaintext.iter().enumerate() {
@@ -1269,10 +1287,7 @@ impl SecureEnclave {
         // Verify authentication tag.
         let att_key = self.attestation_key.as_ref().unwrap();
         let seal_ikm = format!("seal-key-{}-{}", self.enclave_id, sealed.version - 1);
-        let seal_key_hex = hkdf_extract(
-            &hex_to_bytes(&att_key.private_key),
-            seal_ikm.as_bytes(),
-        );
+        let seal_key_hex = hkdf_extract(&hex_to_bytes(&att_key.private_key), seal_ikm.as_bytes());
         let seal_key_bytes = hex_to_bytes(&seal_key_hex);
 
         let mut auth_input = Vec::new();
@@ -1297,7 +1312,10 @@ impl SecureEnclave {
 
     /// Generates an enclave quote in response to an attestation challenge.
     /// The quote includes all current measurements and is signed with the attestation key.
-    pub fn generate_quote(&mut self, nonce: AttestationNonce) -> Result<EnclaveQuote, EnclaveError> {
+    pub fn generate_quote(
+        &mut self,
+        nonce: AttestationNonce,
+    ) -> Result<EnclaveQuote, EnclaveError> {
         self.require_operational()?;
         self.require_attestation_key()?;
 
@@ -1441,7 +1459,11 @@ impl SecureEnclave {
     pub fn generate_nonce(&self) -> AttestationNonce {
         // In a real TEE, this would use a hardware RNG.
         let mut bytes = Vec::with_capacity(32);
-        let seed = format!("{}-nonce-{}", self.enclave_id, Utc::now().timestamp_millis());
+        let seed = format!(
+            "{}-nonce-{}",
+            self.enclave_id,
+            Utc::now().timestamp_millis()
+        );
         let hash = sha256_digest(seed.as_bytes());
         bytes.extend_from_slice(&hex_to_bytes(&hash));
         // Pad to ensure at least 32 bytes
@@ -1565,8 +1587,13 @@ impl SecureEnclave {
         let base_overhead: u64 = 4096;
         let sealed_overhead: u64 = self.sealed_objects.len() as u64 * 512;
         let measurement_overhead: u64 = self.measurement_registry.count() as u64 * 128;
-        let key_overhead: u64 = self.key_manager.as_ref().map(|km| km.key_count() as u64 * 256).unwrap_or(0);
-        self.memory_usage_bytes = base_overhead + sealed_overhead + measurement_overhead + key_overhead;
+        let key_overhead: u64 = self
+            .key_manager
+            .as_ref()
+            .map(|km| km.key_count() as u64 * 256)
+            .unwrap_or(0);
+        self.memory_usage_bytes =
+            base_overhead + sealed_overhead + measurement_overhead + key_overhead;
     }
 }
 
@@ -1681,7 +1708,11 @@ mod tests {
         assert_eq!(enclave.state(), EnclaveState::Initialized);
 
         enclave
-            .measured_boot(vec![MeasurementEntry::new("code", MeasurementType::Code, sha256_digest(b"code"))])
+            .measured_boot(vec![MeasurementEntry::new(
+                "code",
+                MeasurementType::Code,
+                sha256_digest(b"code"),
+            )])
             .unwrap();
         assert_eq!(enclave.state(), EnclaveState::Active);
     }
@@ -1737,7 +1768,8 @@ mod tests {
     #[test]
     fn test_measurement_register_and_retrieve() {
         let mut registry = MeasurementRegistry::new();
-        let entry = MeasurementEntry::new("boot-code", MeasurementType::Code, sha256_digest(b"code"));
+        let entry =
+            MeasurementEntry::new("boot-code", MeasurementType::Code, sha256_digest(b"code"));
         registry.register(entry).unwrap();
 
         let retrieved = registry.get("boot-code").unwrap();
@@ -1750,7 +1782,11 @@ mod tests {
         let mut registry = MeasurementRegistry::new();
         let hash = sha256_digest(b"expected-code");
         registry
-            .register(MeasurementEntry::new("code", MeasurementType::Code, hash.clone()))
+            .register(MeasurementEntry::new(
+                "code",
+                MeasurementType::Code,
+                hash.clone(),
+            ))
             .unwrap();
 
         assert!(registry.verify_measurement("code", &hash).is_ok());
@@ -1760,11 +1796,18 @@ mod tests {
     fn test_measurement_verify_failure() {
         let mut registry = MeasurementRegistry::new();
         registry
-            .register(MeasurementEntry::new("code", MeasurementType::Code, sha256_digest(b"expected")))
+            .register(MeasurementEntry::new(
+                "code",
+                MeasurementType::Code,
+                sha256_digest(b"expected"),
+            ))
             .unwrap();
 
         let result = registry.verify_measurement("code", &sha256_digest(b"tampered"));
-        assert!(matches!(result, Err(EnclaveError::MeasurementMismatch { .. })));
+        assert!(matches!(
+            result,
+            Err(EnclaveError::MeasurementMismatch { .. })
+        ));
     }
 
     #[test]
@@ -1772,7 +1815,11 @@ mod tests {
         let mut registry = MeasurementRegistry::with_policy(MeasurementPolicy::AllowList);
         registry.add_to_allow_list("allowed-code");
 
-        let entry = MeasurementEntry::new("allowed-code", MeasurementType::Code, sha256_digest(b"code"));
+        let entry = MeasurementEntry::new(
+            "allowed-code",
+            MeasurementType::Code,
+            sha256_digest(b"code"),
+        );
         assert!(registry.register(entry).is_ok());
 
         let blocked = MeasurementEntry::new("unknown", MeasurementType::Code, sha256_digest(b"x"));
@@ -1787,7 +1834,8 @@ mod tests {
         let mut registry = MeasurementRegistry::with_policy(MeasurementPolicy::DenyList);
         registry.add_to_deny_list("malicious-code");
 
-        let blocked = MeasurementEntry::new("malicious-code", MeasurementType::Code, sha256_digest(b"x"));
+        let blocked =
+            MeasurementEntry::new("malicious-code", MeasurementType::Code, sha256_digest(b"x"));
         assert!(matches!(
             registry.register(blocked),
             Err(EnclaveError::MeasurementDenied(_))
@@ -1800,12 +1848,32 @@ mod tests {
     #[test]
     fn test_measurement_composite_hash() {
         let mut reg1 = MeasurementRegistry::new();
-        reg1.register(MeasurementEntry::new("a", MeasurementType::Code, sha256_digest(b"a"))).unwrap();
-        reg1.register(MeasurementEntry::new("b", MeasurementType::Data, sha256_digest(b"b"))).unwrap();
+        reg1.register(MeasurementEntry::new(
+            "a",
+            MeasurementType::Code,
+            sha256_digest(b"a"),
+        ))
+        .unwrap();
+        reg1.register(MeasurementEntry::new(
+            "b",
+            MeasurementType::Data,
+            sha256_digest(b"b"),
+        ))
+        .unwrap();
 
         let mut reg2 = MeasurementRegistry::new();
-        reg2.register(MeasurementEntry::new("a", MeasurementType::Code, sha256_digest(b"a"))).unwrap();
-        reg2.register(MeasurementEntry::new("b", MeasurementType::Data, sha256_digest(b"b"))).unwrap();
+        reg2.register(MeasurementEntry::new(
+            "a",
+            MeasurementType::Code,
+            sha256_digest(b"a"),
+        ))
+        .unwrap();
+        reg2.register(MeasurementEntry::new(
+            "b",
+            MeasurementType::Data,
+            sha256_digest(b"b"),
+        ))
+        .unwrap();
 
         assert_eq!(reg1.composite_hash(), reg2.composite_hash());
     }
@@ -1816,17 +1884,31 @@ mod tests {
         let h1 = sha256_digest(b"code1");
         let h2 = sha256_digest(b"code2");
         registry
-            .register(MeasurementEntry::new("mod-a", MeasurementType::Code, h1.clone()))
+            .register(MeasurementEntry::new(
+                "mod-a",
+                MeasurementType::Code,
+                h1.clone(),
+            ))
             .unwrap();
         registry
-            .register(MeasurementEntry::new("mod-b", MeasurementType::Code, h2.clone()))
+            .register(MeasurementEntry::new(
+                "mod-b",
+                MeasurementType::Code,
+                h2.clone(),
+            ))
             .unwrap();
 
-        let batch = vec![("mod-a".to_string(), h1.clone()), ("mod-b".to_string(), h2.clone())];
+        let batch = vec![
+            ("mod-a".to_string(), h1.clone()),
+            ("mod-b".to_string(), h2.clone()),
+        ];
         assert!(registry.verify_all(&batch).is_ok());
 
         let bad_batch = vec![("mod-a".to_string(), sha256_digest(b"wrong"))];
-        assert!(matches!(registry.verify_all(&bad_batch), Err(EnclaveError::MeasurementMismatch { .. })));
+        assert!(matches!(
+            registry.verify_all(&bad_batch),
+            Err(EnclaveError::MeasurementMismatch { .. })
+        ));
     }
 
     // ── Sealing / Unsealing Tests ──
@@ -1925,7 +2007,8 @@ mod tests {
         let wrong_nonce_hash = sha256_digest(b"totally wrong nonce value");
 
         let quote = prover.generate_quote(nonce).unwrap();
-        let result = verifier.verify_quote(&quote, &wrong_nonce_hash, prover.measurement_registry());
+        let result =
+            verifier.verify_quote(&quote, &wrong_nonce_hash, prover.measurement_registry());
         assert!(!result.is_valid);
     }
 
@@ -2059,7 +2142,11 @@ mod tests {
         assert!(result.is_valid);
 
         for check in &result.checks {
-            assert!(check.passed, "Check '{}' failed: {}", check.check_name, check.detail);
+            assert!(
+                check.passed,
+                "Check '{}' failed: {}",
+                check.check_name, check.detail
+            );
         }
     }
 

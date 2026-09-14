@@ -225,8 +225,14 @@ impl Evidence {
         observed: serde_json::Value,
     ) -> Self {
         Self::new(
-            run_id, check_name, phase, subsystem, Verdict::Pass,
-            expected, observed, "Observed matches expected.",
+            run_id,
+            check_name,
+            phase,
+            subsystem,
+            Verdict::Pass,
+            expected,
+            observed,
+            "Observed matches expected.",
         )
     }
 
@@ -242,8 +248,14 @@ impl Evidence {
         explanation: &str,
     ) -> Self {
         let mut ev = Self::new(
-            run_id, check_name, phase, subsystem, Verdict::Fail,
-            expected, observed, explanation,
+            run_id,
+            check_name,
+            phase,
+            subsystem,
+            Verdict::Fail,
+            expected,
+            observed,
+            explanation,
         );
         ev.severity = severity;
         ev
@@ -363,9 +375,18 @@ impl ReplayData {
 /// Collect current environment metadata.
 fn collect_environment() -> HashMap<String, String> {
     let mut env = HashMap::new();
-    env.insert("rust_version".to_string(), env!("CARGO_PKG_RUST_VERSION").to_string());
-    env.insert("crate_version".to_string(), env!("CARGO_PKG_VERSION").to_string());
-    env.insert("target_arch".to_string(), std::env::consts::ARCH.to_string());
+    env.insert(
+        "rust_version".to_string(),
+        env!("CARGO_PKG_RUST_VERSION").to_string(),
+    );
+    env.insert(
+        "crate_version".to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+    );
+    env.insert(
+        "target_arch".to_string(),
+        std::env::consts::ARCH.to_string(),
+    );
     env.insert("target_os".to_string(), std::env::consts::OS.to_string());
     if let Ok(v) = std::env::var("CHAKRAVYUH_PROFILE") {
         env.insert("profile".to_string(), v);
@@ -380,7 +401,10 @@ mod tests {
     #[test]
     fn evidence_new_and_integrity() {
         let ev = Evidence::new(
-            "run-1", "check-shield-waf", "D1", "shield",
+            "run-1",
+            "check-shield-waf",
+            "D1",
+            "shield",
             Verdict::Pass,
             serde_json::json!({"blocked": true}),
             serde_json::json!({"blocked": true}),
@@ -395,7 +419,10 @@ mod tests {
     #[test]
     fn evidence_tamper_detection() {
         let mut ev = Evidence::new(
-            "run-1", "check-policy", "D2", "ananta.sentinel",
+            "run-1",
+            "check-policy",
+            "D2",
+            "ananta.sentinel",
             Verdict::Pass,
             serde_json::json!({"drift": 0.0}),
             serde_json::json!({"drift": 0.01}),
@@ -409,7 +436,10 @@ mod tests {
     #[test]
     fn evidence_builder_pattern() {
         let ev = Evidence::fail(
-            "run-2", "jailbreak-detection", "D1", "threat",
+            "run-2",
+            "jailbreak-detection",
+            "D1",
+            "threat",
             Severity::Critical,
             serde_json::json!({"blocked": true}),
             serde_json::json!({"blocked": false}),
@@ -422,7 +452,10 @@ mod tests {
 
         assert_eq!(ev.rings.len(), 2);
         assert_eq!(ev.attack_category.as_deref(), Some("jailbreak"));
-        assert_eq!(ev.mutation_applied.as_deref(), Some("unicode_normalization"));
+        assert_eq!(
+            ev.mutation_applied.as_deref(),
+            Some("unicode_normalization")
+        );
         assert_eq!(ev.duration_us, 142);
     }
 
@@ -453,7 +486,9 @@ mod tests {
     #[test]
     fn replay_data_creation() {
         let replay = ReplayData::new(
-            "run-5", "D1", "SQLi attack with base64 encoding",
+            "run-5",
+            "D1",
+            "SQLi attack with base64 encoding",
             serde_json::json!({"payload": "c2VsZWN0ICogZnJvbSB1c2Vycw=="}),
             serde_json::json!({"waf_enabled": true, "mode": "strict"}),
             Verdict::Fail,
@@ -467,10 +502,14 @@ mod tests {
     #[test]
     fn evidence_serialization_roundtrip() {
         let ev = Evidence::pass(
-            "run-1", "test", "D0", "verification",
+            "run-1",
+            "test",
+            "D0",
+            "verification",
             serde_json::json!(true),
             serde_json::json!(true),
-        ).with_tags(vec!["unit".to_string()]);
+        )
+        .with_tags(vec!["unit".to_string()]);
 
         let json = serde_json::to_string(&ev).unwrap();
         let restored: Evidence = serde_json::from_str(&json).unwrap();

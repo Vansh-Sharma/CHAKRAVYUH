@@ -17,14 +17,27 @@ pub struct BehaviorMonitorConfig {
     pub baseline_actions: u32,
 }
 
-fn default_enabled() -> bool { true }
-fn default_max_agents() -> usize { 5_000 }
-fn default_anomaly_threshold() -> f64 { 3.0 }
-fn default_baseline_actions() -> u32 { 10 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_max_agents() -> usize {
+    5_000
+}
+fn default_anomaly_threshold() -> f64 {
+    3.0
+}
+fn default_baseline_actions() -> u32 {
+    10
+}
 
 impl Default for BehaviorMonitorConfig {
     fn default() -> Self {
-        Self { enabled: default_enabled(), max_agents: default_max_agents(), anomaly_threshold: default_anomaly_threshold(), baseline_actions: default_baseline_actions() }
+        Self {
+            enabled: default_enabled(),
+            max_agents: default_max_agents(),
+            anomaly_threshold: default_anomaly_threshold(),
+            baseline_actions: default_baseline_actions(),
+        }
     }
 }
 
@@ -52,12 +65,27 @@ pub struct BehaviorMonitor {
 
 impl BehaviorMonitor {
     pub fn new(config: &BehaviorMonitorConfig) -> Self {
-        Self { config: config.clone(), state: Mutex::new(HashMap::new()) }
+        Self {
+            config: config.clone(),
+            state: Mutex::new(HashMap::new()),
+        }
     }
 
-    pub fn evaluate(&self, agent_id: &str, _action: &str, tools: &[String], _source_ip: &str) -> BehaviorAnalysis {
+    pub fn evaluate(
+        &self,
+        agent_id: &str,
+        _action: &str,
+        tools: &[String],
+        _source_ip: &str,
+    ) -> BehaviorAnalysis {
         if !self.config.enabled {
-            return BehaviorAnalysis { risk_score: 0.0, action_count: 0, tool_frequency: HashMap::new(), summary: "behavior monitor disabled".into(), anomaly_detected: false };
+            return BehaviorAnalysis {
+                risk_score: 0.0,
+                action_count: 0,
+                tool_frequency: HashMap::new(),
+                summary: "behavior monitor disabled".into(),
+                anomaly_detected: false,
+            };
         }
 
         let mut state = self.state.lock().unwrap();
@@ -65,13 +93,19 @@ impl BehaviorMonitor {
         // Evict if over limit.
         if state.len() >= self.config.max_agents && !state.contains_key(agent_id) {
             let oldest = state.keys().next().cloned();
-            if let Some(k) = oldest { state.remove(&k); }
+            if let Some(k) = oldest {
+                state.remove(&k);
+            }
         }
 
-        let behavior = state.entry(agent_id.to_string()).or_insert_with(|| AgentBehavior {
-            action_count: 0, tool_usage: HashMap::new(), unique_tools: std::collections::HashSet::new(),
-            last_action: std::time::Instant::now(),
-        });
+        let behavior = state
+            .entry(agent_id.to_string())
+            .or_insert_with(|| AgentBehavior {
+                action_count: 0,
+                tool_usage: HashMap::new(),
+                unique_tools: std::collections::HashSet::new(),
+                last_action: std::time::Instant::now(),
+            });
 
         behavior.action_count += 1;
         for tool in tools {
@@ -108,13 +142,28 @@ impl BehaviorMonitor {
 
         let anomaly_detected = risk_score > self.config.anomaly_threshold;
         let summary = if anomaly_detected {
-            format!("anomalous behavior: {} actions, {} unique tools (risk={:.1})", action_count, behavior.unique_tools.len(), risk_score)
+            format!(
+                "anomalous behavior: {} actions, {} unique tools (risk={:.1})",
+                action_count,
+                behavior.unique_tools.len(),
+                risk_score
+            )
         } else {
-            format!("normal behavior: {} actions, {} unique tools", action_count, behavior.unique_tools.len())
+            format!(
+                "normal behavior: {} actions, {} unique tools",
+                action_count,
+                behavior.unique_tools.len()
+            )
         };
 
         let tool_frequency = behavior.tool_usage.clone();
-        BehaviorAnalysis { risk_score: risk_score.clamp(0.0, 10.0), action_count, tool_frequency, summary, anomaly_detected }
+        BehaviorAnalysis {
+            risk_score: risk_score.clamp(0.0, 10.0),
+            action_count,
+            tool_frequency,
+            summary,
+            anomaly_detected,
+        }
     }
 }
 
@@ -122,14 +171,23 @@ impl BehaviorMonitor {
 mod tests {
     use super::*;
 
-    fn default_monitor() -> BehaviorMonitor { BehaviorMonitor::new(&BehaviorMonitorConfig::default()) }
+    fn default_monitor() -> BehaviorMonitor {
+        BehaviorMonitor::new(&BehaviorMonitorConfig::default())
+    }
 
-    fn make_tools(names: &[&str]) -> Vec<String> { names.iter().map(|s| s.to_string()).collect() }
+    fn make_tools(names: &[&str]) -> Vec<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
 
     #[test]
     fn normal_behavior_low_risk() {
         let m = default_monitor();
-        let a = m.evaluate("agent-1", "read_file", &make_tools(&["file_read"]), "1.2.3.4");
+        let a = m.evaluate(
+            "agent-1",
+            "read_file",
+            &make_tools(&["file_read"]),
+            "1.2.3.4",
+        );
         assert!(a.risk_score < 1.0);
     }
 
@@ -165,7 +223,10 @@ mod tests {
 
     #[test]
     fn disabled_no_tracking() {
-        let m = BehaviorMonitor::new(&BehaviorMonitorConfig { enabled: false, ..Default::default() });
+        let m = BehaviorMonitor::new(&BehaviorMonitorConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let a = m.evaluate("agent-1", "action", &[], "1.2.3.4");
         assert_eq!(a.risk_score, 0.0);
     }

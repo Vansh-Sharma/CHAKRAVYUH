@@ -11,6 +11,6 @@ pub mod benchmarks;
 pub mod comparison;
 pub mod store;
 
-pub use benchmarks::{BenchmarkDef, BenchmarkSuite, BenchmarkResult, BenchmarkCategory};
+pub use benchmarks::{BenchmarkCategory, BenchmarkDef, BenchmarkResult, BenchmarkSuite};
 pub use comparison::{ComparisonReport, ComparisonSnapshot, Delta};
 pub use store::{BenchmarkStore, Query};

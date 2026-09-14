@@ -546,10 +546,7 @@ impl AlertingEngine {
 
     /// Get all registered rules.
     pub fn rules(&self) -> Vec<AlertRule> {
-        self.rules
-            .lock()
-            .map(|r| r.clone())
-            .unwrap_or_default()
+        self.rules.lock().map(|r| r.clone()).unwrap_or_default()
     }
 
     /// Evaluate all rules against the given metrics snapshot.
@@ -576,10 +573,7 @@ impl AlertingEngine {
                         let is_anomalous = detector.is_anomalous(value);
                         if is_anomalous && rule.enabled {
                             let mut metric_values = snapshot.values.clone();
-                            metric_values.insert(
-                                format!("{}_z_score", metric_name),
-                                z,
-                            );
+                            metric_values.insert(format!("{}_z_score", metric_name), z);
                             let message = rule.render_message(&metric_values);
                             let alert = Alert::new(
                                 &rule.id,
@@ -627,13 +621,8 @@ impl AlertingEngine {
 
                     if !already_active {
                         let message = rule.render_message(&eval_values);
-                        let alert = Alert::new(
-                            &rule.id,
-                            &rule.name,
-                            rule.severity,
-                            &message,
-                            eval_values,
-                        );
+                        let alert =
+                            Alert::new(&rule.id, &rule.name, rule.severity, &message, eval_values);
                         new_alerts.push(alert);
                     }
                 }
@@ -754,10 +743,10 @@ impl AlertingEngine {
 
     /// Get the anomaly detector for a specific metric.
     pub fn anomaly_detector(&self, metric_name: &str) -> Option<(f64, f64, f64)> {
-        self.anomaly_detectors
-            .lock()
-            .ok()
-            .and_then(|dets| dets.get(metric_name).map(|d| (d.mean(), d.std_dev(), d.count() as f64)))
+        self.anomaly_detectors.lock().ok().and_then(|dets| {
+            dets.get(metric_name)
+                .map(|d| (d.mean(), d.std_dev(), d.count() as f64))
+        })
     }
 }
 
@@ -795,7 +784,8 @@ impl DefaultAlertRules {
                     threshold: 0.05,
                 },
                 severity: AlertSeverity::Critical,
-                message_template: "Error rate is {error_rate:.2%}, exceeding 5% threshold".to_string(),
+                message_template: "Error rate is {error_rate:.2%}, exceeding 5% threshold"
+                    .to_string(),
                 enabled: true,
             },
             AlertRule {
@@ -807,7 +797,9 @@ impl DefaultAlertRules {
                     threshold: 0.20,
                 },
                 severity: AlertSeverity::Warning,
-                message_template: "False positive rate is {false_positive_rate:.2%}, exceeding 20% threshold".to_string(),
+                message_template:
+                    "False positive rate is {false_positive_rate:.2%}, exceeding 20% threshold"
+                        .to_string(),
                 enabled: true,
             },
             AlertRule {
@@ -819,7 +811,8 @@ impl DefaultAlertRules {
                     threshold: 100.0,
                 },
                 severity: AlertSeverity::Critical,
-                message_template: "Block rate is {block_rate:.1f}/sec, exceeding 100/sec threshold".to_string(),
+                message_template: "Block rate is {block_rate:.1f}/sec, exceeding 100/sec threshold"
+                    .to_string(),
                 enabled: true,
             },
             AlertRule {
@@ -830,7 +823,9 @@ impl DefaultAlertRules {
                     z_score_threshold: 3.0,
                 },
                 severity: AlertSeverity::Warning,
-                message_template: "Ring latency anomaly detected: z-score={avg_latency_ms_z_score:.2f}".to_string(),
+                message_template:
+                    "Ring latency anomaly detected: z-score={avg_latency_ms_z_score:.2f}"
+                        .to_string(),
                 enabled: true,
             },
             AlertRule {
@@ -842,7 +837,8 @@ impl DefaultAlertRules {
                     threshold: 0.30,
                 },
                 severity: AlertSeverity::Warning,
-                message_template: "Deny rate is {deny_rate:.2%}, exceeding 30% threshold".to_string(),
+                message_template: "Deny rate is {deny_rate:.2%}, exceeding 30% threshold"
+                    .to_string(),
                 enabled: true,
             },
             AlertRule {
@@ -853,7 +849,9 @@ impl DefaultAlertRules {
                     z_score_threshold: 3.0,
                 },
                 severity: AlertSeverity::Critical,
-                message_template: "IP block rate anomaly detected: z-score={ip_block_rate_z_score:.2f}".to_string(),
+                message_template:
+                    "IP block rate anomaly detected: z-score={ip_block_rate_z_score:.2f}"
+                        .to_string(),
                 enabled: true,
             },
         ]
@@ -1140,13 +1138,11 @@ mod tests {
         let cond = AlertCondition::Composite {
             rules: vec![
                 AlertCondition::Composite {
-                    rules: vec![
-                        AlertCondition::Threshold {
-                            metric_name: "a".to_string(),
-                            operator: ThresholdOperator::Gt,
-                            threshold: 0.0,
-                        },
-                    ],
+                    rules: vec![AlertCondition::Threshold {
+                        metric_name: "a".to_string(),
+                        operator: ThresholdOperator::Gt,
+                        threshold: 0.0,
+                    }],
                     logic: CompositeLogic::Or,
                 },
                 AlertCondition::Threshold {
@@ -1244,7 +1240,13 @@ mod tests {
 
     #[test]
     fn alert_serde_roundtrip() {
-        let alert = Alert::new("r1", "Test Alert", AlertSeverity::Critical, "test msg", HashMap::new());
+        let alert = Alert::new(
+            "r1",
+            "Test Alert",
+            AlertSeverity::Critical,
+            "test msg",
+            HashMap::new(),
+        );
         let json = serde_json::to_string(&alert).expect("serialize");
         let restored: Alert = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.rule_id, "r1");
@@ -1488,11 +1490,19 @@ mod tests {
         // z-score = (30 - 10) / sd, where sd is very small for constant input
         // Actually sd=0 so z-score=0, let's add some variance
         let mut det2 = AnomalyDetector::sensitive();
-        for v in [9.0, 10.0, 11.0, 9.5, 10.5, 9.0, 10.0, 11.0].iter().cycle().take(100) {
+        for v in [9.0, 10.0, 11.0, 9.5, 10.5, 9.0, 10.0, 11.0]
+            .iter()
+            .cycle()
+            .take(100)
+        {
             det2.update(*v);
         }
         let z = det2.z_score(20.0);
-        assert!(z > 2.0, "sensitive z-score should detect anomaly, got {}", z);
+        assert!(
+            z > 2.0,
+            "sensitive z-score should detect anomaly, got {}",
+            z
+        );
     }
 
     // ── MetricsSnapshot tests ──

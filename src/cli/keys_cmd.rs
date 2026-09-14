@@ -7,11 +7,10 @@
 //   - revoke    — revoke an API key (requires running instance)
 //   - info      — decode and display key metadata
 
-
 use clap::Subcommand;
 
 use crate::cli::utils::{self, Color, ExitCode, StatusIndicator};
-use crate::infra::api_keys::{ApiKeyManager, Permission, ApiKeyConfig};
+use crate::infra::api_keys::{ApiKeyConfig, ApiKeyManager, Permission};
 
 #[derive(Subcommand, Debug)]
 pub enum KeysCommand {
@@ -84,21 +83,33 @@ pub enum KeysCommand {
 /// Execute a keys subcommand. Returns the exit code.
 pub async fn run(cmd: KeysCommand) -> ExitCode {
     match cmd {
-        KeysCommand::Generate { name, description, permissions, secret, expires_days, format } => {
-            cmd_generate(&name, description.as_deref(), &permissions, secret.as_deref(), expires_days, &format)
-        }
-        KeysCommand::Verify { key, secret, request_body } => {
-            cmd_verify(&key, secret.as_deref(), request_body.as_deref())
-        }
-        KeysCommand::Info { key, format } => {
-            cmd_info(&key, &format)
-        }
-        KeysCommand::List { endpoint, api_key } => {
-            cmd_list(&endpoint, api_key.as_deref()).await
-        }
-        KeysCommand::Revoke { key_id, endpoint, api_key } => {
-            cmd_revoke(&key_id, &endpoint, api_key.as_deref()).await
-        }
+        KeysCommand::Generate {
+            name,
+            description,
+            permissions,
+            secret,
+            expires_days,
+            format,
+        } => cmd_generate(
+            &name,
+            description.as_deref(),
+            &permissions,
+            secret.as_deref(),
+            expires_days,
+            &format,
+        ),
+        KeysCommand::Verify {
+            key,
+            secret,
+            request_body,
+        } => cmd_verify(&key, secret.as_deref(), request_body.as_deref()),
+        KeysCommand::Info { key, format } => cmd_info(&key, &format),
+        KeysCommand::List { endpoint, api_key } => cmd_list(&endpoint, api_key.as_deref()).await,
+        KeysCommand::Revoke {
+            key_id,
+            endpoint,
+            api_key,
+        } => cmd_revoke(&key_id, &endpoint, api_key.as_deref()).await,
     }
 }
 
@@ -118,14 +129,19 @@ fn cmd_generate(
         .unwrap_or_default();
 
     if master_secret.is_empty() {
-        eprintln!("{} Master secret required. Use --secret or CHAKRAVYUH_MASTER_SECRET env var",
-            StatusIndicator::fail(""));
+        eprintln!(
+            "{} Master secret required. Use --secret or CHAKRAVYUH_MASTER_SECRET env var",
+            StatusIndicator::fail("")
+        );
         return ExitCode::ConfigError;
     }
 
     let permissions = parse_permissions(permissions_str);
     if permissions.is_empty() {
-        eprintln!("{} No valid permissions specified", StatusIndicator::fail(""));
+        eprintln!(
+            "{} No valid permissions specified",
+            StatusIndicator::fail("")
+        );
         return ExitCode::ConfigError;
     }
 
@@ -174,15 +190,28 @@ fn cmd_generate(
         utils::kv("Key ID", &Color::cyan(&key_id));
         utils::kv("Name", name);
         utils::kv("Description", &description);
-        utils::kv("Permissions", &permissions.iter().map(|p| format!("{:?}", p)).collect::<Vec<_>>().join(", "));
+        utils::kv(
+            "Permissions",
+            &permissions
+                .iter()
+                .map(|p| format!("{:?}", p))
+                .collect::<Vec<_>>()
+                .join(", "),
+        );
         utils::kv("Expires At", expires_at.as_deref().unwrap_or("never"));
         println!();
         // Print the secret key with a warning.
-        println!("  {}", Color::yellow("Save this secret key now. It cannot be retrieved again:"));
+        println!(
+            "  {}",
+            Color::yellow("Save this secret key now. It cannot be retrieved again:")
+        );
         println!("  {}", Color::bold(&secret_key));
         println!();
         println!("  {}", Color::dim("To authenticate, send:"));
-        println!("  {}", Color::dim(&format!("  Authorization: Bearer {}:{{signature}}", key_id)));
+        println!(
+            "  {}",
+            Color::dim(&format!("  Authorization: Bearer {}:{{signature}}", key_id))
+        );
     }
 
     ExitCode::Ok
@@ -221,7 +250,10 @@ fn cmd_verify(key: &str, secret: Option<&str>, _request_body: Option<&str>) -> E
     };
 
     utils::kv("Key ID", &key_id);
-    utils::kv("Has Signature", if signature.is_empty() { "no" } else { "yes" });
+    utils::kv(
+        "Has Signature",
+        if signature.is_empty() { "no" } else { "yes" },
+    );
 
     // Attempt to look up the key.
     match manager.list_keys().iter().find(|k| k.key_id == key_id) {
@@ -233,8 +265,11 @@ fn cmd_verify(key: &str, secret: Option<&str>, _request_body: Option<&str>) -> E
         }
         None => {
             utils::kv("Status", &Color::red("not found"));
-            println!("\n{} Key '{}' is not registered in the manager",
-                StatusIndicator::fail(""), key_id);
+            println!(
+                "\n{} Key '{}' is not registered in the manager",
+                StatusIndicator::fail(""),
+                key_id
+            );
             return ExitCode::GeneralError;
         }
     }
@@ -291,7 +326,11 @@ async fn cmd_list(endpoint: &str, api_key: Option<&str>) -> ExitCode {
             }
         }
         Ok(resp) => {
-            eprintln!("{} Server returned {}", StatusIndicator::fail(""), resp.status());
+            eprintln!(
+                "{} Server returned {}",
+                StatusIndicator::fail(""),
+                resp.status()
+            );
             return ExitCode::ConnectionError;
         }
         Err(e) => {
@@ -317,11 +356,19 @@ async fn cmd_revoke(key_id: &str, endpoint: &str, api_key: Option<&str>) -> Exit
 
     match req.send().await {
         Ok(resp) if resp.status().is_success() => {
-            println!("{} Key '{}' revoked successfully", StatusIndicator::ok(""), key_id);
+            println!(
+                "{} Key '{}' revoked successfully",
+                StatusIndicator::ok(""),
+                key_id
+            );
             ExitCode::Ok
         }
         Ok(resp) => {
-            eprintln!("{} Server returned {}", StatusIndicator::fail(""), resp.status());
+            eprintln!(
+                "{} Server returned {}",
+                StatusIndicator::fail(""),
+                resp.status()
+            );
             ExitCode::ConnectionError
         }
         Err(e) => {
@@ -352,13 +399,21 @@ fn parse_permissions(s: &str) -> Vec<Permission> {
 
 /// Infer the type of key from its ID prefix.
 fn infer_key_prefix(key_id: &str) -> &'static str {
-    if key_id.starts_with("ak_live_") { "live" }
-    else if key_id.starts_with("ak_test_") { "test" }
-    else if key_id.starts_with("sk-admin-") { "admin (Keshav)" }
-    else if key_id.starts_with("sk-op-") { "operator (Keshav)" }
-    else if key_id.starts_with("sk-audit-") { "auditor (Keshav)" }
-    else if key_id.starts_with("sk-svc-") { "service (Keshav)" }
-    else { "unknown" }
+    if key_id.starts_with("ak_live_") {
+        "live"
+    } else if key_id.starts_with("ak_test_") {
+        "test"
+    } else if key_id.starts_with("sk-admin-") {
+        "admin (Keshav)"
+    } else if key_id.starts_with("sk-op-") {
+        "operator (Keshav)"
+    } else if key_id.starts_with("sk-audit-") {
+        "auditor (Keshav)"
+    } else if key_id.starts_with("sk-svc-") {
+        "service (Keshav)"
+    } else {
+        "unknown"
+    }
 }
 
 // ── Tests ───────────────────────────────────────────────────────────────
@@ -396,7 +451,8 @@ mod tests {
             run(KeysCommand::Info {
                 key: "ak_live_test123".to_string(),
                 format: "text".to_string(),
-            }).await
+            })
+            .await
         });
         assert_eq!(code, ExitCode::Ok);
     }

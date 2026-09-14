@@ -181,7 +181,11 @@ pub struct OvaphCycleId {
 
 impl std::fmt::Display for OvaphCycleId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "OvaphCycle(cycle={}, id={})", self.cycle_number, self.cycle_id)
+        write!(
+            f,
+            "OvaphCycle(cycle={}, id={})",
+            self.cycle_number, self.cycle_id
+        )
     }
 }
 
@@ -839,8 +843,7 @@ impl OvaphVerificationResult {
 
         let composite_severity = compute_composite_severity(&signals);
         let anomaly_count = signals.iter().filter(|s| s.is_anomaly).count();
-        let requires_healing =
-            matches!(composite_severity, Severity::High | Severity::Critical);
+        let requires_healing = matches!(composite_severity, Severity::High | Severity::Critical);
         let rationale = format!(
             "Analyzed {} drift signals, {} anomalies detected. Composite severity: {}",
             signals.len(),
@@ -970,10 +973,7 @@ impl OvaphHealingResult {
 
     /// Creates a healing result from a verification result.
     /// If autonomous healing is disabled, returns a skipped result.
-    pub fn from_verification(
-        verification: &OvaphVerificationResult,
-        autonomous: bool,
-    ) -> Self {
+    pub fn from_verification(verification: &OvaphVerificationResult, autonomous: bool) -> Self {
         if !verification.requires_healing {
             return Self::not_required();
         }
@@ -986,9 +986,7 @@ impl OvaphHealingResult {
                 actions_succeeded: 0,
                 actions_failed: 0,
                 strategies_used: vec![],
-                recovery_plan_rationale: Some(
-                    "Autonomous healing disabled by config".to_string(),
-                ),
+                recovery_plan_rationale: Some("Autonomous healing disabled by config".to_string()),
             };
         }
 
@@ -1153,11 +1151,7 @@ impl OvaphLoop {
 
     /// Checks whether the max cycle duration has been exceeded.
     /// Returns a Failed StageResult if exceeded, None otherwise.
-    fn check_max_duration(
-        &self,
-        cycle_start: Instant,
-        stage: OvaphStage,
-    ) -> Option<StageResult> {
+    fn check_max_duration(&self, cycle_start: Instant, stage: OvaphStage) -> Option<StageResult> {
         let elapsed = cycle_start.elapsed().as_millis() as u64;
         if elapsed >= self.config.max_cycle_duration_ms {
             warn!(
@@ -1202,10 +1196,7 @@ impl OvaphLoop {
                     StageResult::failed(
                         stage,
                         self.config.stage_timeout_ms,
-                        format!(
-                            "Stage timed out after {}ms",
-                            self.config.stage_timeout_ms
-                        ),
+                        format!("Stage timed out after {}ms", self.config.stage_timeout_ms),
                     ),
                     None,
                 )
@@ -1230,13 +1221,14 @@ impl OvaphLoop {
 
         let findings = observation.drift_snapshots.len()
             + observation.health_snapshot.degraded_components.len()
-            + observation
-                .health_snapshot
-                .failed_components
-                .len()
+            + observation.health_snapshot.failed_components.len()
             + observation.integrity_snapshot.failed_component_names.len();
 
-        let result = StageResult::completed(OvaphStage::Observe, start.elapsed().as_millis() as u64, findings);
+        let result = StageResult::completed(
+            OvaphStage::Observe,
+            start.elapsed().as_millis() as u64,
+            findings,
+        );
 
         info!(
             duration_ms = result.duration_ms,
@@ -1377,10 +1369,8 @@ impl OvaphLoop {
             "Running OVAPH Prove stage"
         );
 
-        let proof = OvaphProofResult::from_attestation(
-            attestation,
-            self.config.prove_generate_proof,
-        );
+        let proof =
+            OvaphProofResult::from_attestation(attestation, self.config.prove_generate_proof);
 
         let result = StageResult::completed(
             OvaphStage::Prove,
@@ -1433,9 +1423,12 @@ impl OvaphLoop {
         if let Some(failed) = self.check_max_duration(cycle_start, OvaphStage::Observe) {
             stages.push(failed);
             // Observe timed out — push remaining stages as failed
-            for remaining_stage in
-                &[OvaphStage::Verify, OvaphStage::Attest, OvaphStage::Heal, OvaphStage::Prove]
-            {
+            for remaining_stage in &[
+                OvaphStage::Verify,
+                OvaphStage::Attest,
+                OvaphStage::Heal,
+                OvaphStage::Prove,
+            ] {
                 if let Some(failed) = self.check_max_duration(cycle_start, *remaining_stage) {
                     stages.push(failed);
                 } else {
@@ -1451,8 +1444,11 @@ impl OvaphLoop {
             }
         } else {
             let (stage_result, observation_opt) = self
-                .execute_with_timeout(OvaphStage::Observe, self.run_observe(OvaphObservation::default()))
-                    .await;
+                .execute_with_timeout(
+                    OvaphStage::Observe,
+                    self.run_observe(OvaphObservation::default()),
+                )
+                .await;
             stages.push(stage_result);
             let observation = observation_opt.unwrap_or_default();
 
@@ -1460,11 +1456,8 @@ impl OvaphLoop {
             if let Some(failed) = self.check_max_duration(cycle_start, OvaphStage::Verify) {
                 stages.push(failed);
                 // Verify timed out — push remaining stages as failed
-                for remaining_stage in &[OvaphStage::Attest, OvaphStage::Heal, OvaphStage::Prove]
-                {
-                    if let Some(failed) =
-                        self.check_max_duration(cycle_start, *remaining_stage)
-                    {
+                for remaining_stage in &[OvaphStage::Attest, OvaphStage::Heal, OvaphStage::Prove] {
+                    if let Some(failed) = self.check_max_duration(cycle_start, *remaining_stage) {
                         stages.push(failed);
                     } else {
                         stages.push(StageResult::failed(
@@ -1480,19 +1473,16 @@ impl OvaphLoop {
             } else {
                 let (stage_result, verification_opt) = self
                     .execute_with_timeout(OvaphStage::Verify, self.run_verify(&observation))
-                        .await;
+                    .await;
                 stages.push(stage_result);
                 let verification = verification_opt.unwrap_or_default();
 
                 // ── Stage 3: Attest ──
-                if let Some(failed) =
-                    self.check_max_duration(cycle_start, OvaphStage::Attest)
-                {
+                if let Some(failed) = self.check_max_duration(cycle_start, OvaphStage::Attest) {
                     stages.push(failed);
                     // Attest timed out — push remaining stages as failed
                     for remaining_stage in &[OvaphStage::Heal, OvaphStage::Prove] {
-                        if let Some(failed) =
-                            self.check_max_duration(cycle_start, *remaining_stage)
+                        if let Some(failed) = self.check_max_duration(cycle_start, *remaining_stage)
                         {
                             stages.push(failed);
                         } else {
@@ -1509,7 +1499,7 @@ impl OvaphLoop {
                 } else {
                     let (stage_result, attestation_opt) = self
                         .execute_with_timeout(OvaphStage::Attest, self.run_attest(&verification))
-                            .await;
+                        .await;
                     stages.push(stage_result);
 
                     if let Some(attestation) = attestation_opt {
@@ -1517,8 +1507,7 @@ impl OvaphLoop {
                         trust_after = attestation.trust_level;
 
                         // ── Stage 4: Heal ──
-                        if let Some(failed) =
-                            self.check_max_duration(cycle_start, OvaphStage::Heal)
+                        if let Some(failed) = self.check_max_duration(cycle_start, OvaphStage::Heal)
                         {
                             stages.push(failed);
                         } else {
@@ -1593,7 +1582,10 @@ impl OvaphLoop {
                 "OVAPH cycle has unexpected stage count, padding"
             );
             while stages.len() < 5 {
-                let missing = OvaphStage::all().get(stages.len()).copied().unwrap_or(OvaphStage::Prove);
+                let missing = OvaphStage::all()
+                    .get(stages.len())
+                    .copied()
+                    .unwrap_or(OvaphStage::Prove);
                 stages.push(StageResult::failed(
                     missing,
                     0,
@@ -2994,12 +2986,7 @@ mod tests {
     #[tokio::test]
     async fn test_execute_with_timeout_fast() {
         let loop_ = default_loop();
-        let future = async {
-            (
-                StageResult::completed(OvaphStage::Observe, 1, 0),
-                42i32,
-            )
-        };
+        let future = async { (StageResult::completed(OvaphStage::Observe, 1, 0), 42i32) };
         let (result, data) = loop_
             .execute_with_timeout(OvaphStage::Observe, future)
             .await;

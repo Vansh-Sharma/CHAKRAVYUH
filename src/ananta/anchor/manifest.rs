@@ -101,10 +101,13 @@ impl Manifest {
         let map: serde_json::Map<String, serde_json::Value> = sorted
             .into_iter()
             .map(|(k, v)| {
-                (k.clone(), serde_json::json!({
-                    "hash": v.hex,
-                    "algorithm": format!("{:?}", v.algorithm).to_lowercase(),
-                }))
+                (
+                    k.clone(),
+                    serde_json::json!({
+                        "hash": v.hex,
+                        "algorithm": format!("{:?}", v.algorithm).to_lowercase(),
+                    }),
+                )
             })
             .collect();
 
@@ -113,7 +116,8 @@ impl Manifest {
             "created_at": self.created_at,
             "algorithm": format!("{:?}", self.algorithm).to_lowercase(),
             "entries": map,
-        }).to_string()
+        })
+        .to_string()
     }
 
     /// Sign the manifest with a key pair.

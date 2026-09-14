@@ -23,7 +23,7 @@ use std::collections::VecDeque;
 use std::sync::RwLock;
 
 use serde::{Deserialize, Serialize};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 
 /// Store key prefix for audit entries.
 const AUDIT_PREFIX: &str = "chakravyuh:audit:";
@@ -91,8 +91,12 @@ pub struct AuditConfig {
     pub max_in_memory: usize,
 }
 
-fn default_enabled() -> bool { true }
-fn default_max_in_memory() -> usize { MAX_IN_MEMORY }
+fn default_enabled() -> bool {
+    true
+}
+fn default_max_in_memory() -> usize {
+    MAX_IN_MEMORY
+}
 
 impl Default for AuditConfig {
     fn default() -> Self {
@@ -129,7 +133,10 @@ impl AuditTrail {
     }
 
     /// Create an audit trail with persistent storage.
-    pub fn with_store(config: AuditConfig, store: std::sync::Arc<dyn crate::storage::Store>) -> Self {
+    pub fn with_store(
+        config: AuditConfig,
+        store: std::sync::Arc<dyn crate::storage::Store>,
+    ) -> Self {
         let mut seq_val = 0u64;
         let mut head_hash = String::new();
 
@@ -160,13 +167,7 @@ impl AuditTrail {
     }
 
     /// Append a decision to the audit trail.
-    pub fn append(
-        &self,
-        trace_id: &str,
-        decision_json: &str,
-        source_ip: &str,
-        path: &str,
-    ) {
+    pub fn append(&self, trace_id: &str, decision_json: &str, source_ip: &str, path: &str) {
         if !self.config.enabled {
             return;
         }
@@ -286,8 +287,18 @@ mod tests {
     #[test]
     fn append_and_verify() {
         let trail = make_trail();
-        trail.append("trace123", r#"{"decision":"allow"}"#, "1.2.3.4", "/v1/evaluate");
-        trail.append("trace456", r#"{"decision":"deny"}"#, "5.6.7.8", "/v1/evaluate");
+        trail.append(
+            "trace123",
+            r#"{"decision":"allow"}"#,
+            "1.2.3.4",
+            "/v1/evaluate",
+        );
+        trail.append(
+            "trace456",
+            r#"{"decision":"deny"}"#,
+            "5.6.7.8",
+            "/v1/evaluate",
+        );
 
         assert_eq!(trail.len(), 2);
         let (valid, total, tampered) = trail.verify_chain();
@@ -323,7 +334,10 @@ mod tests {
 
     #[test]
     fn disabled_trail_noops() {
-        let trail = AuditTrail::new(AuditConfig { enabled: false, ..Default::default() });
+        let trail = AuditTrail::new(AuditConfig {
+            enabled: false,
+            ..Default::default()
+        });
         trail.append("t1", "{}", "1.2.3.4", "/v1/eval");
         assert!(trail.is_empty());
     }
@@ -346,7 +360,7 @@ mod tests {
         let trail2 = AuditTrail::with_store(AuditConfig::default(), arc_store.clone());
         // The in-memory buffer is empty on new instance, but seq is restored.
         assert!(trail2.is_empty()); // in-memory is empty
-        // Appending should continue the chain (prev_hash from restored head).
+                                    // Appending should continue the chain (prev_hash from restored head).
         trail2.append("t3", r#"{"d":"allow"}"#, "9.9.9.9", "/v1/eval");
         assert_eq!(trail2.len(), 1);
         // The single entry in memory has a prev_hash from the old chain.

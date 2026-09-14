@@ -15,11 +15,11 @@ use axum::{
 };
 use serde_json::json;
 
-use crate::identity::{AuthService, AuthError};
+use crate::identity::{AuthError, AuthService};
 
 use super::auth_dto::{
-    LoginRequest, LogoutRequest, LogoutResponse, MeResponse, OrgSummary,
-    RefreshRequest, SignupRequest, TokenResponse, UserPublic,
+    LoginRequest, LogoutRequest, LogoutResponse, MeResponse, OrgSummary, RefreshRequest,
+    SignupRequest, TokenResponse, UserPublic,
 };
 use super::dto::ErrorBody;
 use super::PlatformState;
@@ -70,10 +70,7 @@ pub async fn signup(
 
 // ── POST /v1/auth/login ──────────────────────────────────────────────────
 
-pub async fn login(
-    State(state): State<PlatformState>,
-    Json(req): Json<LoginRequest>,
-) -> Response {
+pub async fn login(State(state): State<PlatformState>, Json(req): Json<LoginRequest>) -> Response {
     match state.auth.login(&req.email, &req.password) {
         Ok(tokens) => {
             // Fetch the user to populate the response.
@@ -165,19 +162,12 @@ pub async fn logout(
     Json(req): Json<LogoutRequest>,
 ) -> Response {
     let logged_out = state.auth.logout(req.refresh_token.as_deref());
-    (
-        StatusCode::OK,
-        Json(LogoutResponse { logged_out }),
-    )
-        .into_response()
+    (StatusCode::OK, Json(LogoutResponse { logged_out })).into_response()
 }
 
 // ── GET /v1/auth/me ─────────────────────────────────────────────────────
 
-pub async fn me(
-    State(state): State<PlatformState>,
-    headers: HeaderMap,
-) -> Response {
+pub async fn me(State(state): State<PlatformState>, headers: HeaderMap) -> Response {
     // Extract the Bearer token.
     let token = match extract_bearer(&headers) {
         Some(t) => t,
@@ -258,10 +248,7 @@ pub fn extract_bearer(headers: &HeaderMap) -> Option<String> {
 
 /// Extract user_id from a valid JWT in the Authorization header.
 /// Returns None if no token or token is invalid.
-pub fn require_user_id(
-    state: &PlatformState,
-    headers: &HeaderMap,
-) -> Result<uuid::Uuid, Response> {
+pub fn require_user_id(state: &PlatformState, headers: &HeaderMap) -> Result<uuid::Uuid, Response> {
     let token = extract_bearer(headers).ok_or_else(|| {
         (
             StatusCode::UNAUTHORIZED,

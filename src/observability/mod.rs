@@ -5,13 +5,13 @@
 //
 // NO external crate dependencies — uses std + serde only.
 
+pub mod alerting_engine;
 pub mod otel_integration;
 pub mod security_metrics;
-pub mod alerting_engine;
 
+pub use alerting_engine::*;
 pub use otel_integration::*;
 pub use security_metrics::*;
-pub use alerting_engine::*;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -331,8 +331,7 @@ mod tests {
     fn observability_config_serde_roundtrip() {
         let cfg = ObservabilityConfig::default();
         let json = serde_json::to_string(&cfg).expect("serialize");
-        let restored: ObservabilityConfig =
-            serde_json::from_str(&json).expect("deserialize");
+        let restored: ObservabilityConfig = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.enabled, cfg.enabled);
         assert_eq!(restored.otel_endpoint, cfg.otel_endpoint);
     }
@@ -357,8 +356,7 @@ mod tests {
     fn time_series_point_serde_roundtrip() {
         let pt = TimeSeriesPoint::now(1.0);
         let json = serde_json::to_string(&pt).expect("serialize");
-        let restored: TimeSeriesPoint =
-            serde_json::from_str(&json).expect("deserialize");
+        let restored: TimeSeriesPoint = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.value, 1.0);
     }
 
@@ -389,8 +387,7 @@ mod tests {
             }],
         };
         let json = serde_json::to_string(&snap).expect("serialize");
-        let restored: DashboardSnapshot =
-            serde_json::from_str(&json).expect("deserialize");
+        let restored: DashboardSnapshot = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.total_requests, 1000);
         assert_eq!(restored.active_alerts_count, 2);
         assert_eq!(restored.false_positive_rate, 0.05);
@@ -407,8 +404,7 @@ mod tests {
             eval_count: 500,
         };
         let json = serde_json::to_string(&rld).expect("serialize");
-        let restored: RingLatencyDashboard =
-            serde_json::from_str(&json).expect("deserialize");
+        let restored: RingLatencyDashboard = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.ring, "shield");
         assert_eq!(restored.p50_ms, 1.2);
         assert_eq!(restored.eval_count, 500);
@@ -535,8 +531,7 @@ mod tests {
             last_blocked: "2025-06-01".to_string(),
         };
         let json = serde_json::to_string(&entry).expect("serialize");
-        let restored: IpBlockDashboard =
-            serde_json::from_str(&json).expect("deserialize");
+        let restored: IpBlockDashboard = serde_json::from_str(&json).expect("deserialize");
         assert_eq!(restored.ip, "192.168.1.1");
         assert_eq!(restored.block_count, 42);
     }

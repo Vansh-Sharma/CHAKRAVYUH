@@ -176,10 +176,18 @@ impl WasmValue {
 
     pub fn eq(self, other: WasmValue) -> std::result::Result<WasmValue, String> {
         match (self, other) {
-            (WasmValue::I32(a), WasmValue::I32(b)) => Ok(WasmValue::I32(if a == b { 1 } else { 0 })),
-            (WasmValue::I64(a), WasmValue::I64(b)) => Ok(WasmValue::I32(if a == b { 1 } else { 0 })),
-            (WasmValue::F32(a), WasmValue::F32(b)) => Ok(WasmValue::I32(if a == b { 1 } else { 0 })),
-            (WasmValue::F64(a), WasmValue::F64(b)) => Ok(WasmValue::I32(if a == b { 1 } else { 0 })),
+            (WasmValue::I32(a), WasmValue::I32(b)) => {
+                Ok(WasmValue::I32(if a == b { 1 } else { 0 }))
+            }
+            (WasmValue::I64(a), WasmValue::I64(b)) => {
+                Ok(WasmValue::I32(if a == b { 1 } else { 0 }))
+            }
+            (WasmValue::F32(a), WasmValue::F32(b)) => {
+                Ok(WasmValue::I32(if a == b { 1 } else { 0 }))
+            }
+            (WasmValue::F64(a), WasmValue::F64(b)) => {
+                Ok(WasmValue::I32(if a == b { 1 } else { 0 }))
+            }
             _ => Err("type mismatch in eq".to_string()),
         }
     }
@@ -470,7 +478,12 @@ impl WasmRuntime {
         let func = module
             .functions
             .get(func_name)
-            .ok_or_else(|| format!("function '{}' not found in module '{}'", func_name, module_name))?
+            .ok_or_else(|| {
+                format!(
+                    "function '{}' not found in module '{}'",
+                    func_name, module_name
+                )
+            })?
             .clone();
 
         let mut stack: Vec<WasmValue> = Vec::new();
@@ -512,7 +525,9 @@ impl WasmRuntime {
             .modules
             .get(module_name)
             .ok_or_else(|| format!("module '{}' not found", module_name))?;
-        let end = offset.checked_add(length).ok_or(SandboxViolation::InvalidAccess.to_string())?;
+        let end = offset
+            .checked_add(length)
+            .ok_or(SandboxViolation::InvalidAccess.to_string())?;
         if end > module.memory.len() {
             return Err(SandboxViolation::InvalidAccess.to_string());
         }
@@ -530,7 +545,9 @@ impl WasmRuntime {
             .modules
             .get_mut(module_name)
             .ok_or_else(|| format!("module '{}' not found", module_name))?;
-        let end = offset.checked_add(data.len()).ok_or(SandboxViolation::InvalidAccess.to_string())?;
+        let end = offset
+            .checked_add(data.len())
+            .ok_or(SandboxViolation::InvalidAccess.to_string())?;
         if end > self.config.max_memory_bytes {
             return Err(SandboxViolation::OutOfMemory.to_string());
         }
@@ -724,8 +741,13 @@ impl WasmRuntime {
                             callee_locals[i] = arg;
                         }
                     }
-                    let result =
-                        self.execute_body(&callee.body, stack, &mut callee_locals, module, call_depth + 1)?;
+                    let result = self.execute_body(
+                        &callee.body,
+                        stack,
+                        &mut callee_locals,
+                        module,
+                        call_depth + 1,
+                    )?;
                     match result {
                         StepResult::Return(v) => {
                             stack.push(v);
@@ -884,9 +906,18 @@ mod tests {
 
     #[test]
     fn test_wasm_value_bitwise_ops() {
-        assert_eq!(WasmValue::I32(0b1100).and(WasmValue::I32(0b1010)).unwrap(), WasmValue::I32(0b1000));
-        assert_eq!(WasmValue::I32(0b1100).or(WasmValue::I32(0b1010)).unwrap(), WasmValue::I32(0b1110));
-        assert_eq!(WasmValue::I32(0b1100).xor(WasmValue::I32(0b1010)).unwrap(), WasmValue::I32(0b0110));
+        assert_eq!(
+            WasmValue::I32(0b1100).and(WasmValue::I32(0b1010)).unwrap(),
+            WasmValue::I32(0b1000)
+        );
+        assert_eq!(
+            WasmValue::I32(0b1100).or(WasmValue::I32(0b1010)).unwrap(),
+            WasmValue::I32(0b1110)
+        );
+        assert_eq!(
+            WasmValue::I32(0b1100).xor(WasmValue::I32(0b1010)).unwrap(),
+            WasmValue::I32(0b0110)
+        );
     }
 
     #[test]
@@ -913,10 +944,22 @@ mod tests {
 
     #[test]
     fn test_wasm_value_comparison() {
-        assert_eq!(WasmValue::I32(5).eq(WasmValue::I32(5)).unwrap(), WasmValue::I32(1));
-        assert_eq!(WasmValue::I32(5).eq(WasmValue::I32(3)).unwrap(), WasmValue::I32(0));
-        assert_eq!(WasmValue::I32(3).lt_s(WasmValue::I32(5)).unwrap(), WasmValue::I32(1));
-        assert_eq!(WasmValue::I32(5).gt_s(WasmValue::I32(3)).unwrap(), WasmValue::I32(1));
+        assert_eq!(
+            WasmValue::I32(5).eq(WasmValue::I32(5)).unwrap(),
+            WasmValue::I32(1)
+        );
+        assert_eq!(
+            WasmValue::I32(5).eq(WasmValue::I32(3)).unwrap(),
+            WasmValue::I32(0)
+        );
+        assert_eq!(
+            WasmValue::I32(3).lt_s(WasmValue::I32(5)).unwrap(),
+            WasmValue::I32(1)
+        );
+        assert_eq!(
+            WasmValue::I32(5).gt_s(WasmValue::I32(3)).unwrap(),
+            WasmValue::I32(1)
+        );
     }
 
     #[test]
@@ -948,10 +991,7 @@ mod tests {
     #[test]
     fn test_call_i32_const_return() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(42),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new("evaluate", vec![WasmOpcode::I32Const(42), WasmOpcode::End]);
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -961,12 +1001,15 @@ mod tests {
     #[test]
     fn test_call_i32_add() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Const(20),
-            WasmOpcode::I32Add,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Const(20),
+                WasmOpcode::I32Add,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -977,16 +1020,19 @@ mod tests {
     fn test_call_arithmetic_chain() {
         let mut rt = default_runtime();
         // ((10 + 20) * 3) - 5 = 85
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Const(20),
-            WasmOpcode::I32Add,
-            WasmOpcode::I32Const(3),
-            WasmOpcode::I32Mul,
-            WasmOpcode::I32Const(5),
-            WasmOpcode::I32Sub,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Const(20),
+                WasmOpcode::I32Add,
+                WasmOpcode::I32Const(3),
+                WasmOpcode::I32Mul,
+                WasmOpcode::I32Const(5),
+                WasmOpcode::I32Sub,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -996,50 +1042,66 @@ mod tests {
     #[test]
     fn test_call_with_params() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::LocalGet(0),
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Add,
-            WasmOpcode::End,
-        ])
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::LocalGet(0),
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Add,
+                WasmOpcode::End,
+            ],
+        )
         .with_param(WasmValue::I32(0));
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
-        let result = rt.call("test", "evaluate", vec![WasmValue::I32(5)]).unwrap();
+        let result = rt
+            .call("test", "evaluate", vec![WasmValue::I32(5)])
+            .unwrap();
         assert_eq!(result, WasmValue::I32(15));
     }
 
     #[test]
     fn test_local_set_and_get() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(99),
-            WasmOpcode::LocalSet(0),
-            WasmOpcode::LocalGet(0),
-            WasmOpcode::End,
-        ])
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(99),
+                WasmOpcode::LocalSet(0),
+                WasmOpcode::LocalGet(0),
+                WasmOpcode::End,
+            ],
+        )
         .with_param(WasmValue::I32(0));
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
-        let result = rt.call("test", "evaluate", vec![WasmValue::I32(0)]).unwrap();
+        let result = rt
+            .call("test", "evaluate", vec![WasmValue::I32(0)])
+            .unwrap();
         assert_eq!(result, WasmValue::I32(99));
     }
 
     #[test]
     fn test_call_function() {
         let mut rt = default_runtime();
-        let helper = WasmFunction::new("double", vec![
-            WasmOpcode::LocalGet(0),
-            WasmOpcode::LocalGet(0),
-            WasmOpcode::I32Add,
-            WasmOpcode::End,
-        ])
+        let helper = WasmFunction::new(
+            "double",
+            vec![
+                WasmOpcode::LocalGet(0),
+                WasmOpcode::LocalGet(0),
+                WasmOpcode::I32Add,
+                WasmOpcode::End,
+            ],
+        )
         .with_param(WasmValue::I32(0));
-        let main = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(7),
-            WasmOpcode::Call("double".to_string()),
-            WasmOpcode::End,
-        ]);
+        let main = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(7),
+                WasmOpcode::Call("double".to_string()),
+                WasmOpcode::End,
+            ],
+        );
         let module = WasmModule::new("test")
             .with_function(helper)
             .with_function(main)
@@ -1053,12 +1115,15 @@ mod tests {
     #[test]
     fn test_drop_opcode() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(1),
-            WasmOpcode::I32Const(2),
-            WasmOpcode::Drop,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(1),
+                WasmOpcode::I32Const(2),
+                WasmOpcode::Drop,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1069,13 +1134,16 @@ mod tests {
     fn test_select_opcode() {
         let mut rt = default_runtime();
         // select: if cond != 0, pick val1; else pick val2
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Const(20),
-            WasmOpcode::I32Const(1),
-            WasmOpcode::Select,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Const(20),
+                WasmOpcode::I32Const(1),
+                WasmOpcode::Select,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1085,13 +1153,16 @@ mod tests {
     #[test]
     fn test_select_opcode_false_branch() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Const(20),
-            WasmOpcode::I32Const(0),
-            WasmOpcode::Select,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Const(20),
+                WasmOpcode::I32Const(0),
+                WasmOpcode::Select,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1104,16 +1175,19 @@ mod tests {
             fuel_limit: 5,
             ..Default::default()
         });
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(1),
-            WasmOpcode::I32Const(2),
-            WasmOpcode::I32Add,
-            WasmOpcode::I32Const(3),
-            WasmOpcode::I32Add,
-            WasmOpcode::I32Const(4),
-            WasmOpcode::I32Add,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(1),
+                WasmOpcode::I32Const(2),
+                WasmOpcode::I32Add,
+                WasmOpcode::I32Const(3),
+                WasmOpcode::I32Add,
+                WasmOpcode::I32Const(4),
+                WasmOpcode::I32Add,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]);
@@ -1124,12 +1198,15 @@ mod tests {
     #[test]
     fn test_fuel_consumed_and_reset() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(1),
-            WasmOpcode::I32Const(2),
-            WasmOpcode::I32Add,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(1),
+                WasmOpcode::I32Const(2),
+                WasmOpcode::I32Add,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let _ = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1146,7 +1223,10 @@ mod tests {
         let module = WasmModule::new("test").with_memory(mem);
         rt.load_module(module).unwrap();
         let bytes = rt.memory_read("test", 4, 4).unwrap();
-        assert_eq!(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), 42);
+        assert_eq!(
+            i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+            42
+        );
     }
 
     #[test]
@@ -1165,7 +1245,10 @@ mod tests {
         rt.load_module(module).unwrap();
         rt.memory_write("test", 0, &99i32.to_le_bytes()).unwrap();
         let bytes = rt.memory_read("test", 0, 4).unwrap();
-        assert_eq!(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]), 99);
+        assert_eq!(
+            i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+            99
+        );
     }
 
     #[test]
@@ -1173,7 +1256,8 @@ mod tests {
         let mut rt = default_runtime();
         let module = WasmModule::new("test").with_memory(vec![0u8; 4]);
         rt.load_module(module).unwrap();
-        rt.memory_write("test", 0, &[1, 2, 3, 4, 5, 6, 7, 8]).unwrap();
+        rt.memory_write("test", 0, &[1, 2, 3, 4, 5, 6, 7, 8])
+            .unwrap();
         let bytes = rt.memory_read("test", 0, 8).unwrap();
         assert_eq!(bytes, vec![1, 2, 3, 4, 5, 6, 7, 8]);
     }
@@ -1199,10 +1283,7 @@ mod tests {
     #[test]
     fn test_unreachable_opcode() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::Unreachable,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new("evaluate", vec![WasmOpcode::Unreachable, WasmOpcode::End]);
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]);
@@ -1213,12 +1294,15 @@ mod tests {
     #[test]
     fn test_i32_div_by_zero_trap() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(10),
-            WasmOpcode::I32Const(0),
-            WasmOpcode::I32DivS,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(10),
+                WasmOpcode::I32Const(0),
+                WasmOpcode::I32DivS,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]);
@@ -1228,12 +1312,15 @@ mod tests {
     #[test]
     fn test_i64_subtraction() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I64Const(1000),
-            WasmOpcode::I64Const(300),
-            WasmOpcode::I64Sub,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I64Const(1000),
+                WasmOpcode::I64Const(300),
+                WasmOpcode::I64Sub,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1243,14 +1330,17 @@ mod tests {
     #[test]
     fn test_f64_mul_and_div() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::F64Const(3.0),
-            WasmOpcode::F64Const(4.0),
-            WasmOpcode::F64Mul,
-            WasmOpcode::F64Const(2.0),
-            WasmOpcode::F64Div,
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::F64Const(3.0),
+                WasmOpcode::F64Const(4.0),
+                WasmOpcode::F64Mul,
+                WasmOpcode::F64Const(2.0),
+                WasmOpcode::F64Div,
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1260,12 +1350,15 @@ mod tests {
     #[test]
     fn test_br_opcode_returns() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(55),
-            WasmOpcode::Br(0),
-            WasmOpcode::I32Const(99),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(55),
+                WasmOpcode::Br(0),
+                WasmOpcode::I32Const(99),
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1275,13 +1368,16 @@ mod tests {
     #[test]
     fn test_br_if_taken() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(77),
-            WasmOpcode::I32Const(1),
-            WasmOpcode::BrIf(0),
-            WasmOpcode::I32Const(99),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(77),
+                WasmOpcode::I32Const(1),
+                WasmOpcode::BrIf(0),
+                WasmOpcode::I32Const(99),
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1291,12 +1387,15 @@ mod tests {
     #[test]
     fn test_br_if_not_taken() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(77),
-            WasmOpcode::I32Const(0),
-            WasmOpcode::BrIf(0),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(77),
+                WasmOpcode::I32Const(0),
+                WasmOpcode::BrIf(0),
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1306,11 +1405,10 @@ mod tests {
     #[test]
     fn test_nop_opcode() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::Nop,
-            WasmOpcode::I32Const(7),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![WasmOpcode::Nop, WasmOpcode::I32Const(7), WasmOpcode::End],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1320,12 +1418,15 @@ mod tests {
     #[test]
     fn test_return_opcode_early() {
         let mut rt = default_runtime();
-        let func = WasmFunction::new("evaluate", vec![
-            WasmOpcode::I32Const(42),
-            WasmOpcode::Return,
-            WasmOpcode::I32Const(99),
-            WasmOpcode::End,
-        ]);
+        let func = WasmFunction::new(
+            "evaluate",
+            vec![
+                WasmOpcode::I32Const(42),
+                WasmOpcode::Return,
+                WasmOpcode::I32Const(99),
+                WasmOpcode::End,
+            ],
+        );
         let module = make_module_with_func("test", func);
         rt.load_module(module).unwrap();
         let result = rt.call("test", "evaluate", vec![]).unwrap();
@@ -1344,10 +1445,22 @@ mod tests {
 
     #[test]
     fn test_sandbox_violation_display() {
-        assert_eq!(format!("{}", SandboxViolation::OutOfMemory), "out of memory");
-        assert_eq!(format!("{}", SandboxViolation::StackOverflow), "stack overflow");
-        assert_eq!(format!("{}", SandboxViolation::FuelExhausted), "fuel exhausted");
-        assert_eq!(format!("{}", SandboxViolation::InvalidAccess), "invalid memory access");
+        assert_eq!(
+            format!("{}", SandboxViolation::OutOfMemory),
+            "out of memory"
+        );
+        assert_eq!(
+            format!("{}", SandboxViolation::StackOverflow),
+            "stack overflow"
+        );
+        assert_eq!(
+            format!("{}", SandboxViolation::FuelExhausted),
+            "fuel exhausted"
+        );
+        assert_eq!(
+            format!("{}", SandboxViolation::InvalidAccess),
+            "invalid memory access"
+        );
     }
 
     #[test]

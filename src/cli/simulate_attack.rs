@@ -30,8 +30,12 @@ pub struct SimulateAttackConfig {
     pub include_benign: bool,
 }
 
-fn default_iterations() -> usize { 100 }
-fn default_include_benign() -> bool { true }
+fn default_iterations() -> usize {
+    100
+}
+fn default_include_benign() -> bool {
+    true
+}
 
 impl Default for SimulateAttackConfig {
     fn default() -> Self {
@@ -293,17 +297,29 @@ pub fn run_simulation(config: &SimulateAttackConfig) -> SimulationResults {
     // Compute summary.
     let total_scenarios = scenario_results.len();
     let overall_detection_rate = if !scenario_results.is_empty() {
-        scenario_results.iter().map(|r| r.detection_rate).sum::<f64>() / total_scenarios as f64
+        scenario_results
+            .iter()
+            .map(|r| r.detection_rate)
+            .sum::<f64>()
+            / total_scenarios as f64
     } else {
         0.0
     };
     let overall_false_positive_rate = if !scenario_results.is_empty() {
-        scenario_results.iter().map(|r| r.false_positive_rate).sum::<f64>() / total_scenarios as f64
+        scenario_results
+            .iter()
+            .map(|r| r.false_positive_rate)
+            .sum::<f64>()
+            / total_scenarios as f64
     } else {
         0.0
     };
     let overall_avg_response_ms = if !scenario_results.is_empty() {
-        scenario_results.iter().map(|r| r.avg_response_ms).sum::<f64>() / total_scenarios as f64
+        scenario_results
+            .iter()
+            .map(|r| r.avg_response_ms)
+            .sum::<f64>()
+            / total_scenarios as f64
     } else {
         0.0
     };
@@ -396,10 +412,8 @@ fn run_single_scenario(scenario: &AttackScenario, config: &SimulateAttackConfig)
 /// Format simulation results in the specified output format.
 pub fn format_results(results: &SimulationResults, format: OutputFormat) -> String {
     match format {
-        OutputFormat::Json => {
-            serde_json::to_string_pretty(results)
-                .unwrap_or_else(|e| format!("JSON serialization error: {}", e))
-        }
+        OutputFormat::Json => serde_json::to_string_pretty(results)
+            .unwrap_or_else(|e| format!("JSON serialization error: {}", e)),
         OutputFormat::Text => format_results_text(results),
         OutputFormat::Table => format_results_table(results),
     }
@@ -408,33 +422,63 @@ pub fn format_results(results: &SimulationResults, format: OutputFormat) -> Stri
 fn format_results_text(results: &SimulationResults) -> String {
     let mut lines = Vec::new();
 
-    lines.push(format!("Attack Simulation Results — {}", results.generated_at));
+    lines.push(format!(
+        "Attack Simulation Results — {}",
+        results.generated_at
+    ));
     lines.push(format!("Total duration: {} ms", results.total_duration_ms));
-    lines.push(format!("Scenarios: {} | Iterations per scenario: {}",
-        results.summary.total_scenarios, results.config.iterations));
+    lines.push(format!(
+        "Scenarios: {} | Iterations per scenario: {}",
+        results.summary.total_scenarios, results.config.iterations
+    ));
     lines.push(String::new());
 
     for r in &results.scenario_results {
         lines.push(format!("  Scenario: {}", r.scenario_name));
-        lines.push(format!("    Detection rate:    {:.1}% ({}/{})",
-            r.detection_rate * 100.0, r.detected_count, r.total_attacks));
-        lines.push(format!("    False positive rate: {:.1}% ({}/{})",
-            r.false_positive_rate * 100.0, r.false_positive_count,
-            if results.config.include_benign { "benign" } else { "N/A" }));
-        lines.push(format!("    Avg response:      {:.3} ms (p95: {:.3} ms)",
-            r.avg_response_ms, r.p95_response_ms));
+        lines.push(format!(
+            "    Detection rate:    {:.1}% ({}/{})",
+            r.detection_rate * 100.0,
+            r.detected_count,
+            r.total_attacks
+        ));
+        lines.push(format!(
+            "    False positive rate: {:.1}% ({}/{})",
+            r.false_positive_rate * 100.0,
+            r.false_positive_count,
+            if results.config.include_benign {
+                "benign"
+            } else {
+                "N/A"
+            }
+        ));
+        lines.push(format!(
+            "    Avg response:      {:.3} ms (p95: {:.3} ms)",
+            r.avg_response_ms, r.p95_response_ms
+        ));
         lines.push(String::new());
     }
 
     lines.push("Summary:".to_string());
-    lines.push(format!("  Overall detection rate:     {:.1}%",
-        results.summary.overall_detection_rate * 100.0));
-    lines.push(format!("  Overall false positive rate: {:.1}%",
-        results.summary.overall_false_positive_rate * 100.0));
-    lines.push(format!("  Average response time:      {:.3} ms",
-        results.summary.overall_avg_response_ms));
-    lines.push(format!("  All scenarios passing (>= 90%): {}",
-        if results.summary.all_scenarios_passing { "YES" } else { "NO" }));
+    lines.push(format!(
+        "  Overall detection rate:     {:.1}%",
+        results.summary.overall_detection_rate * 100.0
+    ));
+    lines.push(format!(
+        "  Overall false positive rate: {:.1}%",
+        results.summary.overall_false_positive_rate * 100.0
+    ));
+    lines.push(format!(
+        "  Average response time:      {:.3} ms",
+        results.summary.overall_avg_response_ms
+    ));
+    lines.push(format!(
+        "  All scenarios passing (>= 90%): {}",
+        if results.summary.all_scenarios_passing {
+            "YES"
+        } else {
+            "NO"
+        }
+    ));
 
     lines.join("\n")
 }
@@ -442,8 +486,10 @@ fn format_results_text(results: &SimulationResults) -> String {
 fn format_results_table(results: &SimulationResults) -> String {
     let mut lines = Vec::new();
 
-    lines.push(format!("Attack Simulation — {} | Duration: {} ms",
-        results.generated_at, results.total_duration_ms));
+    lines.push(format!(
+        "Attack Simulation — {} | Duration: {} ms",
+        results.generated_at, results.total_duration_ms
+    ));
     lines.push(String::new());
 
     let header = format!(
@@ -457,15 +503,23 @@ fn format_results_table(results: &SimulationResults) -> String {
     for r in &results.scenario_results {
         lines.push(format!(
             "{:<24} {:>8} {:>10} {:>10.1}% {:>10.1}% {:>12.3}",
-            r.scenario_name, r.total_attacks, r.detected_count,
-            r.detection_rate * 100.0, r.false_positive_rate * 100.0,
+            r.scenario_name,
+            r.total_attacks,
+            r.detected_count,
+            r.detection_rate * 100.0,
+            r.false_positive_rate * 100.0,
             r.avg_response_ms,
         ));
     }
 
     lines.push(String::new());
-    let pass_mark = if results.summary.all_scenarios_passing { "PASS" } else { "FAIL" };
-    lines.push(format!("Overall: detect={:.1}% | fp={:.1}% | avg_resp={:.3}ms | {}",
+    let pass_mark = if results.summary.all_scenarios_passing {
+        "PASS"
+    } else {
+        "FAIL"
+    };
+    lines.push(format!(
+        "Overall: detect={:.1}% | fp={:.1}% | avg_resp={:.3}ms | {}",
         results.summary.overall_detection_rate * 100.0,
         results.summary.overall_false_positive_rate * 100.0,
         results.summary.overall_avg_response_ms,

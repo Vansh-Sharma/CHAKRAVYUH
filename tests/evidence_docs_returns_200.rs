@@ -40,8 +40,26 @@ fn router() -> axum::Router {
     let orchestrate = KeshavOrchestrate::new(config.keshav.orchestrate.clone());
     let cross_ring = CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
     build_router(
-        shield, threat, identity, memory, agent, execution, reasoning, governance, recovery_sec,
-        decide, risk, learn, orchestrate, cross_ring, None, None, None, None, None, None,
+        shield,
+        threat,
+        identity,
+        memory,
+        agent,
+        execution,
+        reasoning,
+        governance,
+        recovery_sec,
+        decide,
+        risk,
+        learn,
+        orchestrate,
+        cross_ring,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     )
 }
 
@@ -71,7 +89,10 @@ async fn evidence_get_docs_returns_200() {
     println!("content-type: {}", content_type);
     println!("body length:  {} bytes", body_str.len());
     println!("contains 'swagger-ui': {}", body_str.contains("swagger-ui"));
-    println!("contains '/openapi.json': {}", body_str.contains("/openapi.json"));
+    println!(
+        "contains '/openapi.json': {}",
+        body_str.contains("/openapi.json")
+    );
     println!("==========================");
 
     assert_eq!(status, StatusCode::OK, "GET /docs must return 200");

@@ -92,8 +92,7 @@ impl RegressionBaseline {
     pub fn load_from_file(path: &Path) -> Result<Self, String> {
         let content = std::fs::read_to_string(path)
             .map_err(|e| format!("Failed to read baseline from {}: {}", path.display(), e))?;
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse baseline: {}", e))
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse baseline: {}", e))
     }
 }
 
@@ -151,7 +150,11 @@ impl RegressionSuite {
             .collect();
 
         for ring in all_rings {
-            let new_rate = new.detection_rate_per_ring.get(ring).copied().unwrap_or(1.0);
+            let new_rate = new
+                .detection_rate_per_ring
+                .get(ring)
+                .copied()
+                .unwrap_or(1.0);
             let base_rate = baseline.ring_rates.get(ring).copied().unwrap_or(1.0);
             let delta = new_rate - base_rate;
 
@@ -180,7 +183,11 @@ impl RegressionSuite {
             .collect();
 
         for cat in all_cats {
-            let new_rate = new.detection_rate_per_category.get(cat).copied().unwrap_or(1.0);
+            let new_rate = new
+                .detection_rate_per_category
+                .get(cat)
+                .copied()
+                .unwrap_or(1.0);
             let base_rate = baseline.category_rates.get(cat).copied().unwrap_or(1.0);
             let delta = new_rate - base_rate;
 

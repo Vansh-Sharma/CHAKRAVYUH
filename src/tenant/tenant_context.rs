@@ -228,21 +228,17 @@ impl TenantScope {
             TenantTier::Standard => {
                 TenantScope::from_bits(Self::READ | Self::WRITE | Self::EXECUTE | Self::VIEW_AUDIT)
             }
-            TenantTier::Premium => {
-                TenantScope::from_bits(
-                    Self::READ | Self::WRITE | Self::EXECUTE | Self::VIEW_AUDIT | Self::MANAGE_USERS,
-                )
-            }
-            TenantTier::Enterprise => {
-                TenantScope::from_bits(
-                    Self::READ
-                        | Self::WRITE
-                        | Self::ADMIN
-                        | Self::EXECUTE
-                        | Self::VIEW_AUDIT
-                        | Self::MANAGE_USERS,
-                )
-            }
+            TenantTier::Premium => TenantScope::from_bits(
+                Self::READ | Self::WRITE | Self::EXECUTE | Self::VIEW_AUDIT | Self::MANAGE_USERS,
+            ),
+            TenantTier::Enterprise => TenantScope::from_bits(
+                Self::READ
+                    | Self::WRITE
+                    | Self::ADMIN
+                    | Self::EXECUTE
+                    | Self::VIEW_AUDIT
+                    | Self::MANAGE_USERS,
+            ),
         }
     }
 
@@ -569,11 +565,7 @@ impl TenantPropagation {
     }
 
     /// Create an audit trail entry for a tenant action within a ring.
-    pub fn audit_trail_entry(
-        ctx: &TenantContext,
-        action: &str,
-        outcome: &str,
-    ) -> TenantAuditEntry {
+    pub fn audit_trail_entry(ctx: &TenantContext, action: &str, outcome: &str) -> TenantAuditEntry {
         TenantAuditEntry::new(
             ctx.tenant_id.clone(),
             action,
@@ -725,9 +717,18 @@ mod tests {
     #[test]
     fn tier_from_str_loose() {
         assert_eq!(TenantTier::from_str_loose("Free"), Some(TenantTier::Free));
-        assert_eq!(TenantTier::from_str_loose("STANDARD"), Some(TenantTier::Standard));
-        assert_eq!(TenantTier::from_str_loose("Premium"), Some(TenantTier::Premium));
-        assert_eq!(TenantTier::from_str_loose("ENTERPRISE"), Some(TenantTier::Enterprise));
+        assert_eq!(
+            TenantTier::from_str_loose("STANDARD"),
+            Some(TenantTier::Standard)
+        );
+        assert_eq!(
+            TenantTier::from_str_loose("Premium"),
+            Some(TenantTier::Premium)
+        );
+        assert_eq!(
+            TenantTier::from_str_loose("ENTERPRISE"),
+            Some(TenantTier::Enterprise)
+        );
         assert_eq!(TenantTier::from_str_loose("unknown"), None);
     }
 
@@ -794,10 +795,22 @@ mod tests {
 
     #[test]
     fn scope_name_to_bit() {
-        assert_eq!(TenantScope::scope_name_to_bit("read"), Some(TenantScope::READ));
-        assert_eq!(TenantScope::scope_name_to_bit("WRITE"), Some(TenantScope::WRITE));
-        assert_eq!(TenantScope::scope_name_to_bit("admin"), Some(TenantScope::ADMIN));
-        assert_eq!(TenantScope::scope_name_to_bit("execute"), Some(TenantScope::EXECUTE));
+        assert_eq!(
+            TenantScope::scope_name_to_bit("read"),
+            Some(TenantScope::READ)
+        );
+        assert_eq!(
+            TenantScope::scope_name_to_bit("WRITE"),
+            Some(TenantScope::WRITE)
+        );
+        assert_eq!(
+            TenantScope::scope_name_to_bit("admin"),
+            Some(TenantScope::ADMIN)
+        );
+        assert_eq!(
+            TenantScope::scope_name_to_bit("execute"),
+            Some(TenantScope::EXECUTE)
+        );
         assert_eq!(
             TenantScope::scope_name_to_bit("manage_users"),
             Some(TenantScope::MANAGE_USERS)
@@ -873,11 +886,7 @@ mod tests {
 
     #[test]
     fn tenant_context_metadata() {
-        let mut ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Free,
-        );
+        let mut ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Free);
         ctx.set_metadata("team", "engineering");
         assert_eq!(ctx.metadata.get("team").unwrap(), "engineering");
     }
@@ -894,22 +903,14 @@ mod tests {
 
     #[test]
     fn tenant_context_has_scope() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Enterprise,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Enterprise);
         assert!(ctx.has_scope(TenantScope::ADMIN));
         assert!(ctx.has_scope(TenantScope::READ));
     }
 
     #[test]
     fn tenant_context_clamp_risk_tolerance() {
-        let mut ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Free,
-        );
+        let mut ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Free);
         ctx.max_risk_tolerance = 15.0;
         ctx.clamp_risk_tolerance();
         assert_eq!(ctx.max_risk_tolerance, 10.0);
@@ -988,11 +989,8 @@ mod tests {
 
     #[test]
     fn propagation_inject_headers() {
-        let mut ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Standard,
-        );
+        let mut ctx =
+            TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Standard);
         ctx.region = Some("eu-west-1".to_string());
         ctx.is_internal = true;
 
@@ -1005,11 +1003,7 @@ mod tests {
 
     #[test]
     fn propagation_inject_headers_no_region() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Free,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Free);
         let headers = TenantPropagation::inject_headers(&ctx);
         assert!(headers.get("x-tenant-region").is_none());
         assert!(headers.get("x-tenant-internal").is_none());
@@ -1017,11 +1011,7 @@ mod tests {
 
     #[test]
     fn propagation_validate_scope() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Enterprise,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Enterprise);
         assert!(TenantPropagation::validate_scope(&ctx, "admin"));
         assert!(TenantPropagation::validate_scope(&ctx, "read"));
         assert!(TenantPropagation::validate_scope(&ctx, "execute"));
@@ -1029,32 +1019,20 @@ mod tests {
 
     #[test]
     fn propagation_validate_scope_denied() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Free,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Free);
         assert!(!TenantPropagation::validate_scope(&ctx, "admin"));
         assert!(TenantPropagation::validate_scope(&ctx, "read"));
     }
 
     #[test]
     fn propagation_validate_unknown_scope() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Enterprise,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Enterprise);
         assert!(!TenantPropagation::validate_scope(&ctx, "nonexistent"));
     }
 
     #[test]
     fn propagation_audit_trail_entry() {
-        let ctx = TenantContext::new(
-            TenantId("acme".to_string()),
-            "ACME",
-            TenantTier::Standard,
-        );
+        let ctx = TenantContext::new(TenantId("acme".to_string()), "ACME", TenantTier::Standard);
         let entry = TenantPropagation::audit_trail_entry(&ctx, "tool_call", "allowed");
         assert_eq!(entry.tenant_id.0, "acme");
         assert_eq!(entry.action, "tool_call");
@@ -1067,8 +1045,7 @@ mod tests {
     #[test]
     fn propagation_audit_trail_entry_for_ring() {
         let ctx = TenantContext::system_default();
-        let entry =
-            TenantPropagation::audit_trail_entry_for_ring(&ctx, "eval", "denied", "shield");
+        let entry = TenantPropagation::audit_trail_entry_for_ring(&ctx, "eval", "denied", "shield");
         assert_eq!(entry.ring_name, "shield");
         assert_eq!(entry.tenant_id.0, "system-default");
     }
@@ -1094,13 +1071,8 @@ mod tests {
 
     #[test]
     fn audit_entry_serialization_roundtrip() {
-        let entry = TenantAuditEntry::new(
-            TenantId("acme".to_string()),
-            "test",
-            "ok",
-            "req-1",
-            "ring",
-        );
+        let entry =
+            TenantAuditEntry::new(TenantId("acme".to_string()), "test", "ok", "req-1", "ring");
         let json = serde_json::to_string(&entry).unwrap();
         let decoded: TenantAuditEntry = serde_json::from_str(&json).unwrap();
         assert_eq!(decoded.tenant_id.0, "acme");

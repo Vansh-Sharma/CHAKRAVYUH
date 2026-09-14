@@ -20,11 +20,21 @@ pub struct ContextGuardConfig {
     pub warning_threshold: f64,
 }
 
-fn default_enabled() -> bool { true }
-fn default_max_context() -> usize { 128_000 }
-fn default_max_turns() -> u32 { 100 }
-fn default_max_prompt() -> usize { 64_000 }
-fn default_warning_threshold() -> f64 { 0.8 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_max_context() -> usize {
+    128_000
+}
+fn default_max_turns() -> u32 {
+    100
+}
+fn default_max_prompt() -> usize {
+    64_000
+}
+fn default_warning_threshold() -> f64 {
+    0.8
+}
 
 impl Default for ContextGuardConfig {
     fn default() -> Self {
@@ -77,10 +87,17 @@ pub struct ContextGuard {
 
 impl ContextGuard {
     pub fn new(config: &ContextGuardConfig) -> Self {
-        Self { config: config.clone() }
+        Self {
+            config: config.clone(),
+        }
     }
 
-    pub fn evaluate(&self, prompt: &str, context_length: usize, turn_count: u32) -> ContextGuardResult {
+    pub fn evaluate(
+        &self,
+        prompt: &str,
+        context_length: usize,
+        turn_count: u32,
+    ) -> ContextGuardResult {
         let start = std::time::Instant::now();
 
         if !self.config.enabled {
@@ -99,7 +116,11 @@ impl ContextGuard {
         if prompt.len() > self.config.max_prompt_length {
             return ContextGuardResult {
                 valid: false,
-                reason: format!("prompt exceeds max length ({} > {})", prompt.len(), self.config.max_prompt_length),
+                reason: format!(
+                    "prompt exceeds max length ({} > {})",
+                    prompt.len(),
+                    self.config.max_prompt_length
+                ),
                 context_length,
                 turn_count,
                 max_context: self.config.max_context_length,
@@ -112,7 +133,10 @@ impl ContextGuard {
         if context_length > self.config.max_context_length {
             return ContextGuardResult {
                 valid: false,
-                reason: format!("context exceeds max length ({} > {})", context_length, self.config.max_context_length),
+                reason: format!(
+                    "context exceeds max length ({} > {})",
+                    context_length, self.config.max_context_length
+                ),
                 context_length,
                 turn_count,
                 max_context: self.config.max_context_length,
@@ -125,7 +149,10 @@ impl ContextGuard {
         if turn_count > self.config.max_turns {
             return ContextGuardResult {
                 valid: false,
-                reason: format!("turn count exceeds max ({} > {})", turn_count, self.config.max_turns),
+                reason: format!(
+                    "turn count exceeds max ({} > {})",
+                    turn_count, self.config.max_turns
+                ),
                 context_length,
                 turn_count,
                 max_context: self.config.max_context_length,
@@ -150,7 +177,12 @@ impl ContextGuard {
         // Warning threshold check (soft — valid but flagged).
         let usage_ratio = context_length as f64 / self.config.max_context_length as f64;
         let reason = if usage_ratio > self.config.warning_threshold {
-            format!("context usage at {:.0}% ({}/{})", usage_ratio * 100.0, context_length, self.config.max_context_length)
+            format!(
+                "context usage at {:.0}% ({}/{})",
+                usage_ratio * 100.0,
+                context_length,
+                self.config.max_context_length
+            )
         } else {
             "context within limits".into()
         };
@@ -209,7 +241,10 @@ mod tests {
 
     #[test]
     fn disabled_allows_all() {
-        let g = ContextGuard::new(&ContextGuardConfig { enabled: false, ..Default::default() });
+        let g = ContextGuard::new(&ContextGuardConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let r = g.evaluate("test", 999_999, 9999);
         assert!(r.valid);
     }

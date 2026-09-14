@@ -315,8 +315,12 @@ mod tests {
     #[test]
     fn verdict_distribution() {
         let v = VerdictDistribution::from_verdicts(&[
-            Verdict::Pass, Verdict::Pass, Verdict::Fail,
-            Verdict::Skip, Verdict::Error, Verdict::Pass,
+            Verdict::Pass,
+            Verdict::Pass,
+            Verdict::Fail,
+            Verdict::Skip,
+            Verdict::Error,
+            Verdict::Pass,
         ]);
         assert_eq!(v.pass, 3);
         assert_eq!(v.fail, 1);
@@ -329,8 +333,12 @@ mod tests {
     #[test]
     fn severity_distribution() {
         let s = SeverityDistribution::from_severities(&[
-            Severity::Low, Severity::Medium, Severity::High,
-            Severity::Critical, Severity::Medium, Severity::High,
+            Severity::Low,
+            Severity::Medium,
+            Severity::High,
+            Severity::Critical,
+            Severity::Medium,
+            Severity::High,
         ]);
         assert_eq!(s.low, 1);
         assert_eq!(s.medium, 2);

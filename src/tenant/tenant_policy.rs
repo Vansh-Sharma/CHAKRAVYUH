@@ -353,10 +353,12 @@ impl TokenBucket {
                 return false;
             }
             let next = current - count;
-            match self
-                .tokens
-                .compare_exchange_weak(current, next, Ordering::Relaxed, Ordering::Relaxed)
-            {
+            match self.tokens.compare_exchange_weak(
+                current,
+                next,
+                Ordering::Relaxed,
+                Ordering::Relaxed,
+            ) {
                 Ok(_) => return true,
                 Err(actual) => current = actual,
             }
@@ -555,16 +557,12 @@ impl TenantPolicyEngine {
 
     /// Get the effective deny threshold (tenant override or global default).
     pub fn effective_deny_threshold(&self, _ctx: &TenantContext) -> f64 {
-        self.config
-            .override_deny_threshold
-            .unwrap_or(8.0) // global default
+        self.config.override_deny_threshold.unwrap_or(8.0) // global default
     }
 
     /// Get the effective challenge threshold (tenant override or global default).
     pub fn effective_challenge_threshold(&self, _ctx: &TenantContext) -> f64 {
-        self.config
-            .override_challenge_threshold
-            .unwrap_or(5.0) // global default
+        self.config.override_challenge_threshold.unwrap_or(5.0) // global default
     }
 
     /// Record a request for rate-limiting purposes.
@@ -850,34 +848,21 @@ mod tests {
 
     #[test]
     fn custom_rule_match_all() {
-        let rule = TenantCustomRule::new(
-            "test",
-            r#"{"match_all": true}"#,
-            TenantRuleAction::Deny,
-            1,
-        );
+        let rule =
+            TenantCustomRule::new("test", r#"{"match_all": true}"#, TenantRuleAction::Deny, 1);
         assert!(rule.matches_action("anything"));
     }
 
     #[test]
     fn custom_rule_invalid_json_no_match() {
-        let rule = TenantCustomRule::new(
-            "test",
-            "not valid json",
-            TenantRuleAction::Deny,
-            1,
-        );
+        let rule = TenantCustomRule::new("test", "not valid json", TenantRuleAction::Deny, 1);
         assert!(!rule.matches_action("tool_call"));
     }
 
     #[test]
     fn custom_rule_no_action_field_no_match() {
-        let rule = TenantCustomRule::new(
-            "test",
-            r#"{"other": "field"}"#,
-            TenantRuleAction::Deny,
-            1,
-        );
+        let rule =
+            TenantCustomRule::new("test", r#"{"other": "field"}"#, TenantRuleAction::Deny, 1);
         assert!(!rule.matches_action("tool_call"));
     }
 
@@ -968,8 +953,12 @@ mod tests {
 
     #[test]
     fn decision_from_rule_allow() {
-        let rule =
-            TenantCustomRule::new("allow-rule", r#"{"action": "x"}"#, TenantRuleAction::Allow, 1);
+        let rule = TenantCustomRule::new(
+            "allow-rule",
+            r#"{"action": "x"}"#,
+            TenantRuleAction::Allow,
+            1,
+        );
         let d = TenantPolicyDecision::from_rule(&rule, TenantRuleAction::Allow);
         assert!(d.allowed);
     }
@@ -1008,7 +997,7 @@ mod tests {
     #[test]
     fn token_bucket_refill() {
         let bucket = TokenBucket::new(10, 1000.0); // very fast refill for test
-        // Drain the bucket
+                                                   // Drain the bucket
         for _ in 0..10 {
             bucket.consume(1);
         }

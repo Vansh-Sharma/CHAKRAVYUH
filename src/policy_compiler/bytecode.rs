@@ -391,11 +391,15 @@ impl BytecodeProgram {
     /// Approximate serialized size in bytes (excluding header).
     pub fn estimated_size(&self) -> usize {
         let instr_size: usize = self.instructions.iter().map(|i| i.serialized_size()).sum();
-        let const_size: usize = self.constant_pool.iter().map(|c| match c {
-            Constant::Number(_) => 9,    // type(1) + f64(8)
-            Constant::String(s) => 1 + 4 + s.len(),
-            Constant::Regex(s) => 1 + 4 + s.len(),
-        }).sum();
+        let const_size: usize = self
+            .constant_pool
+            .iter()
+            .map(|c| match c {
+                Constant::Number(_) => 9, // type(1) + f64(8)
+                Constant::String(s) => 1 + 4 + s.len(),
+                Constant::Regex(s) => 1 + 4 + s.len(),
+            })
+            .sum();
         instr_size + const_size + 4 + 4 // entry_point + max_stack_size
     }
 
@@ -435,12 +439,18 @@ impl BytecodeProgram {
                 }
             }
             // Check constant pool references are in bounds.
-            if matches!(instr.opcode, OpCode::Push | OpCode::PushStr | OpCode::MatchRegex) {
+            if matches!(
+                instr.opcode,
+                OpCode::Push | OpCode::PushStr | OpCode::MatchRegex
+            ) {
                 if let Some(ci) = instr.operand {
                     if ci as usize >= self.constant_pool.len() {
                         return Err(format!(
                             "instruction {} ({}) constant index {} out of bounds (max {})",
-                            idx, instr.opcode, ci, self.constant_pool.len()
+                            idx,
+                            instr.opcode,
+                            ci,
+                            self.constant_pool.len()
                         ));
                     }
                 }
@@ -479,9 +489,7 @@ impl BytecodeProgram {
         for instr in &self.instructions {
             buf.push(instr.opcode as u8);
             if instr.opcode.has_operand() {
-                buf.extend_from_slice(
-                    &instr.operand.unwrap_or(0).to_le_bytes(),
-                );
+                buf.extend_from_slice(&instr.operand.unwrap_or(0).to_le_bytes());
             }
         }
 
@@ -648,15 +656,42 @@ mod tests {
     #[test]
     fn opcode_roundtrip_byte() {
         let opcodes = [
-            OpCode::Push, OpCode::PushStr, OpCode::Load, OpCode::Store,
-            OpCode::Add, OpCode::Sub, OpCode::Mul, OpCode::Div, OpCode::Mod,
-            OpCode::Gt, OpCode::Lt, OpCode::Ge, OpCode::Le, OpCode::Eq, OpCode::Ne,
-            OpCode::And, OpCode::Or, OpCode::Not,
-            OpCode::Jump, OpCode::JumpIfFalse, OpCode::JumpIfTrue, OpCode::Call, OpCode::Return,
-            OpCode::MatchRegex, OpCode::Contains, OpCode::StartsWith, OpCode::EndsWith,
-            OpCode::RiskAdd, OpCode::RiskMul, OpCode::RiskMax,
-            OpCode::Deny, OpCode::Allow, OpCode::Escalate, OpCode::Challenge,
-            OpCode::Halt, OpCode::Nop,
+            OpCode::Push,
+            OpCode::PushStr,
+            OpCode::Load,
+            OpCode::Store,
+            OpCode::Add,
+            OpCode::Sub,
+            OpCode::Mul,
+            OpCode::Div,
+            OpCode::Mod,
+            OpCode::Gt,
+            OpCode::Lt,
+            OpCode::Ge,
+            OpCode::Le,
+            OpCode::Eq,
+            OpCode::Ne,
+            OpCode::And,
+            OpCode::Or,
+            OpCode::Not,
+            OpCode::Jump,
+            OpCode::JumpIfFalse,
+            OpCode::JumpIfTrue,
+            OpCode::Call,
+            OpCode::Return,
+            OpCode::MatchRegex,
+            OpCode::Contains,
+            OpCode::StartsWith,
+            OpCode::EndsWith,
+            OpCode::RiskAdd,
+            OpCode::RiskMul,
+            OpCode::RiskMax,
+            OpCode::Deny,
+            OpCode::Allow,
+            OpCode::Escalate,
+            OpCode::Challenge,
+            OpCode::Halt,
+            OpCode::Nop,
         ];
         for op in &opcodes {
             let byte = *op as u8;
@@ -696,16 +731,14 @@ mod tests {
         let i2 = Instruction::with_operand(OpCode::Push, 3);
         assert_eq!(i2.operand, Some(3));
 
-        let i3 = Instruction::with_operand(OpCode::Jump, 10)
-            .with_source(42, "rate_limit_rule");
+        let i3 = Instruction::with_operand(OpCode::Jump, 10).with_source(42, "rate_limit_rule");
         assert_eq!(i3.line_number, 42);
         assert_eq!(i3.source_rule, "rate_limit_rule");
     }
 
     #[test]
     fn instruction_display() {
-        let i = Instruction::with_operand(OpCode::Push, 0)
-            .with_source(5, "test_rule");
+        let i = Instruction::with_operand(OpCode::Push, 0).with_source(5, "test_rule");
         let s = format!("{}", i);
         assert!(s.contains("PUSH"));
         assert!(s.contains("test_rule"));
@@ -852,8 +885,7 @@ mod tests {
     fn disassemble_output() {
         let mut prog = BytecodeProgram::new();
         let c = prog.add_constant(Constant::Number(42.0));
-        prog.emit(Instruction::with_operand(OpCode::Push, c)
-            .with_source(1, "rule_1"));
+        prog.emit(Instruction::with_operand(OpCode::Push, c).with_source(1, "rule_1"));
         prog.emit(Instruction::new(OpCode::Halt));
         let listing = prog.disassemble();
         assert!(listing.contains("Constant Pool"));

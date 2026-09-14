@@ -117,11 +117,13 @@ impl TriggerCondition {
     }
 
     /// Evaluate whether this condition matches an incident.
-    pub fn matches(&self, classification: &IncidentClassification, severity: &IncidentSeverity) -> bool {
+    pub fn matches(
+        &self,
+        classification: &IncidentClassification,
+        severity: &IncidentSeverity,
+    ) -> bool {
         // Check classification match
-        if !self.classifications.is_empty()
-            && !self.classifications.contains(classification)
-        {
+        if !self.classifications.is_empty() && !self.classifications.contains(classification) {
             return false;
         }
 
@@ -574,11 +576,7 @@ mod tests {
         PlaybookStep::new(id, &format!("Step {id}"), action)
     }
 
-    fn make_incident(
-        cls: IncidentClassification,
-        sev: IncidentSeverity,
-        ring: u8,
-    ) -> Incident {
+    fn make_incident(cls: IncidentClassification, sev: IncidentSeverity, ring: u8) -> Incident {
         Incident::new(cls, "test incident", ring).with_severity(sev)
     }
 
@@ -625,8 +623,14 @@ mod tests {
             IncidentClassification::DataBreach,
         ]);
         assert!(trigger.matches(&IncidentClassification::DDoS, &IncidentSeverity::High));
-        assert!(trigger.matches(&IncidentClassification::DataBreach, &IncidentSeverity::Critical));
-        assert!(!trigger.matches(&IncidentClassification::PromptInjection, &IncidentSeverity::High));
+        assert!(trigger.matches(
+            &IncidentClassification::DataBreach,
+            &IncidentSeverity::Critical
+        ));
+        assert!(!trigger.matches(
+            &IncidentClassification::PromptInjection,
+            &IncidentSeverity::High
+        ));
     }
 
     #[test]
@@ -643,10 +647,8 @@ mod tests {
 
     #[test]
     fn test_trigger_min_severity() {
-        let trigger = TriggerCondition::for_classifications(vec![
-            IncidentClassification::DDoS,
-        ])
-        .with_min_severity(IncidentSeverity::High);
+        let trigger = TriggerCondition::for_classifications(vec![IncidentClassification::DDoS])
+            .with_min_severity(IncidentSeverity::High);
 
         assert!(trigger.matches(&IncidentClassification::DDoS, &IncidentSeverity::High));
         assert!(trigger.matches(&IncidentClassification::DDoS, &IncidentSeverity::Critical));
@@ -845,7 +847,10 @@ mod tests {
         let incident = make_incident(IncidentClassification::DDoS, IncidentSeverity::Critical, 1);
         let ctx = PlaybookContext::from_incident(&incident);
 
-        assert!(PlaybookEngine::evaluate_condition("severity=Critical", &ctx));
+        assert!(PlaybookEngine::evaluate_condition(
+            "severity=Critical",
+            &ctx
+        ));
         assert!(!PlaybookEngine::evaluate_condition("severity=Low", &ctx));
     }
 
@@ -854,7 +859,10 @@ mod tests {
         let incident = make_incident(IncidentClassification::DDoS, IncidentSeverity::High, 1);
         let ctx = PlaybookContext::from_incident(&incident);
 
-        assert!(!PlaybookEngine::evaluate_condition("invalid_no_equals", &ctx));
+        assert!(!PlaybookEngine::evaluate_condition(
+            "invalid_no_equals",
+            &ctx
+        ));
     }
 
     // ── PlaybookRegistry tests ──
@@ -874,15 +882,13 @@ mod tests {
     fn test_registry_find_by_trigger() {
         let mut reg = PlaybookRegistry::new();
 
-        let ddos_pb = Playbook::new("ddos-pb", "DDoS response")
-            .with_trigger(
-                TriggerCondition::for_classifications(vec![IncidentClassification::DDoS])
-                    .with_min_severity(IncidentSeverity::Medium),
-            );
-        let breach_pb = Playbook::new("breach-pb", "Breach response")
-            .with_trigger(
-                TriggerCondition::for_classifications(vec![IncidentClassification::DataBreach]),
-            );
+        let ddos_pb = Playbook::new("ddos-pb", "DDoS response").with_trigger(
+            TriggerCondition::for_classifications(vec![IncidentClassification::DDoS])
+                .with_min_severity(IncidentSeverity::Medium),
+        );
+        let breach_pb = Playbook::new("breach-pb", "Breach response").with_trigger(
+            TriggerCondition::for_classifications(vec![IncidentClassification::DataBreach]),
+        );
 
         reg.register(ddos_pb);
         reg.register(breach_pb);
@@ -914,7 +920,11 @@ mod tests {
         let playbook = Playbook::new("test", "Test")
             .with_step(make_step("s1", PlaybookAction::QuarantineRequest));
 
-        let incident = make_incident(IncidentClassification::PolicyViolation, IncidentSeverity::Low, 4);
+        let incident = make_incident(
+            IncidentClassification::PolicyViolation,
+            IncidentSeverity::Low,
+            4,
+        );
         let ctx = PlaybookContext::from_incident(&incident);
         let result = PlaybookEngine::execute(&playbook, ctx);
 

@@ -33,10 +33,17 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use super::feedback_collector::{FeedbackCollector, FeedbackCollectorConfig, FeedbackEntry, FeedbackStats, FeedbackType, FeedbackSeverity};
-use super::threshold_optimizer::{ThresholdOptimizer, ThresholdOptimizerConfig, OptimizationResult};
-use super::anomaly_profiler::{AnomalyProfiler, AnomalyProfilerConfig, AnomalyAssessment, SourceId};
-use super::pattern_store::{PatternStore, PatternStoreConfig, Pattern};
+use super::anomaly_profiler::{
+    AnomalyAssessment, AnomalyProfiler, AnomalyProfilerConfig, SourceId,
+};
+use super::feedback_collector::{
+    FeedbackCollector, FeedbackCollectorConfig, FeedbackEntry, FeedbackSeverity, FeedbackStats,
+    FeedbackType,
+};
+use super::pattern_store::{Pattern, PatternStore, PatternStoreConfig};
+use super::threshold_optimizer::{
+    OptimizationResult, ThresholdOptimizer, ThresholdOptimizerConfig,
+};
 
 /// Keshav-Learn configuration.
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -57,7 +64,9 @@ pub struct LearnConfig {
     pub pattern_store: PatternStoreConfig,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 impl Default for LearnConfig {
     fn default() -> Self {
@@ -137,7 +146,10 @@ impl KeshavLearn {
 
     /// Create a disabled instance (all operations are no-ops).
     pub fn disabled() -> crate::Result<Self> {
-        Self::new(LearnConfig { enabled: false, ..Default::default() })
+        Self::new(LearnConfig {
+            enabled: false,
+            ..Default::default()
+        })
     }
 
     /// Whether learning is enabled.
@@ -224,16 +236,31 @@ impl KeshavLearn {
         }
 
         // Profile by IP (always).
-        self.profiler.observe(&SourceId::Ip(source_ip.to_string()), denied, prompt_length, tool_name);
+        self.profiler.observe(
+            &SourceId::Ip(source_ip.to_string()),
+            denied,
+            prompt_length,
+            tool_name,
+        );
 
         // Profile by user if available.
         if let Some(uid) = user_id {
-            self.profiler.observe(&SourceId::User(uid.to_string()), denied, prompt_length, tool_name);
+            self.profiler.observe(
+                &SourceId::User(uid.to_string()),
+                denied,
+                prompt_length,
+                tool_name,
+            );
         }
 
         // Profile by agent if available.
         if let Some(aid) = agent_id {
-            self.profiler.observe(&SourceId::Agent(aid.to_string()), denied, prompt_length, tool_name);
+            self.profiler.observe(
+                &SourceId::Agent(aid.to_string()),
+                denied,
+                prompt_length,
+                tool_name,
+            );
         }
     }
 
@@ -263,7 +290,11 @@ impl KeshavLearn {
         let unprocessed: Vec<_> = entries.iter().filter(|e| !e.processed).cloned().collect();
 
         let results = self.optimizer.optimize(&unprocessed);
-        let processed_count = if results.is_empty() { 0 } else { unprocessed.len() };
+        let processed_count = if results.is_empty() {
+            0
+        } else {
+            unprocessed.len()
+        };
 
         if processed_count > 0 {
             self.feedback.mark_processed(processed_count);
@@ -349,10 +380,18 @@ impl KeshavLearn {
     }
 
     /// Get subsystem references for direct access.
-    pub fn feedback_collector(&self) -> &FeedbackCollector { &self.feedback }
-    pub fn threshold_optimizer(&self) -> &ThresholdOptimizer { &self.optimizer }
-    pub fn anomaly_profiler(&self) -> &AnomalyProfiler { &self.profiler }
-    pub fn pattern_store(&self) -> &PatternStore { &self.patterns }
+    pub fn feedback_collector(&self) -> &FeedbackCollector {
+        &self.feedback
+    }
+    pub fn threshold_optimizer(&self) -> &ThresholdOptimizer {
+        &self.optimizer
+    }
+    pub fn anomaly_profiler(&self) -> &AnomalyProfiler {
+        &self.profiler
+    }
+    pub fn pattern_store(&self) -> &PatternStore {
+        &self.patterns
+    }
 }
 
 impl Clone for KeshavLearn {
@@ -364,7 +403,7 @@ impl Clone for KeshavLearn {
             profiler: Arc::clone(&self.profiler),
             patterns: Arc::clone(&self.patterns),
             last_optimization: std::sync::RwLock::new(
-                self.last_optimization.read().unwrap().clone()
+                self.last_optimization.read().unwrap().clone(),
             ),
         }
     }
@@ -373,7 +412,7 @@ impl Clone for KeshavLearn {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::keshav::pattern_store::{PatternType, PatternSource};
+    use crate::keshav::pattern_store::{PatternSource, PatternType};
 
     fn make_learn() -> KeshavLearn {
         KeshavLearn::new(LearnConfig::default()).unwrap()
@@ -498,7 +537,14 @@ mod tests {
 
         // 1. Observe behavior.
         for _ in 0..20 {
-            learn.observe_request("10.0.0.1", Some("user-1"), None, false, 50, Some("file_read"));
+            learn.observe_request(
+                "10.0.0.1",
+                Some("user-1"),
+                None,
+                false,
+                50,
+                Some("file_read"),
+            );
         }
 
         // 2. Submit feedback.

@@ -12,17 +12,17 @@
 
 use std::time::Instant;
 
+use axum::Extension;
 use axum::{
     extract::State,
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Json, Response},
 };
-use axum::Extension;
 use serde_json::json;
 use uuid::Uuid;
 
 use crate::decision::Decision;
-use crate::identity::{AuditLog, generate_api_key, hash_api_key, is_valid_api_key_format};
+use crate::identity::{generate_api_key, hash_api_key, is_valid_api_key_format, AuditLog};
 use crate::keshav::orchestrate::RequestType;
 use crate::keshav::{PipelineContext, PipelineExecutor};
 use crate::shield::ShieldRequest;
@@ -82,8 +82,7 @@ pub async fn protect(
     });
 
     // Reuse the existing build_shield_request helper from api/mod.rs.
-    let shield_request: ShieldRequest =
-        build_shield_request("/v1/protect", &headers, engine_body);
+    let shield_request: ShieldRequest = build_shield_request("/v1/protect", &headers, engine_body);
 
     // Reuse the existing extract_prompt_text helper.
     let prompt_text = extract_prompt_text(&shield_request.body);
@@ -165,7 +164,11 @@ pub async fn protect(
         let audit_entry = AuditLog {
             id: Uuid::new_v4(),
             request_id: request_id.clone(),
-            organization_id: maybe_tenant.0.as_ref().map(|t| t.org_id()).unwrap_or_default(),
+            organization_id: maybe_tenant
+                .0
+                .as_ref()
+                .map(|t| t.org_id())
+                .unwrap_or_default(),
             workspace_id: maybe_tenant.0.as_ref().and_then(|t| t.workspace_id()),
             api_key_id: maybe_tenant.0.as_ref().map(|t| t.api_key_id()),
             ring: response.triggered_ring.clone(),
@@ -305,13 +308,10 @@ pub async fn health(State(state): State<ApiState>) -> Json<HealthResponse> {
         active_rings: 9, // Shield, Identity, Threat, Agent, Memory, Execution, Reasoning, Governance, Recovery
         build: BuildInfo {
             version: env!("CARGO_PKG_VERSION").to_string(),
-            commit: std::env::var("GIT_COMMIT")
-                .unwrap_or_else(|_| "unknown".to_string()),
+            commit: std::env::var("GIT_COMMIT").unwrap_or_else(|_| "unknown".to_string()),
             target: std::env::consts::ARCH.to_string(),
-            profile: std::env::var("BUILD_PROFILE")
-                .unwrap_or_else(|_| "debug".to_string()),
-            rustc: std::env::var("RUSTC_VERSION")
-                .unwrap_or_else(|_| "unknown".to_string()),
+            profile: std::env::var("BUILD_PROFILE").unwrap_or_else(|_| "debug".to_string()),
+            rustc: std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".to_string()),
             built_at: chrono::Utc::now().to_rfc3339(),
         },
         components: ComponentsHealth {
@@ -340,11 +340,9 @@ pub async fn version() -> Json<VersionResponse> {
         version: env!("CARGO_PKG_VERSION").to_string(),
         engine_version: env!("CARGO_PKG_VERSION").to_string(),
         api_version: "1.0.0".to_string(),
-        rustc_version: std::env::var("RUSTC_VERSION")
-            .unwrap_or_else(|_| "unknown".to_string()),
+        rustc_version: std::env::var("RUSTC_VERSION").unwrap_or_else(|_| "unknown".to_string()),
         build_target: std::env::consts::ARCH.to_string(),
-        build_profile: std::env::var("BUILD_PROFILE")
-            .unwrap_or_else(|_| "debug".to_string()),
+        build_profile: std::env::var("BUILD_PROFILE").unwrap_or_else(|_| "debug".to_string()),
     })
 }
 

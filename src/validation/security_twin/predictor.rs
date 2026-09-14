@@ -134,15 +134,33 @@ pub struct TwinPredictor {
 impl TwinPredictor {
     pub fn new() -> Self {
         let mut pattern_ring_map = HashMap::new();
-        pattern_ring_map.insert("sqli".to_string(), vec!["shield".to_string(), "threat".to_string()]);
-        pattern_ring_map.insert("xss".to_string(), vec!["shield".to_string(), "threat".to_string()]);
-        pattern_ring_map.insert("prompt_injection".to_string(), vec!["threat".to_string(), "reasoning".to_string()]);
-        pattern_ring_map.insert("jailbreak".to_string(), vec!["threat".to_string(), "identity".to_string()]);
-        pattern_ring_map.insert("ssrf".to_string(), vec!["execution".to_string(), "shield".to_string()]);
+        pattern_ring_map.insert(
+            "sqli".to_string(),
+            vec!["shield".to_string(), "threat".to_string()],
+        );
+        pattern_ring_map.insert(
+            "xss".to_string(),
+            vec!["shield".to_string(), "threat".to_string()],
+        );
+        pattern_ring_map.insert(
+            "prompt_injection".to_string(),
+            vec!["threat".to_string(), "reasoning".to_string()],
+        );
+        pattern_ring_map.insert(
+            "jailbreak".to_string(),
+            vec!["threat".to_string(), "identity".to_string()],
+        );
+        pattern_ring_map.insert(
+            "ssrf".to_string(),
+            vec!["execution".to_string(), "shield".to_string()],
+        );
         pattern_ring_map.insert("memory_poison".to_string(), vec!["memory".to_string()]);
         pattern_ring_map.insert("agent_attack".to_string(), vec!["agent".to_string()]);
         pattern_ring_map.insert("policy_attack".to_string(), vec!["governance".to_string()]);
-        pattern_ring_map.insert("identity_attack".to_string(), vec!["identity".to_string(), "shield".to_string()]);
+        pattern_ring_map.insert(
+            "identity_attack".to_string(),
+            vec!["identity".to_string(), "shield".to_string()],
+        );
 
         let mut ring_thresholds = HashMap::new();
         ring_thresholds.insert("shield".to_string(), 0.7);
@@ -153,7 +171,10 @@ impl TwinPredictor {
         ring_thresholds.insert("agent".to_string(), 0.5);
         ring_thresholds.insert("governance".to_string(), 0.6);
 
-        Self { ring_thresholds, pattern_ring_map }
+        Self {
+            ring_thresholds,
+            pattern_ring_map,
+        }
     }
 
     /// Predict the outcome of an attack.
@@ -167,13 +188,17 @@ impl TwinPredictor {
         let payload_lower = payload.to_lowercase();
 
         // Find which rings should catch this attack based on category.
-        let candidate_rings = self.pattern_ring_map
+        let candidate_rings = self
+            .pattern_ring_map
             .get(attack_category)
             .cloned()
             .unwrap_or_default();
 
         if candidate_rings.is_empty() {
-            let mut pred = Prediction::uncertain(&format!("No pattern mapping for category: {}", attack_category));
+            let mut pred = Prediction::uncertain(&format!(
+                "No pattern mapping for category: {}",
+                attack_category
+            ));
             pred.duration_us = start.elapsed().as_micros() as u64;
             return pred;
         }
@@ -193,16 +218,23 @@ impl TwinPredictor {
             let ring_score = self.score_payload_against_ring(&payload_lower, ring);
             let would_catch = ring_score >= threshold;
 
-            ring_preds.insert(ring.clone(), RingPrediction {
-                ring_name: ring.clone(),
-                predicted_verdict: if would_catch { "deny".to_string() } else { "allow".to_string() },
-                predicted_risk_contribution: ring_score,
-                reason: if would_catch {
-                    format!("Ring score {} >= threshold {}", ring_score, threshold)
-                } else {
-                    format!("Ring score {} < threshold {}", ring_score, threshold)
+            ring_preds.insert(
+                ring.clone(),
+                RingPrediction {
+                    ring_name: ring.clone(),
+                    predicted_verdict: if would_catch {
+                        "deny".to_string()
+                    } else {
+                        "allow".to_string()
+                    },
+                    predicted_risk_contribution: ring_score,
+                    reason: if would_catch {
+                        format!("Ring score {} >= threshold {}", ring_score, threshold)
+                    } else {
+                        format!("Ring score {} < threshold {}", ring_score, threshold)
+                    },
                 },
-            });
+            );
 
             if would_catch && ring_score > best_score {
                 best_score = ring_score;
@@ -210,7 +242,11 @@ impl TwinPredictor {
             }
         }
 
-        let confidence = if best_ring.is_empty() { 0.3 } else { best_score };
+        let confidence = if best_ring.is_empty() {
+            0.3
+        } else {
+            best_score
+        };
         let mut pred = if best_ring.is_empty() {
             Prediction::allowed(confidence, best_score)
         } else {
@@ -227,44 +263,69 @@ impl TwinPredictor {
     fn score_payload_against_ring(&self, payload: &str, ring: &str) -> f64 {
         let indicators: &[(&str, f64)] = match ring {
             "shield" => &[
-                ("select ", 0.9), ("union ", 0.85), ("drop ", 0.9),
-                ("<script", 0.95), ("javascript:", 0.9),
-                ("curl ", 0.7), ("wget ", 0.7),
-                ("http://", 0.4), ("https://", 0.3),
-                ("' or ", 0.85), ("'--", 0.8),
-                ("<img", 0.7), ("onerror", 0.85),
+                ("select ", 0.9),
+                ("union ", 0.85),
+                ("drop ", 0.9),
+                ("<script", 0.95),
+                ("javascript:", 0.9),
+                ("curl ", 0.7),
+                ("wget ", 0.7),
+                ("http://", 0.4),
+                ("https://", 0.3),
+                ("' or ", 0.85),
+                ("'--", 0.8),
+                ("<img", 0.7),
+                ("onerror", 0.85),
             ],
             "threat" => &[
-                ("ignore previous", 0.9), ("system prompt", 0.95),
-                ("you are now", 0.85), ("jailbreak", 0.9),
-                ("pretend", 0.7), ("roleplay", 0.6),
-                ("dan", 0.7), ("bypass", 0.8),
-                ("forget", 0.6), ("new instructions", 0.85),
+                ("ignore previous", 0.9),
+                ("system prompt", 0.95),
+                ("you are now", 0.85),
+                ("jailbreak", 0.9),
+                ("pretend", 0.7),
+                ("roleplay", 0.6),
+                ("dan", 0.7),
+                ("bypass", 0.8),
+                ("forget", 0.6),
+                ("new instructions", 0.85),
             ],
             "execution" => &[
-                ("http://", 0.6), ("https://", 0.4),
-                ("127.0.0.1", 0.95), ("localhost", 0.9),
-                ("169.254.169.254", 0.95), ("10.", 0.7),
-                ("192.168.", 0.8), ("::1", 0.8),
+                ("http://", 0.6),
+                ("https://", 0.4),
+                ("127.0.0.1", 0.95),
+                ("localhost", 0.9),
+                ("169.254.169.254", 0.95),
+                ("10.", 0.7),
+                ("192.168.", 0.8),
+                ("::1", 0.8),
             ],
             "memory" => &[
-                ("forget previous", 0.8), ("new context", 0.6),
-                ("inject", 0.7), ("poison", 0.8),
+                ("forget previous", 0.8),
+                ("new context", 0.6),
+                ("inject", 0.7),
+                ("poison", 0.8),
                 ("previous conversation", 0.6),
             ],
             "agent" => &[
-                ("tool", 0.5), ("function", 0.4),
-                ("chain", 0.5), ("escalate", 0.7),
+                ("tool", 0.5),
+                ("function", 0.4),
+                ("chain", 0.5),
+                ("escalate", 0.7),
                 ("unauthorized", 0.8),
             ],
             "identity" => &[
-                ("admin", 0.7), ("root", 0.8),
-                ("sudo", 0.85), ("privilege", 0.8),
-                ("impersonate", 0.9), ("session", 0.5),
+                ("admin", 0.7),
+                ("root", 0.8),
+                ("sudo", 0.85),
+                ("privilege", 0.8),
+                ("impersonate", 0.9),
+                ("session", 0.5),
             ],
             "governance" => &[
-                ("policy", 0.5), ("rule", 0.4),
-                ("override", 0.7), ("bypass", 0.7),
+                ("policy", 0.5),
+                ("rule", 0.4),
+                ("override", 0.7),
+                ("bypass", 0.7),
             ],
             _ => return 0.0,
         };
@@ -334,9 +395,18 @@ mod tests {
 
     #[test]
     fn confidence_levels() {
-        assert_eq!(PredictionConfidence::from_score(0.9), PredictionConfidence::High);
-        assert_eq!(PredictionConfidence::from_score(0.6), PredictionConfidence::Medium);
-        assert_eq!(PredictionConfidence::from_score(0.2), PredictionConfidence::Low);
+        assert_eq!(
+            PredictionConfidence::from_score(0.9),
+            PredictionConfidence::High
+        );
+        assert_eq!(
+            PredictionConfidence::from_score(0.6),
+            PredictionConfidence::Medium
+        );
+        assert_eq!(
+            PredictionConfidence::from_score(0.2),
+            PredictionConfidence::Low
+        );
     }
 
     #[test]
@@ -350,11 +420,7 @@ mod tests {
     #[test]
     fn ring_predictions_populated() {
         let predictor = TwinPredictor::new();
-        let pred = predictor.predict(
-            "SELECT * FROM users",
-            "sqli",
-            &default_config(),
-        );
+        let pred = predictor.predict("SELECT * FROM users", "sqli", &default_config());
         assert!(!pred.ring_predictions.is_empty());
     }
 }

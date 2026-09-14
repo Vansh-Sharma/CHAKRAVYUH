@@ -297,9 +297,7 @@ impl SteadyStateHypothesis {
         let mut failures: Vec<HypothesisFailure> = Vec::new();
 
         for probe in &self.behavioral_probes {
-            let result = probe_results
-                .iter()
-                .find(|r| r.name == probe.name);
+            let result = probe_results.iter().find(|r| r.name == probe.name);
 
             let success = match result {
                 Some(r) => {
@@ -527,12 +525,7 @@ impl FaultConfig {
     }
 
     /// Create an error injection fault configuration.
-    pub fn error(
-        target: ComponentId,
-        duration_ms: u64,
-        probability: f64,
-        message: String,
-    ) -> Self {
+    pub fn error(target: ComponentId, duration_ms: u64, probability: f64, message: String) -> Self {
         Self {
             fault_type: FaultType::ErrorInjection,
             target_component: target,
@@ -589,11 +582,7 @@ impl FaultConfig {
     }
 
     /// Create a packet loss simulation configuration.
-    pub fn packet_loss(
-        target: ComponentId,
-        duration_ms: u64,
-        loss_rate: f64,
-    ) -> Self {
+    pub fn packet_loss(target: ComponentId, duration_ms: u64, loss_rate: f64) -> Self {
         Self {
             fault_type: FaultType::NetworkPartition,
             target_component: target,
@@ -674,10 +663,7 @@ impl FaultInjector {
     /// Roll back all active faults.
     pub fn rollback_all(&mut self) -> Vec<RollbackResult> {
         let components: Vec<ComponentId> = self.active_faults.keys().cloned().collect();
-        components
-            .into_iter()
-            .map(|c| self.rollback(&c))
-            .collect()
+        components.into_iter().map(|c| self.rollback(&c)).collect()
     }
 
     /// Simulate the effect of active faults on a metrics snapshot.
@@ -844,20 +830,13 @@ impl DependencyGraph {
             .entry(from.clone())
             .or_default()
             .push((to.clone(), w));
-        self.reverse_adj
-            .entry(to)
-            .or_default()
-            .push((from, w));
+        self.reverse_adj.entry(to).or_default().push((from, w));
     }
 
     /// Add edges from a list of `DependencyEdge` values.
     pub fn add_edges(&mut self, edges: &[DependencyEdge]) {
         for edge in edges {
-            self.add_dependency(
-                edge.from.clone(),
-                edge.to.clone(),
-                edge.weight,
-            );
+            self.add_dependency(edge.from.clone(), edge.to.clone(), edge.weight);
         }
     }
 
@@ -890,18 +869,14 @@ impl DependencyGraph {
         impact_scores.insert(target.to_string(), 1.0);
 
         while let Some(current) = queue.pop_front() {
-            let current_score = impact_scores
-                .get(&current)
-                .copied()
-                .unwrap_or(0.0);
+            let current_score = impact_scores.get(&current).copied().unwrap_or(0.0);
 
             if let Some(dependents) = self.reverse_adj.get(&current) {
                 for (dependent, weight) in dependents {
                     if !visited.contains(dependent) {
                         visited.insert(dependent.clone());
                         let propagated_score = current_score * weight;
-                        impact_scores
-                            .insert(dependent.clone(), propagated_score);
+                        impact_scores.insert(dependent.clone(), propagated_score);
                         queue.push_back(dependent.clone());
                     }
                 }
@@ -914,10 +889,7 @@ impl DependencyGraph {
         let affected_count = visited.len();
         let total_components = self.components.len().max(1);
         let spread_fraction = affected_count as f64 / total_components as f64;
-        let max_impact = impact_scores
-            .values()
-            .copied()
-            .fold(0.0_f64, f64::max);
+        let max_impact = impact_scores.values().copied().fold(0.0_f64, f64::max);
         let avg_impact = if affected_count > 0 {
             impact_scores
                 .values()
@@ -1174,7 +1146,10 @@ impl ExperimentReport {
     /// Generate a human-readable summary string.
     pub fn generate_summary(&self) -> String {
         let mut parts = vec![];
-        parts.push(format!("experiment={} status={}", self.experiment_name, self.status));
+        parts.push(format!(
+            "experiment={} status={}",
+            self.experiment_name, self.status
+        ));
 
         if let Some(ref blast) = self.blast_radius {
             parts.push(format!(
@@ -1283,10 +1258,7 @@ impl ExperimentOrchestrator {
         });
 
         // Check if steady state holds before injection.
-        let before_holds = before_hypothesis
-            .as_ref()
-            .map(|h| h.holds)
-            .unwrap_or(false);
+        let before_holds = before_hypothesis.as_ref().map(|h| h.holds).unwrap_or(false);
 
         if !before_holds {
             let report = ExperimentReport {
@@ -1303,7 +1275,9 @@ impl ExperimentOrchestrator {
                 ended_at: Utc::now(),
                 duration_ms: start_instant.elapsed().as_millis() as u64,
                 dry_run: experiment.dry_run,
-                summary: "experiment aborted: steady-state hypothesis did not hold before injection".to_string(),
+                summary:
+                    "experiment aborted: steady-state hypothesis did not hold before injection"
+                        .to_string(),
             };
             self.history.push(report.clone());
             return report;
@@ -1410,11 +1384,8 @@ impl ExperimentOrchestrator {
                         events: vec!["abort triggered: trust below threshold".to_string()],
                     });
 
-                    let after_hypothesis = Some(
-                        experiment
-                            .steady_state
-                            .validate(&after_metrics, &[]),
-                    );
+                    let after_hypothesis =
+                        Some(experiment.steady_state.validate(&after_metrics, &[]));
 
                     let report = ExperimentReport {
                         experiment_id: experiment.id.clone(),
@@ -1465,17 +1436,9 @@ impl ExperimentOrchestrator {
         });
 
         // ── Phase 7: Validate steady state after rollback ──
-        let after_hypothesis = Some(
-            experiment
-                .steady_state
-                .validate(&after_metrics, &[]),
-        );
+        let after_hypothesis = Some(experiment.steady_state.validate(&after_metrics, &[]));
 
-        let final_status = if after_hypothesis
-            .as_ref()
-            .map(|h| h.holds)
-            .unwrap_or(true)
-        {
+        let final_status = if after_hypothesis.as_ref().map(|h| h.holds).unwrap_or(true) {
             ExperimentStatus::Completed
         } else {
             ExperimentStatus::Failed
@@ -1515,8 +1478,12 @@ impl ExperimentOrchestrator {
         mode: OrchestrationMode,
     ) -> Vec<ExperimentReport> {
         match mode {
-            OrchestrationMode::Sequential => self.run_sequential(experiments, initial_metrics, initial_probes),
-            OrchestrationMode::Parallel => self.run_parallel(experiments, initial_metrics, initial_probes),
+            OrchestrationMode::Sequential => {
+                self.run_sequential(experiments, initial_metrics, initial_probes)
+            }
+            OrchestrationMode::Parallel => {
+                self.run_parallel(experiments, initial_metrics, initial_probes)
+            }
         }
     }
 
@@ -1752,7 +1719,9 @@ impl SafetyMonitor {
                     self.config.max_single_blast_radius * 100.0
                 ),
                 severity: SafetyViolationSeverity::Error,
-                recommendation: "reduce the target's dependencies or increase max_single_blast_radius".to_string(),
+                recommendation:
+                    "reduce the target's dependencies or increase max_single_blast_radius"
+                        .to_string(),
             });
         }
 
@@ -1766,7 +1735,8 @@ impl SafetyMonitor {
                     self.config.max_cumulative_blast_radius * 100.0
                 ),
                 severity: SafetyViolationSeverity::Error,
-                recommendation: "wait for active experiments to complete before starting a new one".to_string(),
+                recommendation: "wait for active experiments to complete before starting a new one"
+                    .to_string(),
             });
         }
 
@@ -1891,8 +1861,13 @@ mod tests {
     #[test]
     fn fault_type_base_severity_ordering() {
         assert!(FaultType::Crash.base_severity() > FaultType::LatencyInjection.base_severity());
-        assert!(FaultType::NetworkPartition.base_severity() > FaultType::ErrorInjection.base_severity());
-        assert!(FaultType::ResourceExhaustion.base_severity() > FaultType::LatencyInjection.base_severity());
+        assert!(
+            FaultType::NetworkPartition.base_severity() > FaultType::ErrorInjection.base_severity()
+        );
+        assert!(
+            FaultType::ResourceExhaustion.base_severity()
+                > FaultType::LatencyInjection.base_severity()
+        );
     }
 
     // ── MetricComparator tests ──
@@ -1951,13 +1926,12 @@ mod tests {
 
     #[test]
     fn steady_state_hypothesis_detects_degradation() {
-        let hypothesis = SteadyStateHypothesis::new()
-            .with_metric_condition(MetricCondition {
-                metric_name: "error_rate".to_string(),
-                comparator: MetricComparator::LessThan,
-                threshold: 0.05,
-                component: None,
-            });
+        let hypothesis = SteadyStateHypothesis::new().with_metric_condition(MetricCondition {
+            metric_name: "error_rate".to_string(),
+            comparator: MetricComparator::LessThan,
+            threshold: 0.05,
+            component: None,
+        });
 
         let mut metrics = MetricsSnapshot::new();
         metrics.set("error_rate", 0.5, None);
@@ -1996,14 +1970,13 @@ mod tests {
 
     #[test]
     fn behavioral_probe_validation_passes() {
-        let hypothesis = SteadyStateHypothesis::new()
-            .with_behavioral_probe(BehavioralProbe {
-                name: "health_check".to_string(),
-                target_endpoint: "/health".to_string(),
-                expected_status: Some(200),
-                max_latency_ms: Some(100),
-                required: true,
-            });
+        let hypothesis = SteadyStateHypothesis::new().with_behavioral_probe(BehavioralProbe {
+            name: "health_check".to_string(),
+            target_endpoint: "/health".to_string(),
+            expected_status: Some(200),
+            max_latency_ms: Some(100),
+            required: true,
+        });
 
         let probe_results = vec![ProbeResult {
             name: "health_check".to_string(),
@@ -2020,14 +1993,13 @@ mod tests {
 
     #[test]
     fn behavioral_probe_validation_fails_on_wrong_status() {
-        let hypothesis = SteadyStateHypothesis::new()
-            .with_behavioral_probe(BehavioralProbe {
-                name: "health_check".to_string(),
-                target_endpoint: "/health".to_string(),
-                expected_status: Some(200),
-                max_latency_ms: None,
-                required: true,
-            });
+        let hypothesis = SteadyStateHypothesis::new().with_behavioral_probe(BehavioralProbe {
+            name: "health_check".to_string(),
+            target_endpoint: "/health".to_string(),
+            expected_status: Some(200),
+            max_latency_ms: None,
+            required: true,
+        });
 
         let probe_results = vec![ProbeResult {
             name: "health_check".to_string(),
@@ -2202,7 +2174,9 @@ mod tests {
         // If we target trust_engine, we need to check what depends on it.
         let blast = graph.compute_blast_radius("trust_engine");
         // Only api_gateway depends on trust_engine.
-        assert!(blast.affected_components.contains(&"api_gateway".to_string()));
+        assert!(blast
+            .affected_components
+            .contains(&"api_gateway".to_string()));
     }
 
     #[test]
@@ -2272,15 +2246,14 @@ mod tests {
 
         let experiment = ChaosExperiment::new("dry-1".to_string(), "Dry Run Test".to_string())
             .with_fault(FaultConfig::crash("auth_service".to_string(), 1000))
-            .with_steady_state(
-                SteadyStateHypothesis::new()
-                    .with_metric_condition(MetricCondition {
-                        metric_name: "error_rate".to_string(),
-                        comparator: MetricComparator::LessThan,
-                        threshold: 0.05,
-                        component: None,
-                    }),
-            )
+            .with_steady_state(SteadyStateHypothesis::new().with_metric_condition(
+                MetricCondition {
+                    metric_name: "error_rate".to_string(),
+                    comparator: MetricComparator::LessThan,
+                    threshold: 0.05,
+                    component: None,
+                },
+            ))
             .with_rollback_plan("restart auth_service".to_string())
             .with_dry_run(true);
 
@@ -2300,15 +2273,14 @@ mod tests {
 
         let experiment = ChaosExperiment::new("inject-1".to_string(), "Latency Test".to_string())
             .with_fault(FaultConfig::latency("rate_limiter".to_string(), 1000, 200))
-            .with_steady_state(
-                SteadyStateHypothesis::new()
-                    .with_metric_condition(MetricCondition {
-                        metric_name: "error_rate".to_string(),
-                        comparator: MetricComparator::LessThan,
-                        threshold: 0.05,
-                        component: None,
-                    }),
-            )
+            .with_steady_state(SteadyStateHypothesis::new().with_metric_condition(
+                MetricCondition {
+                    metric_name: "error_rate".to_string(),
+                    comparator: MetricComparator::LessThan,
+                    threshold: 0.05,
+                    component: None,
+                },
+            ))
             .with_rollback_plan("remove latency injection".to_string())
             .with_max_blast_radius(0.5);
 
@@ -2325,10 +2297,11 @@ mod tests {
         let graph = simple_graph();
         let mut orchestrator = ExperimentOrchestrator::new(graph);
 
-        let experiment = ChaosExperiment::new("blast-1".to_string(), "Blast Radius Test".to_string())
-            .with_fault(FaultConfig::crash("config_db".to_string(), 1000))
-            .with_steady_state(SteadyStateHypothesis::new())
-            .with_max_blast_radius(0.01); // Extremely low limit.
+        let experiment =
+            ChaosExperiment::new("blast-1".to_string(), "Blast Radius Test".to_string())
+                .with_fault(FaultConfig::crash("config_db".to_string(), 1000))
+                .with_steady_state(SteadyStateHypothesis::new())
+                .with_max_blast_radius(0.01); // Extremely low limit.
 
         let metrics = healthy_metrics();
         let report = orchestrator.run_experiment(&experiment, &metrics, &[]);
@@ -2342,10 +2315,11 @@ mod tests {
         let graph = simple_graph();
         let mut orchestrator = ExperimentOrchestrator::new(graph);
 
-        let experiment = ChaosExperiment::new("trust-1".to_string(), "Trust Abort Test".to_string())
-            .with_fault(FaultConfig::crash("trust_engine".to_string(), 1000))
-            .with_steady_state(SteadyStateHypothesis::new())
-            .with_abort_threshold(0.99); // Very high — will trigger abort.
+        let experiment =
+            ChaosExperiment::new("trust-1".to_string(), "Trust Abort Test".to_string())
+                .with_fault(FaultConfig::crash("trust_engine".to_string(), 1000))
+                .with_steady_state(SteadyStateHypothesis::new())
+                .with_abort_threshold(0.99); // Very high — will trigger abort.
 
         let metrics = healthy_metrics();
         let report = orchestrator.run_experiment(&experiment, &metrics, &[]);
@@ -2396,12 +2370,8 @@ mod tests {
             .with_dry_run(true);
 
         let metrics = healthy_metrics();
-        let reports = orchestrator.run_experiments(
-            &[exp1, exp2],
-            &metrics,
-            &[],
-            OrchestrationMode::Parallel,
-        );
+        let reports =
+            orchestrator.run_experiments(&[exp1, exp2], &metrics, &[], OrchestrationMode::Parallel);
 
         assert_eq!(reports.len(), 2);
     }

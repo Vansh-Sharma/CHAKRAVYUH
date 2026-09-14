@@ -16,9 +16,7 @@ pub mod scenario;
 pub mod state;
 
 pub use engine::TwinEngine;
-pub use scenario::{
-    Scenario, ScenarioMetrics, ScenarioOutcome, ScenarioResult, ScenarioType,
-};
+pub use scenario::{Scenario, ScenarioMetrics, ScenarioOutcome, ScenarioResult, ScenarioType};
 pub use state::{StateSnapshot, TwinState};
 
 use std::collections::HashMap;
@@ -224,8 +222,7 @@ mod tests {
     #[test]
     fn replay_decisions() {
         let mut svc = SecurityTwinService::new();
-        svc.snapshot("baseline", "test", sample_configs())
-            .unwrap();
+        svc.snapshot("baseline", "test", sample_configs()).unwrap();
 
         let overrides = serde_json::json!({
             "shield": {"threshold": 0.9}

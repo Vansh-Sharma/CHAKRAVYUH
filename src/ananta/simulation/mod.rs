@@ -19,11 +19,15 @@ pub use chaos_engine::*;
 pub mod scenario_runner;
 pub use scenario_runner::*;
 
-use crate::ananta::trust::trust_state::{TrustState, AlertSeverity, TrustAlert, AlertType};
-use crate::ananta::sentinel::drift::{DriftType, DriftObservation, DriftAlert, AlertSeverity as DriftAlertSeverity};
-use crate::ananta::phoenix::strategies::{RecoveryAction, RecoveryStrategy, RecoveryOutcome, RecoveryResult};
-use crate::ananta::phoenix::recovery_history::RecoveryHistory;
 use crate::ananta::config::HashAlgorithm;
+use crate::ananta::phoenix::recovery_history::RecoveryHistory;
+use crate::ananta::phoenix::strategies::{
+    RecoveryAction, RecoveryOutcome, RecoveryResult, RecoveryStrategy,
+};
+use crate::ananta::sentinel::drift::{
+    AlertSeverity as DriftAlertSeverity, DriftAlert, DriftObservation, DriftType,
+};
+use crate::ananta::trust::trust_state::{AlertSeverity, AlertType, TrustAlert, TrustState};
 
 /// A simulated threat to inject into the security twin.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -166,7 +170,8 @@ impl SecurityTwin {
             let domain = format!("{:?}", obs.drift_type).to_lowercase();
             let current_trust = self.trust_state.domain_level(&domain);
             let reduction = (z_score / 10.0).min(0.3);
-            self.trust_state.set_domain_level(&domain, (current_trust - reduction).max(0.0));
+            self.trust_state
+                .set_domain_level(&domain, (current_trust - reduction).max(0.0));
 
             self.trust_state.add_alert(TrustAlert {
                 alert_type: AlertType::DecisionDrift,
@@ -217,37 +222,60 @@ impl SecurityTwin {
                     let current = self.trust_state.domain_level(&action.target);
                     let recovered = (current + 0.3).min(1.0);
                     self.trust_state.set_domain_level(&action.target, recovered);
-                    (RecoveryOutcome::Success, format!("{} restarted, trust recovered to {:.2}", action.target, recovered))
+                    (
+                        RecoveryOutcome::Success,
+                        format!(
+                            "{} restarted, trust recovered to {:.2}",
+                            action.target, recovered
+                        ),
+                    )
                 } else {
-                    (RecoveryOutcome::Failed, format!("{} restart failed", action.target))
+                    (
+                        RecoveryOutcome::Failed,
+                        format!("{} restart failed", action.target),
+                    )
                 }
             }
             RecoveryStrategy::Rollback => {
                 let current = self.trust_state.domain_level(&action.target);
                 let recovered = (current + 0.5).min(1.0);
                 self.trust_state.set_domain_level(&action.target, recovered);
-                (RecoveryOutcome::Success, format!("{} rolled back, trust={:.2}", action.target, recovered))
+                (
+                    RecoveryOutcome::Success,
+                    format!("{} rolled back, trust={:.2}", action.target, recovered),
+                )
             }
             RecoveryStrategy::Quarantine => {
                 // Quarantine doesn't improve trust but prevents further damage.
-                (RecoveryOutcome::Success, format!("{} quarantined", action.target))
+                (
+                    RecoveryOutcome::Success,
+                    format!("{} quarantined", action.target),
+                )
             }
-            RecoveryStrategy::Observe => {
-                (RecoveryOutcome::Skipped, "observing — no action taken".into())
-            }
-            RecoveryStrategy::Escalate => {
-                (RecoveryOutcome::Escalated, format!("{} escalated to human", action.target))
-            }
+            RecoveryStrategy::Observe => (
+                RecoveryOutcome::Skipped,
+                "observing — no action taken".into(),
+            ),
+            RecoveryStrategy::Escalate => (
+                RecoveryOutcome::Escalated,
+                format!("{} escalated to human", action.target),
+            ),
             RecoveryStrategy::ResetThresholds => {
                 let recovered = 0.8;
                 self.trust_state.set_domain_level(&action.target, recovered);
-                (RecoveryOutcome::Success, format!("{} thresholds reset, trust={:.2}", action.target, recovered))
+                (
+                    RecoveryOutcome::Success,
+                    format!("{} thresholds reset, trust={:.2}", action.target, recovered),
+                )
             }
             RecoveryStrategy::ReloadPolicy => {
                 let current = self.trust_state.domain_level(&action.target);
                 let recovered = (current + 0.4).min(1.0);
                 self.trust_state.set_domain_level(&action.target, recovered);
-                (RecoveryOutcome::Success, format!("{} policy reloaded, trust={:.2}", action.target, recovered))
+                (
+                    RecoveryOutcome::Success,
+                    format!("{} policy reloaded, trust={:.2}", action.target, recovered),
+                )
             }
             RecoveryStrategy::ReconfigurePipeline => {
                 (RecoveryOutcome::Success, "pipeline reconfigured".into())
@@ -255,12 +283,8 @@ impl SecurityTwin {
         };
 
         let result = match outcome {
-            RecoveryOutcome::Success => {
-                RecoveryResult::success(action.clone(), &message, 1.0)
-            }
-            _ => {
-                RecoveryResult::failed(action.clone(), &message, 1.0)
-            }
+            RecoveryOutcome::Success => RecoveryResult::success(action.clone(), &message, 1.0),
+            _ => RecoveryResult::failed(action.clone(), &message, 1.0),
         };
 
         self.recovery_results.push(result.clone());
@@ -314,8 +338,14 @@ impl SimulationEngine {
     }
 
     /// Run a named scenario against a security twin.
-    pub fn run_scenario(&self, name: &str, twin: &mut SecurityTwin) -> Result<SimulationResult, String> {
-        let scenario = self.scenarios.get(name)
+    pub fn run_scenario(
+        &self,
+        name: &str,
+        twin: &mut SecurityTwin,
+    ) -> Result<SimulationResult, String> {
+        let scenario = self
+            .scenarios
+            .get(name)
             .ok_or_else(|| format!("scenario '{}' not found", name))?
             .clone();
 
@@ -323,7 +353,11 @@ impl SimulationEngine {
     }
 
     /// Run a scenario directly.
-    pub fn run_scenario_direct(&self, scenario: &ThreatScenario, twin: &mut SecurityTwin) -> Result<SimulationResult, String> {
+    pub fn run_scenario_direct(
+        &self,
+        scenario: &ThreatScenario,
+        twin: &mut SecurityTwin,
+    ) -> Result<SimulationResult, String> {
         let start = std::time::Instant::now();
         let initial_score = twin.trust_state().overall_score();
 
@@ -358,9 +392,9 @@ impl SimulationEngine {
         let final_score = twin.trust_state().overall_score();
         let duration_ms = start.elapsed().as_millis() as u64;
 
-        let expected_achieved = scenario.expected_final_trust.map(|expected| {
-            (final_score - expected).abs() < 0.2
-        });
+        let expected_achieved = scenario
+            .expected_final_trust
+            .map(|expected| (final_score - expected).abs() < 0.2);
 
         Ok(SimulationResult {
             scenario_name: scenario.name.clone(),
@@ -375,7 +409,9 @@ impl SimulationEngine {
             expected_outcome_achieved: expected_achieved,
             summary: format!(
                 "scenario='{}' trust: {:.3} -> {:.3} alerts={} duration={}ms",
-                scenario.name, initial_score, final_score,
+                scenario.name,
+                initial_score,
+                final_score,
                 twin.drift_alerts().len(),
                 duration_ms,
             ),
@@ -492,8 +528,9 @@ mod tests {
         let mut twin = SecurityTwin::new_healthy();
         twin.degrade_trust("decision", 0.3);
 
-        let action = RecoveryAction::new(RecoveryStrategy::Restart, "decision", "simulated restart")
-            .with_confidence(0.8);
+        let action =
+            RecoveryAction::new(RecoveryStrategy::Restart, "decision", "simulated restart")
+                .with_confidence(0.8);
         let result = twin.simulate_recovery(action);
         assert_eq!(result.outcome, RecoveryOutcome::Success);
         assert!(twin.trust_state().domain_level("decision") > 0.3);

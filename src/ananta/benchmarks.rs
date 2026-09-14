@@ -16,36 +16,29 @@
 // Total: 21 bench functions across 7 groups.
 // ═══════════════════════════════════════════════════════════════
 
-use criterion::{criterion_group, criterion_main, Criterion, black_box};
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::ananta::ovaph_loop::{
-    OvaphLoop, OvaphConfig, OvaphObservation, OvaphMetrics, OvaphCycleReport,
-    OvaphStage, StageResult, OvaphCycleId, CycleOutcome,
-    DriftSnapshot, HealthSnapshot, IntegritySnapshot as OvaphIntegritySnapshot,
-};
-use crate::ananta::sentinel::{
-    DriftDetector, DriftType, DriftObservation,
-};
-use crate::ananta::sentinel::sentinel_wiring::{
-    DriftBaselines, SentinelHub, FusionConfig,
-};
-use crate::ananta::trust::{TrustState};
-use crate::ananta::trust::trust_engine::BayesianTrustEngine;
-use crate::ananta::phoenix::rollback_engine::{
-    StateSnapshot, StateDiff, SnapshotStore, RollbackExecutor, RollbackConfig,
-};
 use crate::ananta::adapter::{
-    Adapter, AdaptationProposal, AdaptationStatus, ParameterChange,
-    PipelineConfig, PipelineValidator, PipelineExecutor, PipelineStage,
-    StageType,
-};
-use crate::ananta::anchor::{
-    TrustChain, IntegrityChecker, Manifest,
+    AdaptationProposal, AdaptationStatus, Adapter, ParameterChange, PipelineConfig,
+    PipelineExecutor, PipelineStage, PipelineValidator, StageType,
 };
 use crate::ananta::anchor::integrity::IntegrityDomain;
-use crate::ananta::config::{AnantaConfig, AdapterConfig, HashAlgorithm};
+use crate::ananta::anchor::{IntegrityChecker, Manifest, TrustChain};
+use crate::ananta::config::{AdapterConfig, AnantaConfig, HashAlgorithm};
+use crate::ananta::ovaph_loop::{
+    CycleOutcome, DriftSnapshot, HealthSnapshot, IntegritySnapshot as OvaphIntegritySnapshot,
+    OvaphConfig, OvaphCycleId, OvaphCycleReport, OvaphLoop, OvaphMetrics, OvaphObservation,
+    OvaphStage, StageResult,
+};
+use crate::ananta::phoenix::rollback_engine::{
+    RollbackConfig, RollbackExecutor, SnapshotStore, StateDiff, StateSnapshot,
+};
+use crate::ananta::sentinel::sentinel_wiring::{DriftBaselines, FusionConfig, SentinelHub};
+use crate::ananta::sentinel::{DriftDetector, DriftObservation, DriftType};
+use crate::ananta::trust::trust_engine::BayesianTrustEngine;
+use crate::ananta::trust::TrustState;
 
 // ═══════════════════════════════════════════════════════════════
 // Helper factories
@@ -127,7 +120,10 @@ fn bench_fusion_config() -> FusionConfig {
 /// Build a sample AnantaConfig for AnantaPlane benchmarks.
 fn bench_ananta_config() -> AnantaConfig {
     let mut config = AnantaConfig::default();
-    config.state_path = std::env::temp_dir().join("ananta_bench").to_string_lossy().to_string();
+    config.state_path = std::env::temp_dir()
+        .join("ananta_bench")
+        .to_string_lossy()
+        .to_string();
     config
 }
 
@@ -135,11 +131,14 @@ fn bench_ananta_config() -> AnantaConfig {
 fn bench_snapshot_data(size: usize) -> HashMap<String, serde_json::Value> {
     let mut data = HashMap::new();
     for i in 0..size {
-        data.insert(format!("key_{}", i), serde_json::json!({
-            "value": i as f64,
-            "enabled": true,
-            "tags": ["a", "b", "c"],
-        }));
+        data.insert(
+            format!("key_{}", i),
+            serde_json::json!({
+                "value": i as f64,
+                "enabled": true,
+                "tags": ["a", "b", "c"],
+            }),
+        );
     }
     data
 }
@@ -148,10 +147,12 @@ fn bench_snapshot_data(size: usize) -> HashMap<String, serde_json::Value> {
 fn bench_pipeline_config() -> PipelineConfig {
     let mut config = PipelineConfig::new();
     for i in 0..5 {
-        config.add_stage(PipelineStage::new(
-            &format!("stage_{}", i),
-            StageType::Filter,
-        )).unwrap();
+        config
+            .add_stage(PipelineStage::new(
+                &format!("stage_{}", i),
+                StageType::Filter,
+            ))
+            .unwrap();
     }
     config
 }
@@ -162,13 +163,11 @@ fn bench_proposal() -> AdaptationProposal {
         proposal_id: uuid::Uuid::new_v4().to_string(),
         target: "pipeline".to_string(),
         description: "Benchmark adaptation".to_string(),
-        parameter_changes: vec![
-            ParameterChange {
-                parameter: "threat_threshold".to_string(),
-                old_value: serde_json::json!(0.5),
-                new_value: serde_json::json!(0.4),
-            },
-        ],
+        parameter_changes: vec![ParameterChange {
+            parameter: "threat_threshold".to_string(),
+            old_value: serde_json::json!(0.5),
+            new_value: serde_json::json!(0.4),
+        }],
         trust_level_at_proposal: 0.85,
         rationale: "Benchmark proposal".to_string(),
         signature: None,
@@ -247,9 +246,10 @@ fn bench_ovaph_metrics_record(c: &mut Criterion) {
                             cycle_id: uuid::Uuid::new_v4().to_string(),
                         },
                         cycle_number: i,
-                        stages: OvaphStage::all().iter().map(|&s| {
-                            StageResult::completed(s, 10, 0)
-                        }).collect(),
+                        stages: OvaphStage::all()
+                            .iter()
+                            .map(|&s| StageResult::completed(s, 10, 0))
+                            .collect(),
                         total_duration_ms: 50,
                         trust_before: 0.95,
                         trust_after: 0.96,
@@ -337,9 +337,7 @@ fn bench_sentinel_hub_fuse(c: &mut Criterion) {
 
     c.bench_function("sentinel/hub_fuse_1000", |b| {
         b.iter_with_setup(
-            || {
-                SentinelHub::new(3.0, 100, fusion_config.clone(), 50).unwrap()
-            },
+            || SentinelHub::new(3.0, 100, fusion_config.clone(), 50).unwrap(),
             |mut hub| {
                 for obs in &observations {
                     let result = hub.observe(obs.clone());
@@ -363,7 +361,11 @@ fn bench_bayesian_add_evidence(c: &mut Criterion) {
             |mut engine| {
                 for i in 0..1000 {
                     let is_positive = i % 3 != 0;
-                    let source = if is_positive { "bench_positive" } else { "bench_negative" };
+                    let source = if is_positive {
+                        "bench_positive"
+                    } else {
+                        "bench_negative"
+                    };
                     engine.record_evidence("node_a", "node_b", is_positive, 0.8, source);
                 }
                 black_box(&engine);
@@ -431,8 +433,8 @@ fn bench_rollback_create_snapshot(c: &mut Criterion) {
                 for i in 0..100 {
                     let mut modified = data.clone();
                     modified.insert(format!("cycle_{}", i), serde_json::json!(i));
-                    let snapshot = StateSnapshot::new(&format!("domain_{}", i % 5), modified)
-                        .unwrap();
+                    let snapshot =
+                        StateSnapshot::new(&format!("domain_{}", i % 5), modified).unwrap();
                     snapshots.push(snapshot);
                 }
                 black_box(&snapshots);
@@ -453,16 +455,12 @@ fn bench_rollback_execute(c: &mut Criterion) {
                     let mut store_guard = store.lock().unwrap();
                     for i in 0..5 {
                         let data = bench_snapshot_data(10);
-                        store_guard.create_snapshot(
-                            &format!("domain_{}", i),
-                            data,
-                        ).unwrap();
+                        store_guard
+                            .create_snapshot(&format!("domain_{}", i), data)
+                            .unwrap();
                     }
                 }
-                let executor = RollbackExecutor::new(
-                    store,
-                    RollbackConfig::default(),
-                );
+                let executor = RollbackExecutor::new(store, RollbackConfig::default());
                 executor
             },
             |mut executor| {
@@ -586,10 +584,9 @@ fn bench_pipeline_validate(c: &mut Criterion) {
                             3 => StageType::Decide,
                             _ => StageType::Act,
                         };
-                        config.add_stage(PipelineStage::new(
-                            &format!("stage_{}", j),
-                            stage_type,
-                        )).unwrap();
+                        config
+                            .add_stage(PipelineStage::new(&format!("stage_{}", j), stage_type))
+                            .unwrap();
                     }
                     configs.push(config);
                 }
@@ -613,25 +610,21 @@ fn bench_pipeline_apply_adaptation(c: &mut Criterion) {
             || {
                 // Pre-build 100 proposals.
                 let proposals: Vec<AdaptationProposal> = (0..100)
-                    .map(|i| {
-                        AdaptationProposal {
-                            proposal_id: uuid::Uuid::new_v4().to_string(),
-                            target: "pipeline".to_string(),
-                            description: format!("Adaptation {}", i),
-                            parameter_changes: vec![
-                                ParameterChange {
-                                    parameter: "sensitivity".to_string(),
-                                    old_value: serde_json::json!(1.0),
-                                    new_value: serde_json::json!(1.0 + i as f64 * 0.01),
-                                },
-                            ],
-                            trust_level_at_proposal: 0.85,
-                            rationale: "Benchmark".to_string(),
-                            signature: None,
-                            timestamp: chrono::Utc::now().to_rfc3339(),
-                            grace_deadline: chrono::Utc::now().to_rfc3339(),
-                            status: AdaptationStatus::Proposed,
-                        }
+                    .map(|i| AdaptationProposal {
+                        proposal_id: uuid::Uuid::new_v4().to_string(),
+                        target: "pipeline".to_string(),
+                        description: format!("Adaptation {}", i),
+                        parameter_changes: vec![ParameterChange {
+                            parameter: "sensitivity".to_string(),
+                            old_value: serde_json::json!(1.0),
+                            new_value: serde_json::json!(1.0 + i as f64 * 0.01),
+                        }],
+                        trust_level_at_proposal: 0.85,
+                        rationale: "Benchmark".to_string(),
+                        signature: None,
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        grace_deadline: chrono::Utc::now().to_rfc3339(),
+                        status: AdaptationStatus::Proposed,
                     })
                     .collect();
                 proposals

@@ -20,8 +20,8 @@ use std::sync::{Arc, Mutex};
 
 use chrono::Timelike;
 
-use crate::identity::session_identity::IdentityProfile;
 use crate::identity::role_resolver::Role;
+use crate::identity::session_identity::IdentityProfile;
 use crate::identity::trust_accumulator::TrustResult;
 
 /// Types of anomalies detected.
@@ -149,19 +149,45 @@ pub struct IdentityAnomalyConfig {
     pub max_identities: usize,
 }
 
-fn default_enabled() -> bool { true }
-fn default_new_identity_score() -> f64 { 1.0 }
-fn default_ip_change_score() -> f64 { 3.0 }
-fn default_impossible_travel_score() -> f64 { 8.0 }
-fn default_agent_change_score() -> f64 { 2.0 }
-fn default_high_velocity_score() -> f64 { 4.0 }
-fn default_trust_drop_score() -> f64 { 5.0 }
-fn default_velocity_threshold() -> f64 { 30.0 }
-fn default_travel_speed_threshold() -> f64 { 800.0 }
-fn default_trust_drop_threshold() -> f64 { 0.3 }
-fn default_off_hours() -> (u32, u32) { (9, 17) }
-fn default_velocity_window() -> usize { 100 }
-fn default_max_identities() -> usize { 10_000 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_new_identity_score() -> f64 {
+    1.0
+}
+fn default_ip_change_score() -> f64 {
+    3.0
+}
+fn default_impossible_travel_score() -> f64 {
+    8.0
+}
+fn default_agent_change_score() -> f64 {
+    2.0
+}
+fn default_high_velocity_score() -> f64 {
+    4.0
+}
+fn default_trust_drop_score() -> f64 {
+    5.0
+}
+fn default_velocity_threshold() -> f64 {
+    30.0
+}
+fn default_travel_speed_threshold() -> f64 {
+    800.0
+}
+fn default_trust_drop_threshold() -> f64 {
+    0.3
+}
+fn default_off_hours() -> (u32, u32) {
+    (9, 17)
+}
+fn default_velocity_window() -> usize {
+    100
+}
+fn default_max_identities() -> usize {
+    10_000
+}
 
 impl Default for IdentityAnomalyConfig {
     fn default() -> Self {
@@ -300,7 +326,10 @@ impl IdentityAnomaly {
                     anomalies.push(Anomaly {
                         anomaly_type: AnomalyType::AgentChange,
                         score: self.config.agent_change_score,
-                        description: format!("user agent changed from '{}' to '{}'", last_agent, current_agent),
+                        description: format!(
+                            "user agent changed from '{}' to '{}'",
+                            last_agent, current_agent
+                        ),
                     });
                 }
             }
@@ -313,7 +342,10 @@ impl IdentityAnomaly {
                 anomalies.push(Anomaly {
                     anomaly_type: AnomalyType::IdentityTypeChange,
                     score: 5.0,
-                    description: format!("identity type changed from {} to {}", last_type, current_type),
+                    description: format!(
+                        "identity type changed from {} to {}",
+                        last_type, current_type
+                    ),
                 });
             }
         }
@@ -327,7 +359,8 @@ impl IdentityAnomaly {
             let rate = entry.request_timestamps.len() as f64;
             anomalies.push(Anomaly {
                 anomaly_type: AnomalyType::HighVelocity,
-                score: self.config.high_velocity_score * (rate / self.config.velocity_threshold).min(2.0),
+                score: self.config.high_velocity_score
+                    * (rate / self.config.velocity_threshold).min(2.0),
                 description: format!(
                     "high request velocity: {} requests in last 60s (threshold: {:.0})",
                     rate, self.config.velocity_threshold
@@ -337,8 +370,8 @@ impl IdentityAnomaly {
 
         // Trust drop detection.
         if entry.previous_trusts.len() >= 3 {
-            let avg_prev: f64 = entry.previous_trusts.iter().sum::<f64>()
-                / entry.previous_trusts.len() as f64;
+            let avg_prev: f64 =
+                entry.previous_trusts.iter().sum::<f64>() / entry.previous_trusts.len() as f64;
             if avg_prev > 0.0 {
                 let drop_fraction = (avg_prev - trust_result.trust_score) / avg_prev;
                 if drop_fraction > self.config.trust_drop_threshold {
@@ -347,7 +380,9 @@ impl IdentityAnomaly {
                         score: self.config.trust_drop_score,
                         description: format!(
                             "trust dropped from {:.3} to {:.3} ({:.1}% decline)",
-                            avg_prev, trust_result.trust_score, drop_fraction * 100.0
+                            avg_prev,
+                            trust_result.trust_score,
+                            drop_fraction * 100.0
                         ),
                     });
                 }
@@ -362,7 +397,10 @@ impl IdentityAnomaly {
                 anomalies.push(Anomaly {
                     anomaly_type: AnomalyType::OffHoursAccess,
                     score: 2.0, // Informational.
-                    description: format!("access at {} UTC (outside business hours {:?})", hour, self.config.off_hours),
+                    description: format!(
+                        "access at {} UTC (outside business hours {:?})",
+                        hour, self.config.off_hours
+                    ),
                 });
             }
         }
@@ -389,7 +427,11 @@ impl IdentityAnomaly {
                 "{} anomalies (composite={:.1}): {}",
                 anomalies.len(),
                 composite_score,
-                anomalies.iter().map(|a| a.anomaly_type.to_string()).collect::<Vec<_>>().join(", ")
+                anomalies
+                    .iter()
+                    .map(|a| a.anomaly_type.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             )
         };
 
@@ -457,8 +499,8 @@ fn estimate_distance(ip_a: &str, ip_b: &str) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::identity::session_identity::{IdentityProfile, IdentityType};
     use crate::identity::role_resolver::Role;
+    use crate::identity::session_identity::{IdentityProfile, IdentityType};
 
     fn default_engine() -> IdentityAnomaly {
         IdentityAnomaly::new(&IdentityAnomalyConfig::default())
@@ -493,8 +535,17 @@ mod tests {
     #[test]
     fn new_identity_detected() {
         let engine = default_engine();
-        let result = engine.evaluate(&test_profile(), &Role::User, "1.2.3.4", Some("agent"), &default_trust());
-        assert!(result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::NewIdentity));
+        let result = engine.evaluate(
+            &test_profile(),
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
+        assert!(result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::NewIdentity));
         assert!(result.composite_score > 0.0);
     }
 
@@ -504,11 +555,26 @@ mod tests {
         let profile = test_profile();
 
         // First request.
-        engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &default_trust());
+        engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
         // Second request from different IP.
-        let result = engine.evaluate(&profile, &Role::User, "5.6.7.8", Some("agent"), &default_trust());
+        let result = engine.evaluate(
+            &profile,
+            &Role::User,
+            "5.6.7.8",
+            Some("agent"),
+            &default_trust(),
+        );
 
-        assert!(result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::IpChange));
+        assert!(result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::IpChange));
     }
 
     #[test]
@@ -516,10 +582,25 @@ mod tests {
         let engine = default_engine();
         let profile = test_profile();
 
-        engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent-v1"), &default_trust());
-        let result = engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent-v2"), &default_trust());
+        engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent-v1"),
+            &default_trust(),
+        );
+        let result = engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent-v2"),
+            &default_trust(),
+        );
 
-        assert!(result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::AgentChange));
+        assert!(result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::AgentChange));
     }
 
     #[test]
@@ -527,10 +608,25 @@ mod tests {
         let engine = default_engine();
         let profile = test_profile();
 
-        engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &default_trust());
-        let result = engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &default_trust());
+        engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
+        let result = engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
 
-        assert!(!result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::IpChange));
+        assert!(!result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::IpChange));
     }
 
     #[test]
@@ -542,22 +638,47 @@ mod tests {
         let profile = test_profile();
 
         // First from US (1.x.x.x), then from Europe (5.x.x.x), then from Asia (10.x.x.x).
-        engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &default_trust());
+        engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
         // Simulate time passing (1 minute).
         std::thread::sleep(std::time::Duration::from_millis(10));
-        let result = engine.evaluate(&profile, &Role::User, "5.6.7.8", Some("agent"), &default_trust());
+        let result = engine.evaluate(
+            &profile,
+            &Role::User,
+            "5.6.7.8",
+            Some("agent"),
+            &default_trust(),
+        );
 
         // With our heuristic, 1.x → 5.x is ~5000km. With ~0s elapsed, speed = infinity.
         // The time gap is tiny, so speed should be enormous.
-        if let Some(travel) = result.anomalies.iter().find(|a| a.anomaly_type == AnomalyType::ImpossibleTravel) {
+        if let Some(travel) = result
+            .anomalies
+            .iter()
+            .find(|a| a.anomaly_type == AnomalyType::ImpossibleTravel)
+        {
             assert!(travel.score > 0.0);
         }
     }
 
     #[test]
     fn disabled_engine_no_anomalies() {
-        let engine = IdentityAnomaly::new(&IdentityAnomalyConfig { enabled: false, ..Default::default() });
-        let result = engine.evaluate(&test_profile(), &Role::User, "1.2.3.4", Some("agent"), &default_trust());
+        let engine = IdentityAnomaly::new(&IdentityAnomalyConfig {
+            enabled: false,
+            ..Default::default()
+        });
+        let result = engine.evaluate(
+            &test_profile(),
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
         assert!(result.anomalies.is_empty());
         assert_eq!(result.composite_score, 0.0);
     }
@@ -568,8 +689,18 @@ mod tests {
         let profile = test_profile();
 
         // New identity gets scored.
-        let result = engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &default_trust());
-        let expected = result.anomalies.iter().map(|a| a.score).fold(0.0_f64, f64::max);
+        let result = engine.evaluate(
+            &profile,
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
+        let expected = result
+            .anomalies
+            .iter()
+            .map(|a| a.score)
+            .fold(0.0_f64, f64::max);
         assert!((result.composite_score - expected).abs() < 0.01);
     }
 
@@ -579,26 +710,50 @@ mod tests {
         let profile = test_profile();
 
         // Build up trust history.
-        let high_trust = TrustResult { trust_score: 0.8, ..default_trust() };
+        let high_trust = TrustResult {
+            trust_score: 0.8,
+            ..default_trust()
+        };
         for _ in 0..5 {
             engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &high_trust);
         }
 
         // Suddenly drop trust.
-        let low_trust = TrustResult { trust_score: 0.1, ..default_trust() };
+        let low_trust = TrustResult {
+            trust_score: 0.1,
+            ..default_trust()
+        };
         let result = engine.evaluate(&profile, &Role::User, "1.2.3.4", Some("agent"), &low_trust);
 
-        assert!(result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::TrustDrop));
+        assert!(result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::TrustDrop));
     }
 
     #[test]
     fn reset_clears_state() {
         let engine = default_engine();
-        engine.evaluate(&test_profile(), &Role::User, "1.2.3.4", Some("agent"), &default_trust());
+        engine.evaluate(
+            &test_profile(),
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
         engine.reset();
         // After reset, next request should be treated as new.
-        let result = engine.evaluate(&test_profile(), &Role::User, "1.2.3.4", Some("agent"), &default_trust());
-        assert!(result.anomalies.iter().any(|a| a.anomaly_type == AnomalyType::NewIdentity));
+        let result = engine.evaluate(
+            &test_profile(),
+            &Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            &default_trust(),
+        );
+        assert!(result
+            .anomalies
+            .iter()
+            .any(|a| a.anomaly_type == AnomalyType::NewIdentity));
     }
 
     #[test]

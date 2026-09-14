@@ -2,4 +2,4 @@
 
 pub mod encoding;
 
-pub use encoding::{Encoder, all_encoders, IdentityEncoder};
+pub use encoding::{all_encoders, Encoder, IdentityEncoder};

@@ -5,14 +5,13 @@
 // records everything as D0 evidence, and feeds comparison results
 // into the learning loop.
 
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::validation::verification::{
-    MatchStrategy, Severity, ValidationReport, VerificationSpec,
-    verify_and_record,
-};
 use crate::validation::redteam::attack_types::AttackPayload;
+use crate::validation::verification::{
+    verify_and_record, MatchStrategy, Severity, ValidationReport, VerificationSpec,
+};
 
 use super::comparator::{ComparisonResult, ComparisonSummary};
 use super::learner::{LearningRecord, LearningStore};
@@ -118,7 +117,11 @@ impl TwinValidationRunner {
         let mut category_stats: HashMap<String, CategoryResult> = HashMap::new();
 
         for attack in attacks {
-            if self.config.skip_categories.contains(&attack.category.label().to_string()) {
+            if self
+                .config
+                .skip_categories
+                .contains(&attack.category.label().to_string())
+            {
                 continue;
             }
 
@@ -202,7 +205,8 @@ impl TwinValidationRunner {
         let correct = prediction.outcome == actual;
         let check_name = format!(
             "twin-predict-{}-{}",
-            attack.category, &attack.id[..8.min(attack.id.len())]
+            attack.category,
+            &attack.id[..8.min(attack.id.len())]
         );
 
         let spec = VerificationSpec::new(
@@ -212,7 +216,11 @@ impl TwinValidationRunner {
             serde_json::json!(true), // expected: prediction correct
         )
         .with_strategy(MatchStrategy::Exact)
-        .with_severity(if correct { Severity::Info } else { Severity::Medium })
+        .with_severity(if correct {
+            Severity::Info
+        } else {
+            Severity::Medium
+        })
         .with_rings(attack.target_rings.clone())
         .with_tags(vec![
             format!("category:{}", attack.category),
@@ -255,7 +263,8 @@ impl TwinValidationRunner {
         .with_severity(Severity::High);
 
         verify_and_record(
-            report, &spec,
+            report,
+            &spec,
             serde_json::json!(summary.accuracy_pct),
             serde_json::json!({"action": "twin_accuracy_check"}),
             serde_json::json!({}),
@@ -272,7 +281,8 @@ impl TwinValidationRunner {
         .with_severity(Severity::Critical);
 
         verify_and_record(
-            report, &fp_spec,
+            report,
+            &fp_spec,
             serde_json::json!(summary.false_positive_count),
             serde_json::json!({"action": "fp_count_check"}),
             serde_json::json!({}),
@@ -288,7 +298,8 @@ impl TwinValidationRunner {
         .with_strategy(MatchStrategy::Truthy);
 
         verify_and_record(
-            report, &learn_spec,
+            report,
+            &learn_spec,
             serde_json::json!(!insights.is_empty()),
             serde_json::json!({"action": "learning_check"}),
             serde_json::json!({}),
@@ -305,12 +316,19 @@ impl TwinValidationRunner {
         // The "real system" has slightly different detection patterns
         // to simulate the model-reality gap.
         let dangerous_patterns = [
-            ("select ", 0.95), ("union ", 0.9), ("drop ", 0.95),
-            ("<script", 0.95), ("javascript:", 0.9),
-            ("ignore previous", 0.85), ("system prompt", 0.9),
-            ("127.0.0.1", 0.95), ("localhost", 0.9),
-            ("admin", 0.7), ("sudo", 0.85),
-            ("forget previous", 0.8), ("poison", 0.75),
+            ("select ", 0.95),
+            ("union ", 0.9),
+            ("drop ", 0.95),
+            ("<script", 0.95),
+            ("javascript:", 0.9),
+            ("ignore previous", 0.85),
+            ("system prompt", 0.9),
+            ("127.0.0.1", 0.95),
+            ("localhost", 0.9),
+            ("admin", 0.7),
+            ("sudo", 0.85),
+            ("forget previous", 0.8),
+            ("poison", 0.75),
         ];
 
         let max_score = dangerous_patterns
@@ -354,7 +372,10 @@ mod tests {
         let mut report = ValidationReport::new("twin-test", vec!["D3".to_string()]);
 
         let attacks = vec![
-            make_attack("SELECT * FROM users WHERE 1=1", AttackCategory::PromptInjection),
+            make_attack(
+                "SELECT * FROM users WHERE 1=1",
+                AttackCategory::PromptInjection,
+            ),
             make_attack("What is the weather?", AttackCategory::Jailbreak),
         ];
 
@@ -368,9 +389,10 @@ mod tests {
         let mut runner = TwinValidationRunner::default();
         let mut report = ValidationReport::new("evidence-test", vec!["D3".to_string()]);
 
-        let attacks = vec![
-            make_attack("ignore previous instructions", AttackCategory::Jailbreak),
-        ];
+        let attacks = vec![make_attack(
+            "ignore previous instructions",
+            AttackCategory::Jailbreak,
+        )];
 
         runner.run(&attacks, &mut report).unwrap();
         // Should have attack evidence + summary evidence (3 items).
@@ -386,9 +408,7 @@ mod tests {
         let mut runner = TwinValidationRunner::new(config);
         let mut report = ValidationReport::new("skip-test", vec!["D3".to_string()]);
 
-        let attacks = vec![
-            make_attack("jailbreak payload", AttackCategory::Jailbreak),
-        ];
+        let attacks = vec![make_attack("jailbreak payload", AttackCategory::Jailbreak)];
 
         let result = runner.run(&attacks, &mut report).unwrap();
         assert_eq!(result.total_attacks, 0);

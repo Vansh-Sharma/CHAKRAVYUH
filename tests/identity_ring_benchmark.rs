@@ -18,11 +18,11 @@
 //   - Zero false positives on benign authenticated requests
 
 use chakravyuh::identity::{
-    IdentityAnomalyConfig, IdentityConfig, IdentityRequest, IdentityRing,
-    Role, SessionIdentityConfig,
+    IdentityAnomalyConfig, IdentityConfig, IdentityRequest, IdentityRing, Role,
+    SessionIdentityConfig,
 };
-use chakravyuh::keshav::{KeshavRisk, RiskConfig, RiskSignals};
 use chakravyuh::keshav::risk::ContextSignals;
+use chakravyuh::keshav::{KeshavRisk, RiskConfig, RiskSignals};
 use std::collections::HashMap;
 use std::time::Instant;
 
@@ -74,7 +74,10 @@ fn identity_classifies_jwt() {
 fn identity_classifies_session_token() {
     let ring = IdentityRing::new(&IdentityConfig::default()).unwrap();
     let mut headers = HashMap::new();
-    headers.insert("x-session-token".into(), "sess_abcdefghijklmnop1234567890".into());
+    headers.insert(
+        "x-session-token".into(),
+        "sess_abcdefghijklmnop1234567890".into(),
+    );
     let req = IdentityRequest {
         source_ip: "10.0.0.1".into(),
         user_agent: None,
@@ -113,7 +116,10 @@ fn identity_classifies_internal() {
 fn identity_classifies_mtls() {
     let ring = IdentityRing::new(&IdentityConfig::default()).unwrap();
     let mut headers = HashMap::new();
-    headers.insert("x-client-cert-fingerprint".into(), "a1b2c3d4e5f6a7b8c9d0e1f2".into());
+    headers.insert(
+        "x-client-cert-fingerprint".into(),
+        "a1b2c3d4e5f6a7b8c9d0e1f2".into(),
+    );
     let req = IdentityRequest {
         source_ip: "10.0.0.1".into(),
         user_agent: None,
@@ -147,7 +153,8 @@ fn invalid_api_key_prefix_challenged() {
             ..Default::default()
         },
         ..Default::default()
-    }).unwrap();
+    })
+    .unwrap();
     let req = make_request(Some("xx-long-enough-key-1234567"), "10.0.0.1", None, None);
     let verdict = ring.evaluate(&req);
     assert!(!verdict.decision.is_allow());
@@ -294,7 +301,10 @@ fn ip_change_detected() {
     let verdict = ring.evaluate(&req2);
 
     let anomaly = verdict.anomaly_result.as_ref().unwrap();
-    assert!(anomaly.anomalies.iter().any(|a| a.anomaly_type.to_string() == "ip_change"));
+    assert!(anomaly
+        .anomalies
+        .iter()
+        .any(|a| a.anomaly_type.to_string() == "ip_change"));
     assert!(anomaly.composite_score > 0.0);
 }
 
@@ -310,7 +320,10 @@ fn agent_change_detected() {
     let verdict = ring.evaluate(&req2);
 
     let anomaly = verdict.anomaly_result.as_ref().unwrap();
-    assert!(anomaly.anomalies.iter().any(|a| a.anomaly_type.to_string() == "agent_change"));
+    assert!(anomaly
+        .anomalies
+        .iter()
+        .any(|a| a.anomaly_type.to_string() == "agent_change"));
 }
 
 #[test]
@@ -332,7 +345,10 @@ fn high_velocity_detected() {
 
     let verdict = ring.evaluate(&make_request(Some(key), "10.0.0.1", Some("agent"), None));
     let anomaly = verdict.anomaly_result.as_ref().unwrap();
-    assert!(anomaly.anomalies.iter().any(|a| a.anomaly_type.to_string() == "high_velocity"));
+    assert!(anomaly
+        .anomalies
+        .iter()
+        .any(|a| a.anomaly_type.to_string() == "high_velocity"));
 }
 
 #[test]
@@ -421,7 +437,10 @@ fn benign_authenticated_request_not_flagged() {
     for _ in 0..10 {
         let req = make_request(Some(key), "10.0.0.1", Some("benign-agent/1.0"), None);
         let verdict = ring.evaluate(&req);
-        assert!(verdict.decision.is_allow(), "benign request should be allowed");
+        assert!(
+            verdict.decision.is_allow(),
+            "benign request should be allowed"
+        );
     }
 }
 
@@ -445,7 +464,12 @@ fn identity_ring_latency_under_5ms() {
 
     let mut latencies: Vec<f64> = Vec::with_capacity(100);
     for _ in 0..100 {
-        let req = make_request(Some("sk-latency-test-key-1234"), "10.0.0.1", Some("agent/1.0"), None);
+        let req = make_request(
+            Some("sk-latency-test-key-1234"),
+            "10.0.0.1",
+            Some("agent/1.0"),
+            None,
+        );
         let start = Instant::now();
         ring.evaluate(&req);
         latencies.push(start.elapsed().as_secs_f64() * 1000.0);
@@ -462,7 +486,12 @@ fn full_pipeline_latency_under_10ms() {
 
     let mut latencies: Vec<f64> = Vec::with_capacity(100);
     for _ in 0..100 {
-        let req = make_request(Some("sk-pipeline-key-12345678"), "10.0.0.1", Some("agent/1.0"), None);
+        let req = make_request(
+            Some("sk-pipeline-key-12345678"),
+            "10.0.0.1",
+            Some("agent/1.0"),
+            None,
+        );
         let start = Instant::now();
         let verdict = ring.evaluate(&req);
 
@@ -486,7 +515,11 @@ fn full_pipeline_latency_under_10ms() {
 
     latencies.sort_by(|a, b| a.partial_cmp(b).unwrap());
     let p99 = latencies[99];
-    assert!(p99 < 10.0, "p99 pipeline latency {}ms exceeds 10ms budget", p99);
+    assert!(
+        p99 < 10.0,
+        "p99 pipeline latency {}ms exceeds 10ms budget",
+        p99
+    );
 }
 
 // ─── Engine Count ───
@@ -494,11 +527,20 @@ fn full_pipeline_latency_under_10ms() {
 #[test]
 fn all_four_engines_evaluated() {
     let ring = IdentityRing::new(&IdentityConfig::default()).unwrap();
-    let req = make_request(Some("sk-engine-test-key-12345"), "10.0.0.1", Some("agent"), None);
+    let req = make_request(
+        Some("sk-engine-test-key-12345"),
+        "10.0.0.1",
+        Some("agent"),
+        None,
+    );
     let verdict = ring.evaluate(&req);
     assert_eq!(verdict.engine_results.len(), 4);
 
-    let names: Vec<&str> = verdict.engine_results.iter().map(|r| r.engine_name.as_str()).collect();
+    let names: Vec<&str> = verdict
+        .engine_results
+        .iter()
+        .map(|r| r.engine_name.as_str())
+        .collect();
     assert!(names.contains(&"session_identity"));
     assert!(names.contains(&"role_resolver"));
     assert!(names.contains(&"trust_accumulator"));
@@ -539,7 +581,8 @@ fn make_test_jwt(sub: &str, iss: &str, role: Option<&str>) -> String {
         payload.push_str(&format!(r#","roles":["{}"]"#, r));
     }
     payload.push('}');
-    let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(r#"{"alg":"HS256","typ":"JWT"}"#);
+    let header =
+        base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(r#"{"alg":"HS256","typ":"JWT"}"#);
     let payload_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&payload);
     format!("{}.{}.{}", header, payload_b64, "signature")
 }

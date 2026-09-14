@@ -49,15 +49,33 @@ pub struct RiskConfig {
     pub w_context: f64,
 }
 
-fn default_w_threat() -> f64 { 0.30 }
-fn default_w_identity() -> f64 { 0.15 }
-fn default_w_behavior() -> f64 { 0.15 }
-fn default_w_memory() -> f64 { 0.10 }
-fn default_w_execution() -> f64 { 0.15 }
-fn default_w_reasoning() -> f64 { 0.05 }
-fn default_w_governance() -> f64 { 0.05 }
-fn default_w_recovery() -> f64 { 0.05 }
-fn default_w_context() -> f64 { 0.10 }
+fn default_w_threat() -> f64 {
+    0.30
+}
+fn default_w_identity() -> f64 {
+    0.15
+}
+fn default_w_behavior() -> f64 {
+    0.15
+}
+fn default_w_memory() -> f64 {
+    0.10
+}
+fn default_w_execution() -> f64 {
+    0.15
+}
+fn default_w_reasoning() -> f64 {
+    0.05
+}
+fn default_w_governance() -> f64 {
+    0.05
+}
+fn default_w_recovery() -> f64 {
+    0.05
+}
+fn default_w_context() -> f64 {
+    0.10
+}
 
 impl Default for RiskConfig {
     fn default() -> Self {
@@ -114,7 +132,10 @@ impl ContextSignals {
     pub fn to_score(&self) -> f64 {
         // Context score is a blend of factors:
         // High off-hours + high anomaly + low reputation = high risk
-        let risk = (self.time_of_day_risk * 0.4 + self.rate_anomaly * 0.3 + (1.0 - self.source_reputation) * 0.3) * 10.0;
+        let risk = (self.time_of_day_risk * 0.4
+            + self.rate_anomaly * 0.3
+            + (1.0 - self.source_reputation) * 0.3)
+            * 10.0;
         risk.clamp(0.0, 10.0)
     }
 }
@@ -163,14 +184,30 @@ impl KeshavRisk {
 
         // Confidence based on how many signals contributed.
         let mut contributing = 0u32;
-        if signals.threat_score.is_some() { contributing += 1; }
-        if signals.identity_score.is_some() { contributing += 1; }
-        if signals.agent_score.is_some() { contributing += 1; }
-        if signals.memory_score.is_some() { contributing += 1; }
-        if signals.execution_score.is_some() { contributing += 1; }
-        if signals.reasoning_score.is_some() { contributing += 1; }
-        if signals.governance_score.is_some() { contributing += 1; }
-        if signals.recovery_score.is_some() { contributing += 1; }
+        if signals.threat_score.is_some() {
+            contributing += 1;
+        }
+        if signals.identity_score.is_some() {
+            contributing += 1;
+        }
+        if signals.agent_score.is_some() {
+            contributing += 1;
+        }
+        if signals.memory_score.is_some() {
+            contributing += 1;
+        }
+        if signals.execution_score.is_some() {
+            contributing += 1;
+        }
+        if signals.reasoning_score.is_some() {
+            contributing += 1;
+        }
+        if signals.governance_score.is_some() {
+            contributing += 1;
+        }
+        if signals.recovery_score.is_some() {
+            contributing += 1;
+        }
         contributing += 1; // context always contributes
 
         // More signals -> higher confidence. 1 signal -> 0.11, 10 -> 1.0
@@ -230,7 +267,11 @@ mod tests {
             context: ContextSignals::default(),
         };
         let score = risk.evaluate(&signals);
-        assert!(score.overall < 1.0, "expected low risk, got {}", score.overall);
+        assert!(
+            score.overall < 1.0,
+            "expected low risk, got {}",
+            score.overall
+        );
     }
 
     #[test]
@@ -248,7 +289,11 @@ mod tests {
             context: ContextSignals::default(),
         };
         let score = risk.evaluate(&signals);
-        assert!(score.overall > 2.0, "expected high risk, got {}", score.overall);
+        assert!(
+            score.overall > 2.0,
+            "expected high risk, got {}",
+            score.overall
+        );
     }
 
     #[test]
@@ -313,8 +358,20 @@ mod tests {
     fn execution_risk_conversion() {
         use crate::decision::Decision;
         assert_eq!(execution_to_risk_score(&Decision::Allow), 0.0);
-        assert_eq!(execution_to_risk_score(&Decision::Deny { code: "X".into(), retry_after: None }), 10.0);
-        assert_eq!(execution_to_risk_score(&Decision::Escalate { approver_role: "admin".into(), timeout_secs: 300 }), 7.0);
+        assert_eq!(
+            execution_to_risk_score(&Decision::Deny {
+                code: "X".into(),
+                retry_after: None
+            }),
+            10.0
+        );
+        assert_eq!(
+            execution_to_risk_score(&Decision::Escalate {
+                approver_role: "admin".into(),
+                timeout_secs: 300
+            }),
+            7.0
+        );
     }
 
     #[test]

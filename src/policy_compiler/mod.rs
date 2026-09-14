@@ -16,14 +16,14 @@
 //   - versioning: semver policy versioning, history, diff, rollback
 
 pub mod bytecode;
-pub mod vm;
 pub mod compiler;
 pub mod versioning;
+pub mod vm;
 
 pub use bytecode::{BytecodeProgram, Constant, Instruction, OpCode};
+pub use compiler::{ASTNode, PolicyCompilerEngine, YamlPolicy};
+pub use versioning::{PolicyVersion, PolicyVersionStore, VersionDiff, VersionedPolicy};
 pub use vm::{VMConfig, VMResult, Value};
-pub use compiler::{PolicyCompilerEngine, YamlPolicy, ASTNode};
-pub use versioning::{PolicyVersion, PolicyVersionStore, VersionedPolicy, VersionDiff};
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -140,11 +140,26 @@ impl PolicyInput {
     /// Convert the PolicyInput into a VM environment HashMap.
     pub fn to_vm_env(&self) -> HashMap<String, vm::Value> {
         let mut env = HashMap::new();
-        env.insert("request_id".to_string(), vm::Value::String(self.request_id.clone()));
-        env.insert("source_ip".to_string(), vm::Value::String(self.source_ip.clone()));
-        env.insert("user_id".to_string(), vm::Value::String(self.user_id.clone()));
-        env.insert("agent_id".to_string(), vm::Value::String(self.agent_id.clone()));
-        env.insert("payload".to_string(), vm::Value::String(self.payload.clone()));
+        env.insert(
+            "request_id".to_string(),
+            vm::Value::String(self.request_id.clone()),
+        );
+        env.insert(
+            "source_ip".to_string(),
+            vm::Value::String(self.source_ip.clone()),
+        );
+        env.insert(
+            "user_id".to_string(),
+            vm::Value::String(self.user_id.clone()),
+        );
+        env.insert(
+            "agent_id".to_string(),
+            vm::Value::String(self.agent_id.clone()),
+        );
+        env.insert(
+            "payload".to_string(),
+            vm::Value::String(self.payload.clone()),
+        );
 
         // Convert headers to a flat representation.
         for (k, v) in &self.headers {
@@ -179,8 +194,13 @@ pub struct PolicyOutput {
 
 impl PolicyOutput {
     /// Create a new policy output.
-    pub fn new(decision: Decision, risk_score: f64, rules_matched: Vec<String>,
-               execution_time_ns: u64, policy_version: String) -> Self {
+    pub fn new(
+        decision: Decision,
+        risk_score: f64,
+        rules_matched: Vec<String>,
+        execution_time_ns: u64,
+        policy_version: String,
+    ) -> Self {
         Self {
             decision,
             risk_score,
@@ -273,9 +293,7 @@ impl PolicyCompiler {
     /// Create a new PolicyCompiler with the given configuration.
     pub fn new(config: PolicyCompilerConfig) -> Result<Self> {
         if config.compilation_threads == 0 {
-            return Err(Error::ConfigLoad(
-                "compilation_threads must be >= 1".into(),
-            ));
+            return Err(Error::ConfigLoad("compilation_threads must be >= 1".into()));
         }
 
         let vm_config = vm::VMConfig::default();
@@ -319,12 +337,14 @@ impl PolicyCompiler {
 
         // Create the compiled policy.
         let version_str = self.next_version.to_string();
-        let compiled = CompiledPolicy::from_program(program, version_str.clone(), source_hash.clone());
+        let compiled =
+            CompiledPolicy::from_program(program, version_str.clone(), source_hash.clone());
 
         // Store in version history.
-        let parent = self.current_policy.as_ref().map(|p| {
-            PolicyVersion::parse(&p.version).unwrap_or(PolicyVersion::new(0, 0, 0))
-        });
+        let parent = self
+            .current_policy
+            .as_ref()
+            .map(|p| PolicyVersion::parse(&p.version).unwrap_or(PolicyVersion::new(0, 0, 0)));
 
         let versioned = VersionedPolicy::new(
             self.next_version.clone(),
@@ -354,7 +374,9 @@ impl PolicyCompiler {
         let env = input.to_vm_env();
 
         // Execute the bytecode program on the VM.
-        let vm_result = self.vm.execute(&policy.bytecode, &env)
+        let vm_result = self
+            .vm
+            .execute(&policy.bytecode, &env)
             .map_err(|e| Error::Evaluation(e))?;
 
         let elapsed = start.elapsed().as_nanos() as u64;
@@ -370,7 +392,9 @@ impl PolicyCompiler {
 
     /// Execute the current active policy against the given input.
     pub fn execute_current(&self, input: &PolicyInput) -> Result<PolicyOutput> {
-        let policy = self.current_policy.as_ref()
+        let policy = self
+            .current_policy
+            .as_ref()
             .ok_or_else(|| Error::Evaluation("no policy currently loaded".into()))?;
         self.execute(policy, input)
     }
@@ -381,16 +405,22 @@ impl PolicyCompiler {
     pub fn hot_reload(&mut self, yaml_str: &str) -> Result<ReloadResult> {
         let start = Instant::now();
 
-        let old_version = self.current_policy.as_ref()
+        let old_version = self
+            .current_policy
+            .as_ref()
             .map(|p| p.version.clone())
             .unwrap_or_else(|| "none".to_string());
 
-        let old_hash = self.current_policy.as_ref()
+        let old_hash = self
+            .current_policy
+            .as_ref()
             .map(|p| p.source_hash.clone())
             .unwrap_or_default();
 
         // Save old rule count BEFORE compile_yaml overwrites self.current_policy.
-        let old_rule_count = self.current_policy.as_ref()
+        let old_rule_count = self
+            .current_policy
+            .as_ref()
             .map(|p| p.rule_count)
             .unwrap_or(0);
 
@@ -526,7 +556,8 @@ rules:
         let mut compiler = PolicyCompiler::new(PolicyCompilerConfig {
             max_policy_size: 10, // very small
             ..test_config()
-        }).unwrap();
+        })
+        .unwrap();
 
         let result = compiler.compile_yaml(SAMPLE_POLICY);
         assert!(result.is_err());
@@ -538,8 +569,8 @@ rules:
         let mut compiler = PolicyCompiler::new(test_config()).unwrap();
         let compiled = compiler.compile_yaml(SAMPLE_POLICY).unwrap();
 
-        let input = PolicyInput::new("req-001", "192.168.1.1", "SELECT * FROM users")
-            .with_user("unknown");
+        let input =
+            PolicyInput::new("req-001", "192.168.1.1", "SELECT * FROM users").with_user("unknown");
 
         let output = compiler.execute(&compiled, &input).unwrap();
         assert!(output.decision.is_deny());
@@ -570,7 +601,10 @@ rules:
         // Safe request with no SQL injection, low risk, non-admin user.
         let mut env = HashMap::new();
         env.insert("risk_score".to_string(), vm::Value::Number(0.1));
-        env.insert("payload".to_string(), vm::Value::String("hello world".into()));
+        env.insert(
+            "payload".to_string(),
+            vm::Value::String("hello world".into()),
+        );
         env.insert("user_id".to_string(), vm::Value::String("guest".into()));
 
         let result = compiler.vm.execute(&compiled.bytecode, &env).unwrap();

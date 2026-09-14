@@ -12,10 +12,10 @@ use std::time::Instant;
 
 use clap::Subcommand;
 
+use crate::cli::utils::{self, Color, ExitCode, StatusIndicator};
 use crate::decision::Decision;
 use crate::shield::{ShieldRequest, ShieldRing};
 use crate::threat::{ThreatConfig, ThreatRing};
-use crate::cli::utils::{self, Color, ExitCode, StatusIndicator};
 
 #[derive(Subcommand, Debug)]
 pub enum TestCommand {
@@ -89,18 +89,14 @@ const BUILTIN_ATTACKS: &[(&str, &str)] = &[
 /// Execute a test subcommand. Returns the exit code.
 pub async fn run(cmd: TestCommand) -> ExitCode {
     match cmd {
-        TestCommand::Shield { benign, attacks, format } => {
-            cmd_shield(benign.as_ref(), attacks.as_ref(), &format).await
-        }
-        TestCommand::Threat { file, format } => {
-            cmd_threat(file.as_ref(), &format).await
-        }
-        TestCommand::Compliance { policy } => {
-            cmd_compliance(&policy)
-        }
-        TestCommand::Quick { endpoint, api_key } => {
-            cmd_quick(&endpoint, api_key.as_deref()).await
-        }
+        TestCommand::Shield {
+            benign,
+            attacks,
+            format,
+        } => cmd_shield(benign.as_ref(), attacks.as_ref(), &format).await,
+        TestCommand::Threat { file, format } => cmd_threat(file.as_ref(), &format).await,
+        TestCommand::Compliance { policy } => cmd_compliance(&policy),
+        TestCommand::Quick { endpoint, api_key } => cmd_quick(&endpoint, api_key.as_deref()).await,
     }
 }
 
@@ -128,7 +124,10 @@ async fn cmd_shield(
     // Load attack prompts.
     let attack_prompts: Vec<(String, String)> = match attacks_path {
         Some(p) => load_attacks(p).unwrap_or_default(),
-        None => BUILTIN_ATTACKS.iter().map(|(p, t)| (p.to_string(), t.to_string())).collect(),
+        None => BUILTIN_ATTACKS
+            .iter()
+            .map(|(p, t)| (p.to_string(), t.to_string()))
+            .collect(),
     };
 
     utils::section("Shield Ring Test Suite");
@@ -150,7 +149,9 @@ async fn cmd_shield(
         let tv = threat.evaluate(&req);
         let final_d = most_restrictive(&sv.decision, &tv.decision);
         let passed = final_d.is_allow();
-        if passed { _benign_pass += 1; }
+        if passed {
+            _benign_pass += 1;
+        }
 
         let r = TestResult {
             category: "benign".to_string(),
@@ -165,10 +166,15 @@ async fn cmd_shield(
         };
 
         if format == "text" {
-            let marker = if passed { StatusIndicator::pass() } else { StatusIndicator::denied() };
+            let marker = if passed {
+                StatusIndicator::pass()
+            } else {
+                StatusIndicator::denied()
+            };
             println!(
                 "  [{:>4}] {} {:<20} {}",
-                i, marker,
+                i,
+                marker,
                 truncate(prompt, 30),
                 format_decision(&final_d)
             );
@@ -189,7 +195,9 @@ async fn cmd_shield(
         let tv = threat.evaluate(&req);
         let final_d = most_restrictive(&sv.decision, &tv.decision);
         let passed = final_d.is_deny();
-        if passed { _attack_pass += 1; }
+        if passed {
+            _attack_pass += 1;
+        }
 
         let r = TestResult {
             category: "attack".to_string(),
@@ -204,10 +212,15 @@ async fn cmd_shield(
         };
 
         if format == "text" {
-            let marker = if passed { StatusIndicator::pass() } else { StatusIndicator::denied() };
+            let marker = if passed {
+                StatusIndicator::pass()
+            } else {
+                StatusIndicator::denied()
+            };
             println!(
                 "  [{:>4}] {} {:<20} {:<10} ({})",
-                i, marker,
+                i,
+                marker,
                 truncate(prompt, 30),
                 format_decision(&final_d),
                 attack_type
@@ -226,18 +239,26 @@ async fn cmd_shield(
     let total_passed = results.iter().filter(|r| r.passed).count();
     let total_failed = total - total_passed;
 
-    let false_positives: Vec<_> = results.iter()
+    let false_positives: Vec<_> = results
+        .iter()
         .filter(|r| r.category == "benign" && !r.passed)
         .collect();
-    let false_negatives: Vec<_> = results.iter()
+    let false_negatives: Vec<_> = results
+        .iter()
         .filter(|r| r.category == "attack" && !r.passed)
         .collect();
 
     utils::kv("Total Tests", &total.to_string());
     utils::kv("Passed", &Color::green(&total_passed.to_string()));
     utils::kv("Failed", &Color::red(&total_failed.to_string()));
-    utils::kv("False Positives", &Color::red(&false_positives.len().to_string()));
-    utils::kv("False Negatives", &Color::red(&false_negatives.len().to_string()));
+    utils::kv(
+        "False Positives",
+        &Color::red(&false_positives.len().to_string()),
+    );
+    utils::kv(
+        "False Negatives",
+        &Color::red(&false_negatives.len().to_string()),
+    );
     utils::kv("Total Time", &utils::format_duration(elapsed));
     if total > 0 {
         let pass_rate = total_passed as f64 / total as f64 * 100.0;
@@ -250,17 +271,26 @@ async fn cmd_shield(
     if !false_positives.is_empty() && format == "text" {
         utils::sub_section("False Positives (benign blocked)");
         for fp in &false_positives {
-            println!("  [{}] {} → {} (threat={:.3})",
-                fp.index, truncate(&fp.prompt, 60), fp.actual, fp.threat_score);
+            println!(
+                "  [{}] {} → {} (threat={:.3})",
+                fp.index,
+                truncate(&fp.prompt, 60),
+                fp.actual,
+                fp.threat_score
+            );
         }
     }
     if !false_negatives.is_empty() && format == "text" {
         utils::sub_section("False Negatives (attack missed)");
         for fn_ in &false_negatives {
-            println!("  [{}] {} → {} (type={}, threat={:.3})",
-                fn_.index, truncate(&fn_.prompt, 60), fn_.actual,
+            println!(
+                "  [{}] {} → {} (type={}, threat={:.3})",
+                fn_.index,
+                truncate(&fn_.prompt, 60),
+                fn_.actual,
                 fn_.attack_type.as_deref().unwrap_or("?"),
-                fn_.threat_score);
+                fn_.threat_score
+            );
         }
     }
 
@@ -278,11 +308,19 @@ async fn cmd_shield(
         if format == "json" {
             println!("{}", serde_json::to_string_pretty(&summary).unwrap());
         } else if format == "csv" {
-            println!("index,category,expected,actual,passed,threat_score,latency_ms,attack_type,prompt");
+            println!(
+                "index,category,expected,actual,passed,threat_score,latency_ms,attack_type,prompt"
+            );
             for r in &results {
-                println!("{},{},{},{},{},{:.3},{:.3},{},\"{}\"",
-                    r.index, r.category, r.expected, r.actual, r.passed,
-                    r.threat_score, r.latency_ms,
+                println!(
+                    "{},{},{},{},{},{:.3},{:.3},{},\"{}\"",
+                    r.index,
+                    r.category,
+                    r.expected,
+                    r.actual,
+                    r.passed,
+                    r.threat_score,
+                    r.latency_ms,
                     r.attack_type.as_deref().unwrap_or(""),
                     r.prompt.replace('"', "\"\"")
                 );
@@ -311,7 +349,8 @@ async fn cmd_threat(file: Option<&PathBuf>, format: &str) -> ExitCode {
     // Use built-in attacks if no file provided.
     let tests: Vec<(String, String)> = match file {
         Some(p) => load_test_cases(p),
-        None => BUILTIN_ATTACKS.iter()
+        None => BUILTIN_ATTACKS
+            .iter()
             .map(|(p, t)| (p.to_string(), t.to_string()))
             .collect(),
     };
@@ -327,13 +366,22 @@ async fn cmd_threat(file: Option<&PathBuf>, format: &str) -> ExitCode {
         let verdict = threat.evaluate(&req);
         let detected = verdict.decision.is_deny() || verdict.composite_score >= 0.3;
         let is_pass = detected;
-        if is_pass { passed += 1; } else { failed += 1; }
+        if is_pass {
+            passed += 1;
+        } else {
+            failed += 1;
+        }
 
         if format == "text" {
-            let marker = if is_pass { StatusIndicator::pass() } else { StatusIndicator::denied() };
+            let marker = if is_pass {
+                StatusIndicator::pass()
+            } else {
+                StatusIndicator::denied()
+            };
             println!(
                 "  [{:>4}] {} score={:.3} conf={:.3} sigs=[{}] ({})",
-                i, marker,
+                i,
+                marker,
                 verdict.composite_score,
                 verdict.confidence,
                 if verdict.matched_signatures.is_empty() {
@@ -351,13 +399,17 @@ async fn cmd_threat(file: Option<&PathBuf>, format: &str) -> ExitCode {
     utils::kv("Detected", &Color::green(&passed.to_string()));
     utils::kv("Missed", &Color::red(&failed.to_string()));
     if passed + failed > 0 {
-        utils::kv("Detection Rate", &format!(
-            "{:.1}%",
-            passed as f64 / (passed + failed) as f64 * 100.0
-        ));
+        utils::kv(
+            "Detection Rate",
+            &format!("{:.1}%", passed as f64 / (passed + failed) as f64 * 100.0),
+        );
     }
 
-    if failed > 0 { ExitCode::PartialFailure } else { ExitCode::Ok }
+    if failed > 0 {
+        ExitCode::PartialFailure
+    } else {
+        ExitCode::Ok
+    }
 }
 
 // ── compliance ──────────────────────────────────────────────────────────
@@ -389,7 +441,8 @@ fn cmd_compliance(policy_path: &PathBuf) -> ExitCode {
     checks.push(("Has name field", has_name));
 
     // Check 4: No empty conditions.
-    let has_empty_condition = yaml.lines()
+    let has_empty_condition = yaml
+        .lines()
         .any(|l| l.trim().starts_with("condition:") && l.trim().ends_with(':'));
     checks.push(("No empty conditions", !has_empty_condition));
 
@@ -401,10 +454,14 @@ fn cmd_compliance(policy_path: &PathBuf) -> ExitCode {
     let compiles_ok = std::panic::catch_unwind(|| {
         let mut compiler = crate::policy_compiler::PolicyCompiler::new(
             crate::policy_compiler::PolicyCompilerConfig::default(),
-        ).ok()?;
+        )
+        .ok()?;
         compiler.compile_yaml(&yaml).ok()?;
         Some(true)
-    }).ok().flatten().unwrap_or(false);
+    })
+    .ok()
+    .flatten()
+    .unwrap_or(false);
     checks.push(("Compiles successfully", compiles_ok));
 
     let mut all_pass = true;
@@ -420,7 +477,10 @@ fn cmd_compliance(policy_path: &PathBuf) -> ExitCode {
 
     println!();
     let passed_count = checks.iter().filter(|(_, p)| *p).count();
-    utils::kv("Checks Passed", &format!("{}/{}", passed_count, checks.len()));
+    utils::kv(
+        "Checks Passed",
+        &format!("{}/{}", passed_count, checks.len()),
+    );
 
     if all_pass {
         ExitCode::Ok
@@ -434,7 +494,10 @@ fn cmd_compliance(policy_path: &PathBuf) -> ExitCode {
 async fn cmd_quick(endpoint: &str, api_key: Option<&str>) -> ExitCode {
     use serde_json::json;
 
-    println!("Running quick smoke test against {}\n", Color::cyan(endpoint));
+    println!(
+        "Running quick smoke test against {}\n",
+        Color::cyan(endpoint)
+    );
 
     let client = reqwest::Client::new();
     let mut passed = 0u32;
@@ -525,7 +588,11 @@ async fn cmd_quick(endpoint: &str, api_key: Option<&str>) -> ExitCode {
                     println!("{} (correctly denied)", StatusIndicator::pass());
                     passed += 1;
                 } else {
-                    println!("{} (expected deny, got {})", StatusIndicator::denied(), decision);
+                    println!(
+                        "{} (expected deny, got {})",
+                        StatusIndicator::denied(),
+                        decision
+                    );
                     failed += 1;
                 }
             } else {
@@ -544,7 +611,11 @@ async fn cmd_quick(endpoint: &str, api_key: Option<&str>) -> ExitCode {
     utils::kv("Passed", &Color::green(&passed.to_string()));
     utils::kv("Failed", &Color::red(&failed.to_string()));
 
-    if failed > 0 { ExitCode::PartialFailure } else { ExitCode::Ok }
+    if failed > 0 {
+        ExitCode::PartialFailure
+    } else {
+        ExitCode::Ok
+    }
 }
 
 // ── Data types ──────────────────────────────────────────────────────────
@@ -624,7 +695,11 @@ fn most_restrictive(a: &Decision, b: &Decision) -> Decision {
             Decision::Allow => 0,
         }
     }
-    if severity(a) >= severity(b) { a.clone() } else { b.clone() }
+    if severity(a) >= severity(b) {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
 fn format_decision(d: &Decision) -> String {
@@ -646,7 +721,13 @@ fn truncate(s: &str, max_len: usize) -> String {
 
 fn load_lines(path: &PathBuf) -> Option<Vec<String>> {
     let content = std::fs::read_to_string(path).ok()?;
-    Some(content.lines().filter(|l| !l.trim().is_empty()).map(|l| l.to_string()).collect())
+    Some(
+        content
+            .lines()
+            .filter(|l| !l.trim().is_empty())
+            .map(|l| l.to_string())
+            .collect(),
+    )
 }
 
 fn load_attacks(path: &PathBuf) -> Option<Vec<(String, String)>> {
@@ -654,13 +735,24 @@ fn load_attacks(path: &PathBuf) -> Option<Vec<(String, String)>> {
     let mut results = Vec::new();
     for line in content.lines() {
         let line = line.trim();
-        if line.is_empty() { continue; }
+        if line.is_empty() {
+            continue;
+        }
         if line.starts_with('{') {
             if let Ok(v) = serde_json::from_str::<serde_json::Value>(line) {
-                let prompt = v.get("prompt").or(v.get("content")).or(v.get("text"))
-                    .and_then(|p| p.as_str()).unwrap_or("").to_string();
-                let attack_type = v.get("type").or(v.get("attack_type"))
-                    .and_then(|t| t.as_str()).unwrap_or("unknown").to_string();
+                let prompt = v
+                    .get("prompt")
+                    .or(v.get("content"))
+                    .or(v.get("text"))
+                    .and_then(|p| p.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let attack_type = v
+                    .get("type")
+                    .or(v.get("attack_type"))
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("unknown")
+                    .to_string();
                 results.push((prompt, attack_type));
             }
         } else {
@@ -696,7 +788,8 @@ mod tests {
             benign: None,
             attacks: None,
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         // May get partial failure due to false positives.
         assert!(code == ExitCode::Ok || code == ExitCode::PartialFailure);
     }
@@ -706,7 +799,8 @@ mod tests {
         let code = run(TestCommand::Threat {
             file: None,
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         assert!(code == ExitCode::Ok || code == ExitCode::PartialFailure);
     }
 }

@@ -10,10 +10,10 @@ use std::sync::Arc;
 
 use clap::Subcommand;
 
+use crate::cli::utils::{self, Color, ExitCode, StatusIndicator};
 use crate::decision::Decision;
 use crate::shield::{ShieldRequest, ShieldRing};
 use crate::threat::{ThreatConfig, ThreatRing};
-use crate::cli::utils::{self, Color, ExitCode, StatusIndicator};
 
 #[derive(Subcommand, Debug)]
 pub enum EvaluateCommand {
@@ -70,15 +70,32 @@ pub enum EvaluateCommand {
 /// Execute an evaluate subcommand. Returns the exit code.
 pub async fn run(cmd: EvaluateCommand) -> ExitCode {
     match cmd {
-        EvaluateCommand::Prompt { prompt, source_ip, user_id, api_key, verbose, format } => {
-            cmd_prompt(&prompt.join(" "), &source_ip, user_id.as_deref(), api_key.as_deref(), verbose, &format)
-        }
-        EvaluateCommand::Scan { file, source_ip, format, fail_fast } => {
-            cmd_scan(&file, &source_ip, &format, fail_fast).await
-        }
-        EvaluateCommand::Batch { file, output, source_ip } => {
-            cmd_batch(&file, output.as_ref(), &source_ip).await
-        }
+        EvaluateCommand::Prompt {
+            prompt,
+            source_ip,
+            user_id,
+            api_key,
+            verbose,
+            format,
+        } => cmd_prompt(
+            &prompt.join(" "),
+            &source_ip,
+            user_id.as_deref(),
+            api_key.as_deref(),
+            verbose,
+            &format,
+        ),
+        EvaluateCommand::Scan {
+            file,
+            source_ip,
+            format,
+            fail_fast,
+        } => cmd_scan(&file, &source_ip, &format, fail_fast).await,
+        EvaluateCommand::Batch {
+            file,
+            output,
+            source_ip,
+        } => cmd_batch(&file, output.as_ref(), &source_ip).await,
     }
 }
 
@@ -164,40 +181,54 @@ fn cmd_prompt(
         println!();
         utils::print_table(
             &["Engine", "Decision", "Reason", "Latency (ms)"],
-            &shield_verdict.engine_results.iter().map(|e| {
-                vec![
-                    e.engine_name.clone(),
-                    format_decision(&e.decision),
-                    e.reason.clone(),
-                    format!("{:.3}", e.latency_ms),
-                ]
-            }).collect::<Vec<_>>(),
+            &shield_verdict
+                .engine_results
+                .iter()
+                .map(|e| {
+                    vec![
+                        e.engine_name.clone(),
+                        format_decision(&e.decision),
+                        e.reason.clone(),
+                        format!("{:.3}", e.latency_ms),
+                    ]
+                })
+                .collect::<Vec<_>>(),
         );
     }
 
     // Threat verdict.
     utils::sub_section("Threat Ring");
     print_decision("Verdict", &threat_verdict.decision);
-    utils::kv("Composite Score", &threat_verdict.composite_score.to_string());
+    utils::kv(
+        "Composite Score",
+        &threat_verdict.composite_score.to_string(),
+    );
     utils::kv("Confidence", &threat_verdict.confidence.to_string());
     utils::kv("Latency", &format!("{:.3} ms", threat_verdict.latency_ms));
 
     if verbose && !threat_verdict.matched_signatures.is_empty() {
-        utils::kv("Matched Sigs", &threat_verdict.matched_signatures.join(", "));
+        utils::kv(
+            "Matched Sigs",
+            &threat_verdict.matched_signatures.join(", "),
+        );
     }
 
     if verbose {
         println!();
         utils::print_table(
             &["Engine", "Score", "Confidence", "Signals"],
-            &threat_verdict.engine_results.iter().map(|e| {
-                vec![
-                    e.engine_name.clone(),
-                    format!("{:.3}", e.score),
-                    format!("{:.3}", e.confidence),
-                    e.signals.join(", "),
-                ]
-            }).collect::<Vec<_>>(),
+            &threat_verdict
+                .engine_results
+                .iter()
+                .map(|e| {
+                    vec![
+                        e.engine_name.clone(),
+                        format!("{:.3}", e.score),
+                        format!("{:.3}", e.confidence),
+                        e.signals.join(", "),
+                    ]
+                })
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -205,11 +236,23 @@ fn cmd_prompt(
     let final_decision = most_restrictive(&shield_verdict.decision, &threat_verdict.decision);
     println!();
     if final_decision.is_allow() {
-        println!("  {} Final verdict: {}", StatusIndicator::ok(""), Color::bold(&Color::green("ALLOW")));
+        println!(
+            "  {} Final verdict: {}",
+            StatusIndicator::ok(""),
+            Color::bold(&Color::green("ALLOW"))
+        );
     } else if final_decision.is_deny() {
-        println!("  {} Final verdict: {}", StatusIndicator::fail(""), Color::bold(&Color::red("DENY")));
+        println!(
+            "  {} Final verdict: {}",
+            StatusIndicator::fail(""),
+            Color::bold(&Color::red("DENY"))
+        );
     } else {
-        println!("  {} Final verdict: {}", StatusIndicator::warn(""), Color::bold(&Color::yellow("CHALLENGE")));
+        println!(
+            "  {} Final verdict: {}",
+            StatusIndicator::warn(""),
+            Color::bold(&Color::yellow("CHALLENGE"))
+        );
     }
 
     if final_decision.is_deny() {
@@ -221,12 +264,7 @@ fn cmd_prompt(
 
 // ── scan ───────────────────────────────────────────────────────────────
 
-async fn cmd_scan(
-    path: &PathBuf,
-    source_ip: &str,
-    format: &str,
-    fail_fast: bool,
-) -> ExitCode {
+async fn cmd_scan(path: &PathBuf, source_ip: &str, format: &str, fail_fast: bool) -> ExitCode {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
@@ -244,30 +282,35 @@ async fn cmd_scan(
     };
 
     // Detect format: try JSONL first, fall back to line-by-line.
-    let prompts: Vec<(String, String)> = if content.lines().next().map_or(false, |l| l.starts_with('{')) {
-        // JSONL format: {"prompt": "..."} or {"content": "..."}
-        content.lines()
-            .filter_map(|line| {
-                let v: serde_json::Value = serde_json::from_str(line).ok()?;
-                let prompt = v.get("prompt")
-                    .or_else(|| v.get("content"))
-                    .or_else(|| v.get("text"))
-                    .and_then(|p| p.as_str())
-                    .map(|s| s.to_string())?;
-                let label = v.get("label")
-                    .and_then(|l| l.as_str())
-                    .unwrap_or("unknown")
-                    .to_string();
-                Some((prompt, label))
-            })
-            .collect()
-    } else {
-        // Plain text: one prompt per line.
-        content.lines()
-            .filter(|l| !l.trim().is_empty())
-            .map(|l| (l.to_string(), "unknown".to_string()))
-            .collect()
-    };
+    let prompts: Vec<(String, String)> =
+        if content.lines().next().map_or(false, |l| l.starts_with('{')) {
+            // JSONL format: {"prompt": "..."} or {"content": "..."}
+            content
+                .lines()
+                .filter_map(|line| {
+                    let v: serde_json::Value = serde_json::from_str(line).ok()?;
+                    let prompt = v
+                        .get("prompt")
+                        .or_else(|| v.get("content"))
+                        .or_else(|| v.get("text"))
+                        .and_then(|p| p.as_str())
+                        .map(|s| s.to_string())?;
+                    let label = v
+                        .get("label")
+                        .and_then(|l| l.as_str())
+                        .unwrap_or("unknown")
+                        .to_string();
+                    Some((prompt, label))
+                })
+                .collect()
+        } else {
+            // Plain text: one prompt per line.
+            content
+                .lines()
+                .filter(|l| !l.trim().is_empty())
+                .map(|l| (l.to_string(), "unknown".to_string()))
+                .collect()
+        };
 
     utils::section("Prompt Scan");
     utils::kv("File", &path.display().to_string());
@@ -305,16 +348,25 @@ async fn cmd_scan(
         results.push(record);
 
         if format == "text" {
-            let marker = if final_d.is_allow() { StatusIndicator::pass() }
-                else if final_d.is_deny() { StatusIndicator::denied() }
-                else { StatusIndicator::challenged() };
-            println!("  [{:>4}] {} {} (threat={:.3}, label={})",
-                i, marker, decision_str, threat_v.composite_score, label);
+            let marker = if final_d.is_allow() {
+                StatusIndicator::pass()
+            } else if final_d.is_deny() {
+                StatusIndicator::denied()
+            } else {
+                StatusIndicator::challenged()
+            };
+            println!(
+                "  [{:>4}] {} {} (threat={:.3}, label={})",
+                i, marker, decision_str, threat_v.composite_score, label
+            );
         }
 
         if fail_fast && final_d.is_deny() {
-            println!("\n{} Stopped at first denied prompt (index {})",
-                StatusIndicator::warn(""), i);
+            println!(
+                "\n{} Stopped at first denied prompt (index {})",
+                StatusIndicator::warn(""),
+                i
+            );
             break;
         }
     }
@@ -352,11 +404,7 @@ async fn cmd_scan(
 
 // ── batch ───────────────────────────────────────────────────────────────
 
-async fn cmd_batch(
-    path: &PathBuf,
-    output: Option<&PathBuf>,
-    source_ip: &str,
-) -> ExitCode {
+async fn cmd_batch(path: &PathBuf, output: Option<&PathBuf>, source_ip: &str) -> ExitCode {
     let content = match std::fs::read_to_string(path) {
         Ok(c) => c,
         Err(e) => {
@@ -395,7 +443,8 @@ async fn cmd_batch(
             }
         };
 
-        let prompt = input.get("prompt")
+        let prompt = input
+            .get("prompt")
             .or_else(|| input.get("content"))
             .or_else(|| input.get("text"))
             .and_then(|p| p.as_str())
@@ -436,7 +485,10 @@ async fn cmd_batch(
     utils::kv("Evaluated", &count.to_string());
     utils::kv("Denied", &Color::red(&denied.to_string()));
     if count > 0 {
-        utils::kv("Deny Rate", &format!("{:.1}%", denied as f64 / count as f64 * 100.0));
+        utils::kv(
+            "Deny Rate",
+            &format!("{:.1}%", denied as f64 / count as f64 * 100.0),
+        );
     }
     if let Some(p) = output {
         utils::kv("Output", &p.display().to_string());
@@ -518,7 +570,11 @@ fn most_restrictive(a: &Decision, b: &Decision) -> Decision {
             Decision::Allow => 0,
         }
     }
-    if severity(a) >= severity(b) { a.clone() } else { b.clone() }
+    if severity(a) >= severity(b) {
+        a.clone()
+    } else {
+        b.clone()
+    }
 }
 
 /// Format a decision as a string.
@@ -566,7 +622,8 @@ mod tests {
             api_key: None,
             verbose: false,
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 
@@ -579,7 +636,8 @@ mod tests {
             api_key: None,
             verbose: false,
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         // Jailbreak should be denied.
         assert_eq!(code, ExitCode::Denied);
     }
@@ -593,20 +651,33 @@ mod tests {
             api_key: None,
             verbose: false,
             format: "json".to_string(),
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::Ok);
     }
 
     #[test]
     fn test_most_restrictive() {
         let allow = Decision::Allow;
-        let deny = Decision::Deny { code: "X".into(), retry_after: None };
+        let deny = Decision::Deny {
+            code: "X".into(),
+            retry_after: None,
+        };
         let challenge = Decision::Challenge {
             challenge_type: crate::decision::ChallengeType::Javascript,
         };
-        assert!(matches!(most_restrictive(&allow, &deny), Decision::Deny { .. }));
-        assert!(matches!(most_restrictive(&deny, &challenge), Decision::Deny { .. }));
-        assert!(matches!(most_restrictive(&allow, &challenge), Decision::Challenge { .. }));
+        assert!(matches!(
+            most_restrictive(&allow, &deny),
+            Decision::Deny { .. }
+        ));
+        assert!(matches!(
+            most_restrictive(&deny, &challenge),
+            Decision::Deny { .. }
+        ));
+        assert!(matches!(
+            most_restrictive(&allow, &challenge),
+            Decision::Challenge { .. }
+        ));
     }
 
     #[test]
@@ -618,7 +689,10 @@ mod tests {
     #[test]
     fn test_format_decision() {
         assert_eq!(format_decision(&Decision::Allow), "allow");
-        let deny = Decision::Deny { code: "TEST".into(), retry_after: None };
+        let deny = Decision::Deny {
+            code: "TEST".into(),
+            retry_after: None,
+        };
         assert_eq!(format_decision(&deny), "deny(TEST)");
     }
 }

@@ -22,14 +22,12 @@ use serde::Deserialize;
 use serde_json::json;
 use uuid::Uuid;
 
-use crate::identity::{
-    generate_api_key, hash_api_key, is_live_key, api_key_prefix,
-};
+use crate::identity::{api_key_prefix, generate_api_key, hash_api_key, is_live_key};
 
 use super::auth_handlers::require_user_id;
 use super::dto::ErrorBody;
 use super::org_dto::{
-    ApiKeyResponse, AuditResponse, AuditRecord, CreateApiKeyRequest, CreateApiKeyResponse,
+    ApiKeyResponse, AuditRecord, AuditResponse, CreateApiKeyRequest, CreateApiKeyResponse,
     CreateOrgRequest, CreateWorkspaceRequest, OrgResponse, Pagination, WorkspaceResponse,
 };
 use super::PlatformState;
@@ -88,10 +86,7 @@ pub async fn create_org(
 
 // ── GET /v1/orgs ──────────────────────────────────────────────────────────
 
-pub async fn list_orgs(
-    State(state): State<PlatformState>,
-    headers: HeaderMap,
-) -> Response {
+pub async fn list_orgs(State(state): State<PlatformState>, headers: HeaderMap) -> Response {
     let user_id = match require_user_id(&state, &headers) {
         Ok(id) => id,
         Err(resp) => return resp,
@@ -133,7 +128,11 @@ pub async fn get_org(
         }
         None => (
             StatusCode::NOT_FOUND,
-            Json(ErrorBody::new("org_not_found", "Organization not found", "n/a")),
+            Json(ErrorBody::new(
+                "org_not_found",
+                "Organization not found",
+                "n/a",
+            )),
         )
             .into_response(),
     }
@@ -174,7 +173,11 @@ pub async fn update_org(
         }
         None => (
             StatusCode::NOT_FOUND,
-            Json(ErrorBody::new("org_not_found", "Organization not found", "n/a")),
+            Json(ErrorBody::new(
+                "org_not_found",
+                "Organization not found",
+                "n/a",
+            )),
         )
             .into_response(),
     }
@@ -313,13 +316,7 @@ pub async fn create_api_key(
         "name": key.name,
         "is_live": key.is_live,
     });
-    crate::api::webhooks::dispatch_event(
-        &state.webhooks,
-        org_id,
-        "apikey.created",
-        key_data,
-    )
-    .await;
+    crate::api::webhooks::dispatch_event(&state.webhooks, org_id, "apikey.created", key_data).await;
     let _ = key_id; // silence unused warning
 
     // The plaintext key is returned ONCE — never retrievable again.

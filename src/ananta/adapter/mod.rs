@@ -22,8 +22,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::ananta::config::AdapterConfig;
-use crate::ananta::trust::trust_state::TrustState;
 use crate::ananta::crypto::signing::{KeyPair, Signature};
+use crate::ananta::trust::trust_state::TrustState;
 
 /// A proposed pipeline adaptation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -193,7 +193,8 @@ impl Adapter {
 
     /// Get active proposals.
     pub fn active_proposals(&self) -> Vec<&AdaptationProposal> {
-        self.proposals.values()
+        self.proposals
+            .values()
             .filter(|p| p.status == AdaptationStatus::Active)
             .collect()
     }
@@ -315,9 +316,17 @@ mod tests {
         let mut state = TrustState::new();
         // Degrade all valid trust domains to pull overall_score well below 0.7
         for domain in &[
-            "decision", "policy", "model", "orchestration",
-            "learning", "memory", "configuration", "plugin",
-            "runtime", "performance", "trust",
+            "decision",
+            "policy",
+            "model",
+            "orchestration",
+            "learning",
+            "memory",
+            "configuration",
+            "plugin",
+            "runtime",
+            "performance",
+            "trust",
         ] {
             state.set_domain_level(domain, 0.3);
         }
@@ -376,7 +385,10 @@ mod tests {
         let proposals = adapter.evaluate(&degraded_trust_state());
         if let Some(p) = proposals.first() {
             assert!(adapter.confirm(&p.proposal_id));
-            assert_eq!(adapter.proposals[&p.proposal_id].status, AdaptationStatus::Confirmed);
+            assert_eq!(
+                adapter.proposals[&p.proposal_id].status,
+                AdaptationStatus::Confirmed
+            );
             // Can't confirm again (already confirmed).
         }
     }

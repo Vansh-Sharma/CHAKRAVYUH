@@ -21,8 +21,12 @@ pub trait MutationStrategy {
 pub struct IdentityMutation;
 
 impl MutationStrategy for IdentityMutation {
-    fn name(&self) -> &str { "identity" }
-    fn apply(&self, payload: &str) -> String { payload.to_string() }
+    fn name(&self) -> &str {
+        "identity"
+    }
+    fn apply(&self, payload: &str) -> String {
+        payload.to_string()
+    }
 }
 
 // ─── 1. Case Variation ──────────────────────────────────────────────────
@@ -32,7 +36,9 @@ impl MutationStrategy for IdentityMutation {
 pub struct CaseVariationMutation;
 
 impl MutationStrategy for CaseVariationMutation {
-    fn name(&self) -> &str { "case_variation" }
+    fn name(&self) -> &str {
+        "case_variation"
+    }
 
     fn apply(&self, payload: &str) -> String {
         payload
@@ -58,20 +64,33 @@ impl MutationStrategy for CaseVariationMutation {
 pub struct UnicodeHomoglyphMutation;
 
 impl MutationStrategy for UnicodeHomoglyphMutation {
-    fn name(&self) -> &str { "unicode_homoglyph" }
+    fn name(&self) -> &str {
+        "unicode_homoglyph"
+    }
 
     fn apply(&self, payload: &str) -> String {
         let homoglyphs: &[(&str, &str)] = &[
-            ("a", "\u{0430}"), ("e", "\u{0435}"), ("o", "\u{043E}"),
-            ("p", "\u{0440}"), ("c", "\u{0441}"), ("x", "\u{0445}"),
-            ("y", "\u{0443}"), ("H", "\u{041D}"), ("i", "\u{0456}"),
+            ("a", "\u{0430}"),
+            ("e", "\u{0435}"),
+            ("o", "\u{043E}"),
+            ("p", "\u{0440}"),
+            ("c", "\u{0441}"),
+            ("x", "\u{0445}"),
+            ("y", "\u{0443}"),
+            ("H", "\u{041D}"),
+            ("i", "\u{0456}"),
             ("j", "\u{0458}"),
         ];
         let mut result = payload.to_string();
         for (ascii, unicode) in homoglyphs {
             // Only replace first occurrence to keep it subtle.
             if let Some(idx) = result.find(ascii) {
-                result = format!("{}{}{}", &result[..idx], unicode, &result[idx + ascii.len()..]);
+                result = format!(
+                    "{}{}{}",
+                    &result[..idx],
+                    unicode,
+                    &result[idx + ascii.len()..]
+                );
             }
         }
         result
@@ -85,7 +104,9 @@ impl MutationStrategy for UnicodeHomoglyphMutation {
 pub struct WhitespaceInjectionMutation;
 
 impl MutationStrategy for WhitespaceInjectionMutation {
-    fn name(&self) -> &str { "whitespace_injection" }
+    fn name(&self) -> &str {
+        "whitespace_injection"
+    }
 
     fn apply(&self, payload: &str) -> String {
         let words: Vec<&str> = payload.split_whitespace().collect();
@@ -100,10 +121,13 @@ impl MutationStrategy for WhitespaceInjectionMutation {
 pub struct CommentInjectionMutation;
 
 impl MutationStrategy for CommentInjectionMutation {
-    fn name(&self) -> &str { "comment_injection" }
+    fn name(&self) -> &str {
+        "comment_injection"
+    }
 
     fn apply(&self, payload: &str) -> String {
-        let words: Vec<String> = payload.split_whitespace()
+        let words: Vec<String> = payload
+            .split_whitespace()
             .enumerate()
             .map(|(i, w)| {
                 if i % 2 == 0 && w.len() > 3 {
@@ -125,7 +149,9 @@ impl MutationStrategy for CommentInjectionMutation {
 pub struct NullByteMutation;
 
 impl MutationStrategy for NullByteMutation {
-    fn name(&self) -> &str { "null_byte" }
+    fn name(&self) -> &str {
+        "null_byte"
+    }
 
     fn apply(&self, payload: &str) -> String {
         payload.split_whitespace().collect::<Vec<_>>().join("\x00")
@@ -139,7 +165,9 @@ impl MutationStrategy for NullByteMutation {
 pub struct ZeroWidthMutation;
 
 impl MutationStrategy for ZeroWidthMutation {
-    fn name(&self) -> &str { "zero_width" }
+    fn name(&self) -> &str {
+        "zero_width"
+    }
 
     fn apply(&self, payload: &str) -> String {
         // Zero-width joiner (U+200D) and zero-width non-joiner (U+200C)
@@ -155,7 +183,9 @@ impl MutationStrategy for ZeroWidthMutation {
 pub struct HtmlEntityMutation;
 
 impl MutationStrategy for HtmlEntityMutation {
-    fn name(&self) -> &str { "html_entity" }
+    fn name(&self) -> &str {
+        "html_entity"
+    }
 
     fn apply(&self, payload: &str) -> String {
         payload
@@ -174,7 +204,9 @@ impl MutationStrategy for HtmlEntityMutation {
 pub struct DoubleUrlEncodeMutation;
 
 impl MutationStrategy for DoubleUrlEncodeMutation {
-    fn name(&self) -> &str { "double_url_encode" }
+    fn name(&self) -> &str {
+        "double_url_encode"
+    }
 
     fn apply(&self, payload: &str) -> String {
         let once: String = payload
@@ -209,7 +241,9 @@ impl MutationStrategy for DoubleUrlEncodeMutation {
 pub struct UnicodeNormalizeMutation;
 
 impl MutationStrategy for UnicodeNormalizeMutation {
-    fn name(&self) -> &str { "unicode_normalize" }
+    fn name(&self) -> &str {
+        "unicode_normalize"
+    }
 
     fn apply(&self, payload: &str) -> String {
         payload
@@ -237,7 +271,9 @@ impl MutationStrategy for UnicodeNormalizeMutation {
 pub struct TokenSplittingMutation;
 
 impl MutationStrategy for TokenSplittingMutation {
-    fn name(&self) -> &str { "token_splitting" }
+    fn name(&self) -> &str {
+        "token_splitting"
+    }
 
     fn apply(&self, payload: &str) -> String {
         // Insert a soft hyphen (U+00AD) after every 3rd character

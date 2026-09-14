@@ -148,7 +148,8 @@ impl RuntimeState {
 
     /// Register a component.
     pub fn register_component(&mut self, name: &str) {
-        self.components.insert(name.into(), ComponentStatus::new(name));
+        self.components
+            .insert(name.into(), ComponentStatus::new(name));
     }
 
     /// Set the runtime phase.
@@ -229,7 +230,9 @@ impl RuntimeState {
 
     /// Check if all registered components are running.
     pub fn all_components_running(&self) -> bool {
-        self.components.values().all(|c| c.state == ComponentState::Running)
+        self.components
+            .values()
+            .all(|c| c.state == ComponentState::Running)
     }
 
     /// Count components by state.
@@ -247,7 +250,10 @@ impl RuntimeState {
             "phase={} uptime={:.1}s components={}/{} running",
             self.phase,
             self.uptime_secs(),
-            self.components.values().filter(|c| c.state == ComponentState::Running).count(),
+            self.components
+                .values()
+                .filter(|c| c.state == ComponentState::Running)
+                .count(),
             self.components.len(),
         )
     }

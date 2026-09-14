@@ -12,9 +12,9 @@
 //
 // Output: ordered list of RecoveryActions, or "do nothing."
 
-use crate::ananta::phoenix::strategies::{RecoveryAction, RecoveryStrategy};
-use crate::ananta::phoenix::recovery_history::RecoveryHistory;
 use crate::ananta::config::PhoenixConfig;
+use crate::ananta::phoenix::recovery_history::RecoveryHistory;
+use crate::ananta::phoenix::strategies::{RecoveryAction, RecoveryStrategy};
 use serde::{Deserialize, Serialize};
 
 /// A planned recovery.
@@ -95,7 +95,10 @@ impl RecoveryPlanner {
 
                 if !past.is_empty() && successes > 0 {
                     // Repeat what worked.
-                    let last_success = past.iter().rev().find(|r| r.outcome == super::RecoveryOutcome::Success);
+                    let last_success = past
+                        .iter()
+                        .rev()
+                        .find(|r| r.outcome == super::RecoveryOutcome::Success);
                     if let Some(r) = last_success {
                         let action = RecoveryAction::new(
                             RecoveryStrategy::Restart,
@@ -127,14 +130,18 @@ impl RecoveryPlanner {
                         RecoveryStrategy::Quarantine,
                         domain,
                         &format!("trust critically low ({:.2}), quarantining", trust_level),
-                    ).with_confidence(0.9).with_priority(9)
+                    )
+                    .with_confidence(0.9)
+                    .with_priority(9)
                 } else {
                     // High z-score but some trust — try restart.
                     RecoveryAction::new(
                         RecoveryStrategy::Restart,
                         domain,
                         &format!("high drift z={:.1}, restarting", z_score),
-                    ).with_confidence(0.9).with_priority(7)
+                    )
+                    .with_confidence(0.9)
+                    .with_priority(7)
                 };
 
                 plan.actions.push(PlannedAction {
@@ -154,8 +161,13 @@ impl RecoveryPlanner {
                     action: RecoveryAction::new(
                         RecoveryStrategy::Quarantine,
                         domain,
-                        &format!("CRITICAL: trust={:.2}, quarantining immediately", trust_level),
-                    ).with_confidence(0.95).with_priority(10),
+                        &format!(
+                            "CRITICAL: trust={:.2}, quarantining immediately",
+                            trust_level
+                        ),
+                    )
+                    .with_confidence(0.95)
+                    .with_priority(10),
                     reasoning: "Critical trust failure. Isolating component.".into(),
                     expected_outcome: "Component isolated, human review required".into(),
                 });
@@ -164,7 +176,9 @@ impl RecoveryPlanner {
                         RecoveryStrategy::Escalate,
                         domain,
                         "Critical: requires human intervention",
-                    ).with_confidence(1.0).with_priority(10),
+                    )
+                    .with_confidence(1.0)
+                    .with_priority(10),
                     reasoning: "Critical severity always escalates to human.".into(),
                     expected_outcome: "Human operator makes final decision".into(),
                 });
@@ -174,7 +188,8 @@ impl RecoveryPlanner {
         }
 
         // Filter by confidence threshold.
-        plan.actions.retain(|a| a.action.confidence >= self.config.action_confidence_threshold);
+        plan.actions
+            .retain(|a| a.action.confidence >= self.config.action_confidence_threshold);
 
         // Record planned actions for rate limiting.
         for a in &plan.actions {
@@ -185,7 +200,12 @@ impl RecoveryPlanner {
     }
 
     /// Assess severity from trust level, z-score, and consecutive failures.
-    fn assess_severity(&self, trust_level: f64, z_score: f64, consecutive_failures: u64) -> Severity {
+    fn assess_severity(
+        &self,
+        trust_level: f64,
+        z_score: f64,
+        consecutive_failures: u64,
+    ) -> Severity {
         // Critical: very low trust OR very high z-score OR many consecutive failures.
         if trust_level < 0.1 || z_score > 10.0 || consecutive_failures > 10 {
             return Severity::Critical;
@@ -244,7 +264,10 @@ mod tests {
         let mut planner = make_planner();
         let plan = planner.plan("keshav", 0.05, 15.0, 20, &empty_history());
         assert_eq!(plan.actions.len(), 2);
-        assert_eq!(plan.actions[0].action.strategy, RecoveryStrategy::Quarantine);
+        assert_eq!(
+            plan.actions[0].action.strategy,
+            RecoveryStrategy::Quarantine
+        );
         assert_eq!(plan.actions[1].action.strategy, RecoveryStrategy::Escalate);
     }
 

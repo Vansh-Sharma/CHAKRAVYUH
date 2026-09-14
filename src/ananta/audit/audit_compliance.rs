@@ -203,10 +203,7 @@ impl ComplianceRuleEngine {
 
     /// Count total violations across all rules.
     pub fn total_violations(&self) -> usize {
-        self.violation_history
-            .values()
-            .map(|v| v.len())
-            .sum()
+        self.violation_history.values().map(|v| v.len()).sum()
     }
 
     /// Count violations by severity.
@@ -245,7 +242,13 @@ impl ComplianceRuleEngine {
         let now = Utc::now().to_rfc3339();
         let mut results = Vec::new();
 
-        let rule_indices: Vec<usize> = self.rules.iter().enumerate().filter(|(_, r)| r.enabled).map(|(i, _)| i).collect();
+        let rule_indices: Vec<usize> = self
+            .rules
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.enabled)
+            .map(|(i, _)| i)
+            .collect();
         for idx in rule_indices {
             let result = {
                 let rule = &self.rules[idx];
@@ -392,10 +395,7 @@ impl ComplianceRuleEngine {
                     match_count,
                     format!(
                         "Keyword '{}' found in {} of {} {:?} entries",
-                        kw,
-                        match_count as u64,
-                        count as u64,
-                        rule.audit_category
+                        kw, match_count as u64, count as u64, rule.audit_category
                     ),
                 )
             }
@@ -468,7 +468,8 @@ impl ComplianceRuleEngine {
         vec![
             ComplianceRule {
                 rule_id: "SOC2-CC6.1".into(),
-                description: "Logical access security must be enforced for all audit entries".into(),
+                description: "Logical access security must be enforced for all audit entries"
+                    .into(),
                 severity: RuleSeverity::High,
                 framework: ComplianceFramework::Soc2,
                 audit_category: AuditCategory::Trust,
@@ -721,7 +722,9 @@ impl TrailVerifier {
                         timestamp_violations.push(i);
                         issues.push(format!(
                             "Non-monotonic timestamp at index {}: {} < {}",
-                            i, entry.timestamp, prev.to_rfc3339()
+                            i,
+                            entry.timestamp,
+                            prev.to_rfc3339()
                         ));
                     }
                 }
@@ -734,10 +737,7 @@ impl TrailVerifier {
         for (i, entry) in entries.iter().enumerate() {
             if !seen_hashes.insert(entry.hash.clone()) {
                 duplicate_entries.push(i);
-                issues.push(format!(
-                    "Duplicate hash at index {}: {}",
-                    i, entry.hash
-                ));
+                issues.push(format!("Duplicate hash at index {}: {}", i, entry.hash));
             }
         }
 
@@ -747,10 +747,7 @@ impl TrailVerifier {
                 .iter()
                 .position(|e| e.sequence == checkpoint.sequence);
             if let Some(idx) = end_idx {
-                let hashes: Vec<String> = entries[..=idx]
-                    .iter()
-                    .map(|e| e.hash.clone())
-                    .collect();
+                let hashes: Vec<String> = entries[..=idx].iter().map(|e| e.hash.clone()).collect();
                 let computed_root = Self::compute_merkle_root(&hashes);
                 if computed_root != checkpoint.root_hash {
                     merkle_mismatches.push(idx);
@@ -880,7 +877,8 @@ pub struct ComplianceReport {
 impl ComplianceReport {
     /// Generate a structured JSON representation of this report.
     pub fn to_json(&self) -> Result<String, String> {
-        serde_json::to_string_pretty(self).map_err(|e| format!("report serialization failed: {}", e))
+        serde_json::to_string_pretty(self)
+            .map_err(|e| format!("report serialization failed: {}", e))
     }
 
     /// Generate a human-readable summary text.
@@ -958,11 +956,20 @@ impl ComplianceReport {
                 "  Overall: {}",
                 if tv.is_valid { "VALID" } else { "INVALID" }
             ));
-            lines.push(format!("  Hash chain: {}", if tv.hash_chain_valid { "OK" } else { "BROKEN" }));
+            lines.push(format!(
+                "  Hash chain: {}",
+                if tv.hash_chain_valid { "OK" } else { "BROKEN" }
+            ));
             lines.push(format!("  Sequence gaps: {}", tv.sequence_gaps.len()));
-            lines.push(format!("  Timestamp violations: {}", tv.timestamp_violations.len()));
+            lines.push(format!(
+                "  Timestamp violations: {}",
+                tv.timestamp_violations.len()
+            ));
             lines.push(format!("  Duplicates: {}", tv.duplicate_entries.len()));
-            lines.push(format!("  Merkle mismatches: {}", tv.merkle_mismatches.len()));
+            lines.push(format!(
+                "  Merkle mismatches: {}",
+                tv.merkle_mismatches.len()
+            ));
             lines.push(String::new());
         }
 
@@ -1059,11 +1066,7 @@ impl ReportGenerator {
         violation_timeline.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
 
         // Trend data.
-        let mut trend_data: Vec<TrendDataPoint> = self
-            .trend_history
-            .values()
-            .cloned()
-            .collect();
+        let mut trend_data: Vec<TrendDataPoint> = self.trend_history.values().cloned().collect();
         trend_data.sort_by(|a, b| a.period.cmp(&b.period));
 
         // Framework breakdown.
@@ -1081,17 +1084,12 @@ impl ReportGenerator {
 
     /// Compute a weighted risk score from 0.0 to 100.0.
     /// Uses severity weights and violation recency.
-    fn compute_risk_score(
-        results: &[RuleEvaluationResult],
-        rules: &[ComplianceRule],
-    ) -> f64 {
+    fn compute_risk_score(results: &[RuleEvaluationResult], rules: &[ComplianceRule]) -> f64 {
         let mut total_weight = 0.0;
         let mut violated_weight = 0.0;
 
         for result in results {
-            let rule = rules
-                .iter()
-                .find(|r| r.rule_id == result.rule_id);
+            let rule = rules.iter().find(|r| r.rule_id == result.rule_id);
             let weight = rule
                 .map(|r| r.severity.weight())
                 .unwrap_or(RuleSeverity::Medium.weight());
@@ -1118,9 +1116,7 @@ impl ReportGenerator {
         let mut framework_map: HashMap<ComplianceFramework, (usize, usize, f64)> = HashMap::new();
 
         for result in results {
-            let rule = rules
-                .iter()
-                .find(|r| r.rule_id == result.rule_id);
+            let rule = rules.iter().find(|r| r.rule_id == result.rule_id);
             let framework = rule
                 .map(|r| r.framework.clone())
                 .unwrap_or_else(|| ComplianceFramework::Custom("unknown".into()));
@@ -1128,9 +1124,7 @@ impl ReportGenerator {
                 .map(|r| r.severity.weight())
                 .unwrap_or(RuleSeverity::Medium.weight());
 
-            let entry = framework_map
-                .entry(framework)
-                .or_insert((0, 0, 0.0));
+            let entry = framework_map.entry(framework).or_insert((0, 0, 0.0));
             entry.0 += 1; // total rules
             if result.passed {
                 entry.1 += 1; // passed rules
@@ -1141,14 +1135,20 @@ impl ReportGenerator {
 
         let mut breakdown: Vec<FrameworkRiskBreakdown> = framework_map
             .into_iter()
-            .map(|(framework, (total, passed, risk))| FrameworkRiskBreakdown {
-                framework,
-                total_rules: total,
-                passed_rules: passed,
-                risk_contribution: risk,
-            })
+            .map(
+                |(framework, (total, passed, risk))| FrameworkRiskBreakdown {
+                    framework,
+                    total_rules: total,
+                    passed_rules: passed,
+                    risk_contribution: risk,
+                },
+            )
             .collect();
-        breakdown.sort_by(|a, b| b.risk_contribution.partial_cmp(&a.risk_contribution).unwrap());
+        breakdown.sort_by(|a, b| {
+            b.risk_contribution
+                .partial_cmp(&a.risk_contribution)
+                .unwrap()
+        });
         breakdown
     }
 }
@@ -1325,25 +1325,18 @@ impl RetentionEnforcer {
         let mut category_groups: HashMap<String, Vec<usize>> = HashMap::new();
         for (i, entry) in entries.iter().enumerate() {
             let key = format!("{:?}", entry.category);
-            category_groups
-                .entry(key)
-                .or_insert_with(Vec::new)
-                .push(i);
+            category_groups.entry(key).or_insert_with(Vec::new).push(i);
         }
 
         for (cat_key, indices) in &category_groups {
-            let policy = self
-                .policies
-                .get(cat_key)
-                .cloned()
-                .unwrap_or_else(|| {
-                    RetentionPolicy::new(
-                        // Parse back — we store the category name as Debug format.
-                        // For the default, we use the default max age.
-                        AuditCategory::Trust,
-                        self.default_max_age_days,
-                    )
-                });
+            let policy = self.policies.get(cat_key).cloned().unwrap_or_else(|| {
+                RetentionPolicy::new(
+                    // Parse back — we store the category name as Debug format.
+                    // For the default, we use the default max age.
+                    AuditCategory::Trust,
+                    self.default_max_age_days,
+                )
+            });
 
             if !policy.enabled {
                 continue;
@@ -1414,8 +1407,8 @@ impl RetentionEnforcer {
         deletion_candidates.dedup();
 
         let total_bytes = (entries.len() as u64) * self.bytes_per_entry;
-        let after_bytes = total_bytes
-            .saturating_sub((deletion_candidates.len() as u64) * self.bytes_per_entry);
+        let after_bytes =
+            total_bytes.saturating_sub((deletion_candidates.len() as u64) * self.bytes_per_entry);
 
         RetentionEnforcementResult {
             entries_examined: entries.len(),
@@ -1611,10 +1604,7 @@ impl AnomalyDetector {
             let key = format!("{:?}", entry.category);
             *counts.entry(key).or_insert(0.0) += 1.0;
         }
-        self.baseline_distribution = counts
-            .into_iter()
-            .map(|(k, v)| (k, v / total))
-            .collect();
+        self.baseline_distribution = counts.into_iter().map(|(k, v)| (k, v / total)).collect();
     }
 
     /// Record a historical rate data point.
@@ -1667,11 +1657,7 @@ impl AnomalyDetector {
         let current_rate = recent_count / window_minutes as f64;
 
         // Compare against historical rates.
-        let historical: Vec<f64> = self
-            .historical_rates
-            .iter()
-            .map(|(_, c)| *c)
-            .collect();
+        let historical: Vec<f64> = self.historical_rates.iter().map(|(_, c)| *c).collect();
 
         if historical.len() < self.config.min_samples_for_stats {
             return results;
@@ -1763,7 +1749,8 @@ impl AnomalyDetector {
         if observed.len() >= 2 {
             let chi_sq = Stats::chi_squared(&observed, &expected);
             if chi_sq > self.config.distribution_chi_squared_threshold {
-                let confidence = (chi_sq / (chi_sq + self.config.distribution_chi_squared_threshold)).min(1.0);
+                let confidence =
+                    (chi_sq / (chi_sq + self.config.distribution_chi_squared_threshold)).min(1.0);
                 results.push(AnomalyDetectionResult {
                     anomaly_type: AnomalyType::CategoryDistributionAnomaly,
                     confidence,
@@ -1971,9 +1958,9 @@ impl AnomalyDetector {
 
                 let count_in_window = window_end - window_start + 1;
                 if count_in_window >= self.config.severity_burst_threshold {
-                    let confidence =
-                        (count_in_window as f64 / (self.config.severity_burst_threshold as f64 * 2.0))
-                            .min(1.0);
+                    let confidence = (count_in_window as f64
+                        / (self.config.severity_burst_threshold as f64 * 2.0))
+                        .min(1.0);
                     results.push(AnomalyDetectionResult {
                         anomaly_type: AnomalyType::SeverityBurst,
                         confidence,
@@ -2326,9 +2313,18 @@ mod tests {
         });
         let entries = make_chained_entries(1);
         engine.evaluate_all(&entries);
-        assert_eq!(engine.violations_for_framework(&ComplianceFramework::Gdpr), 1);
-        assert_eq!(engine.violations_for_framework(&ComplianceFramework::Soc2), 1);
-        assert_eq!(engine.violations_for_framework(&ComplianceFramework::Hipaa), 0);
+        assert_eq!(
+            engine.violations_for_framework(&ComplianceFramework::Gdpr),
+            1
+        );
+        assert_eq!(
+            engine.violations_for_framework(&ComplianceFramework::Soc2),
+            1
+        );
+        assert_eq!(
+            engine.violations_for_framework(&ComplianceFramework::Hipaa),
+            0
+        );
     }
 
     #[test]
@@ -2362,7 +2358,8 @@ mod tests {
     fn test_default_rules() {
         let rules = ComplianceRuleEngine::default_rules();
         assert!(rules.len() >= 5);
-        let frameworks: HashSet<&ComplianceFramework> = rules.iter().map(|r| &r.framework).collect();
+        let frameworks: HashSet<&ComplianceFramework> =
+            rules.iter().map(|r| &r.framework).collect();
         assert!(frameworks.contains(&ComplianceFramework::Soc2));
         assert!(frameworks.contains(&ComplianceFramework::Gdpr));
         assert!(frameworks.contains(&ComplianceFramework::Hipaa));
@@ -2413,9 +2410,33 @@ mod tests {
         let h1 = TrailVerifier::simple_hash(&format!("{}1{}", h0, ts0));
         let h2 = TrailVerifier::simple_hash(&format!("{}2{}", h1, ts2));
         let entries = vec![
-            make_entry(0, AuditCategory::Trust, AuditSeverity::Info, "a", ts0, &"0".repeat(64), &h0),
-            make_entry(1, AuditCategory::Trust, AuditSeverity::Info, "b", ts1, &h0, &h1),
-            make_entry(2, AuditCategory::Trust, AuditSeverity::Info, "c", ts2, &h1, &h2),
+            make_entry(
+                0,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "a",
+                ts0,
+                &"0".repeat(64),
+                &h0,
+            ),
+            make_entry(
+                1,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "b",
+                ts1,
+                &h0,
+                &h1,
+            ),
+            make_entry(
+                2,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "c",
+                ts2,
+                &h1,
+                &h2,
+            ),
         ];
         let _result = verifier.verify(&entries);
         // ts1 (12:00) > ts0 (11:00), so it's fine. But h1's prev_hash is h0, which
@@ -2424,9 +2445,33 @@ mod tests {
         // should check a non-monotonic case.
         let ts_rev1 = "2025-01-01T10:00:00+00:00"; // Earlier than ts0.
         let entries_rev = vec![
-            make_entry(0, AuditCategory::Trust, AuditSeverity::Info, "a", ts0, &"0".repeat(64), &h0),
-            make_entry(1, AuditCategory::Trust, AuditSeverity::Info, "b", ts_rev1, &h0, &h1),
-            make_entry(2, AuditCategory::Trust, AuditSeverity::Info, "c", ts2, &h1, &h2),
+            make_entry(
+                0,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "a",
+                ts0,
+                &"0".repeat(64),
+                &h0,
+            ),
+            make_entry(
+                1,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "b",
+                ts_rev1,
+                &h0,
+                &h1,
+            ),
+            make_entry(
+                2,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "c",
+                ts2,
+                &h1,
+                &h2,
+            ),
         ];
         let result_rev = verifier.verify(&entries_rev);
         assert!(!result_rev.is_valid);
@@ -2519,7 +2564,11 @@ mod tests {
                 rule_id: r.rule_id.clone(),
                 passed: i % 2 == 0,
                 actual_value: 5.0,
-                explanation: if i % 2 == 0 { "OK".into() } else { "FAIL".into() },
+                explanation: if i % 2 == 0 {
+                    "OK".into()
+                } else {
+                    "FAIL".into()
+                },
                 evaluated_at: Utc::now().to_rfc3339(),
             })
             .collect();
@@ -2595,7 +2644,7 @@ mod tests {
     fn test_retention_expired_by_age() {
         let mut enforcer = RetentionEnforcer::new(90);
         enforcer.add_policy(
-            RetentionPolicy::new(AuditCategory::Trust, 1) // 1 day max
+            RetentionPolicy::new(AuditCategory::Trust, 1), // 1 day max
         );
         let old_ts = (Utc::now() - Duration::days(2)).to_rfc3339();
         let entries = vec![make_entry(
@@ -2616,8 +2665,7 @@ mod tests {
     fn test_retention_legal_hold_prevents_deletion() {
         let mut enforcer = RetentionEnforcer::new(90);
         enforcer.add_policy(
-            RetentionPolicy::new(AuditCategory::Trust, 1)
-                .with_legal_hold("litigation pending"),
+            RetentionPolicy::new(AuditCategory::Trust, 1).with_legal_hold("litigation pending"),
         );
         let old_ts = (Utc::now() - Duration::days(5)).to_rfc3339();
         let entries = vec![make_entry(
@@ -2649,9 +2697,7 @@ mod tests {
     #[test]
     fn test_retention_max_count() {
         let mut enforcer = RetentionEnforcer::new(365);
-        enforcer.add_policy(
-            RetentionPolicy::new(AuditCategory::Trust, 365).with_max_count(2),
-        );
+        enforcer.add_policy(RetentionPolicy::new(AuditCategory::Trust, 365).with_max_count(2));
         let entries = make_chained_entries(5);
         let result = enforcer.enforce(&entries);
         assert!(result.expired_by_count > 0);
@@ -2702,8 +2748,24 @@ mod tests {
         let h0 = "hash0".to_string();
         let h1 = TrailVerifier::simple_hash(&format!("{}{}{}", h0, 1, ts2));
         let entries = vec![
-            make_entry(0, AuditCategory::Trust, AuditSeverity::Info, "a", ts1, &"0".repeat(64), &h0),
-            make_entry(1, AuditCategory::Trust, AuditSeverity::Info, "b", ts2, &h0, &h1),
+            make_entry(
+                0,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "a",
+                ts1,
+                &"0".repeat(64),
+                &h0,
+            ),
+            make_entry(
+                1,
+                AuditCategory::Trust,
+                AuditSeverity::Info,
+                "b",
+                ts2,
+                &h0,
+                &h1,
+            ),
         ];
         let results = detector.detect_coverage_gaps(&entries, &Utc::now().to_rfc3339());
         assert_eq!(results.len(), 1);
@@ -2728,7 +2790,10 @@ mod tests {
             let hash = TrailVerifier::simple_hash(&format!("{}{}{}", prev, i, ts));
             let mut data = HashMap::new();
             data.insert("actor".into(), serde_json::json!("attacker"));
-            data.insert("resource".into(), serde_json::json!(format!("resource-{}", i)));
+            data.insert(
+                "resource".into(),
+                serde_json::json!(format!("resource-{}", i)),
+            );
             entries.push(AuditEntry {
                 sequence: i as u64,
                 category: AuditCategory::Configuration,
@@ -2740,9 +2805,13 @@ mod tests {
                 hash,
             });
         }
-        let results = detector.detect_suspicious_access_patterns(&entries, &Utc::now().to_rfc3339());
+        let results =
+            detector.detect_suspicious_access_patterns(&entries, &Utc::now().to_rfc3339());
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].anomaly_type, AnomalyType::SuspiciousAccessPattern);
+        assert_eq!(
+            results[0].anomaly_type,
+            AnomalyType::SuspiciousAccessPattern
+        );
     }
 
     #[test]
@@ -2807,12 +2876,13 @@ mod tests {
                 &hash,
             ));
         }
-        let results = detector.detect_category_distribution_anomaly(
-            &drift_entries,
-            &Utc::now().to_rfc3339(),
-        );
+        let results =
+            detector.detect_category_distribution_anomaly(&drift_entries, &Utc::now().to_rfc3339());
         assert_eq!(results.len(), 1);
-        assert_eq!(results[0].anomaly_type, AnomalyType::CategoryDistributionAnomaly);
+        assert_eq!(
+            results[0].anomaly_type,
+            AnomalyType::CategoryDistributionAnomaly
+        );
     }
 
     #[test]
@@ -2852,7 +2922,10 @@ mod tests {
     fn test_compliance_framework_display() {
         assert_eq!(format!("{}", ComplianceFramework::Soc2), "SOC2");
         assert_eq!(format!("{}", ComplianceFramework::Gdpr), "GDPR");
-        assert_eq!(format!("{}", ComplianceFramework::Custom("x".into())), "CUSTOM:x");
+        assert_eq!(
+            format!("{}", ComplianceFramework::Custom("x".into())),
+            "CUSTOM:x"
+        );
     }
 
     #[test]
@@ -2863,12 +2936,18 @@ mod tests {
         assert_eq!(policy.max_age_days, 60);
         assert_eq!(policy.max_count, Some(1000));
         assert!(policy.legal_hold);
-        assert_eq!(policy.legal_hold_reason.as_deref(), Some("regulatory audit"));
+        assert_eq!(
+            policy.legal_hold_reason.as_deref(),
+            Some("regulatory audit")
+        );
     }
 
     #[test]
     fn test_anomaly_type_display() {
-        assert_eq!(format!("{}", AnomalyType::EntryRateSpike), "Entry Rate Spike");
+        assert_eq!(
+            format!("{}", AnomalyType::EntryRateSpike),
+            "Entry Rate Spike"
+        );
         assert_eq!(format!("{}", AnomalyType::CoverageGap), "Coverage Gap");
         assert_eq!(format!("{}", AnomalyType::SeverityBurst), "Severity Burst");
     }

@@ -14,41 +14,40 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use std::sync::Arc;
 
 use chakravyuh::{
-    Config,
-    shield::{ShieldRequest, ShieldRing},
-    threat::ThreatRing,
-    identity::IdentityRing,
-    memory::MemoryRing,
     agent::AgentRing,
-    execution::ExecutionRing,
-    reasoning::ReasoningRing,
-    governance::GovernanceRing,
-    keshav::{
-        orchestrate::{KeshavOrchestrate, RequestType},
-        executor::{PipelineExecutor, PipelineContext},
-        decide::KeshavDecide,
-        risk::KeshavRisk,
-        policy_engine::{PolicyEngine, Policy},
-        AllRingVerdicts,
-    },
     ananta::{
+        config::HashAlgorithm as AnantaHashAlgorithm,
         crypto::{
+            encryption::{decrypt, encrypt},
             hashing::hash_bytes,
-            signing::{sign, verify, KeyPair},
             merkle::MerkleTree,
-            encryption::{encrypt, decrypt},
+            signing::{sign, verify, KeyPair},
             threshold::{
-                lagrange_interpolate_at_zero, ShamirScheme,
-                ThresholdSigner, PartialSignature,
+                lagrange_interpolate_at_zero, PartialSignature, ShamirScheme, ThresholdSigner,
             },
         },
-        config::HashAlgorithm as AnantaHashAlgorithm,
-        trust::trust_engine::BayesianTrustEngine,
         trust::trust_decay::TrustDecayEngine,
+        trust::trust_engine::BayesianTrustEngine,
     },
-    policy_compiler::{PolicyCompiler, PolicyInput, PolicyCompilerConfig},
-    storage::{MemoryStore, CachedStore, Store},
-    cross_ring::{CrossRingNetwork, CrossRingMessage, CrossRingType},
+    cross_ring::{CrossRingMessage, CrossRingNetwork, CrossRingType},
+    execution::ExecutionRing,
+    governance::GovernanceRing,
+    identity::IdentityRing,
+    keshav::{
+        decide::KeshavDecide,
+        executor::{PipelineContext, PipelineExecutor},
+        orchestrate::{KeshavOrchestrate, RequestType},
+        policy_engine::{Policy, PolicyEngine},
+        risk::KeshavRisk,
+        AllRingVerdicts,
+    },
+    memory::MemoryRing,
+    policy_compiler::{PolicyCompiler, PolicyCompilerConfig, PolicyInput},
+    reasoning::ReasoningRing,
+    shield::{ShieldRequest, ShieldRing},
+    storage::{CachedStore, MemoryStore, Store},
+    threat::ThreatRing,
+    Config,
 };
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -173,12 +172,8 @@ fn bench_keshav_decide_evaluate(c: &mut Criterion) {
     group.throughput(Throughput::Elements(1));
     group.bench_function("evaluate_shield_only", |b| {
         b.iter(|| {
-            let record = decide.evaluate(
-                black_box(&shield_verdict),
-                None,
-                "bench-req-1",
-                "1.2.3.4",
-            );
+            let record =
+                decide.evaluate(black_box(&shield_verdict), None, "bench-req-1", "1.2.3.4");
             black_box(record);
         });
     });
@@ -286,15 +281,24 @@ fn bench_policy_engine_evaluate_all(c: &mut Criterion) {
     };
     let identity_verdict = chakravyuh::identity::IdentityVerdict {
         decision: chakravyuh::Decision::Allow,
-        identity_profile: None, role: None, trust_result: None,
-        anomaly_result: None, engine_results: vec![],
-        latency_ms: 0.5, identity_risk_score: 0.1,
+        identity_profile: None,
+        role: None,
+        trust_result: None,
+        anomaly_result: None,
+        engine_results: vec![],
+        latency_ms: 0.5,
+        identity_risk_score: 0.1,
     };
     let memory_verdict = chakravyuh::memory::MemoryVerdict {
         decision: chakravyuh::Decision::Allow,
-        pii_findings: None, conversation_state: None, rag_verdict: None,
-        provenance_verdict: None, access_verdict: None,
-        engine_results: vec![], latency_ms: 0.3, memory_risk_score: 0.0,
+        pii_findings: None,
+        conversation_state: None,
+        rag_verdict: None,
+        provenance_verdict: None,
+        access_verdict: None,
+        engine_results: vec![],
+        latency_ms: 0.3,
+        memory_risk_score: 0.0,
     };
     let agent_verdict = chakravyuh::agent::AgentVerdict {
         decision: chakravyuh::Decision::Allow,
@@ -304,7 +308,8 @@ fn bench_policy_engine_evaluate_all(c: &mut Criterion) {
         behavior_analysis: None,
         chain_risk: None,
         engine_results: vec![],
-        latency_ms: 0.4, behavior_risk_score: 0.1,
+        latency_ms: 0.4,
+        behavior_risk_score: 0.1,
     };
     let execution_verdict = chakravyuh::execution::ExecutionVerdict {
         decision: chakravyuh::Decision::Allow,
@@ -515,30 +520,42 @@ fn bench_merkle_tree(c: &mut Criterion) {
             .collect();
         let leaf_refs: Vec<&[u8]> = leaves.iter().map(|v| v.as_slice()).collect();
 
-        group.bench_with_input(BenchmarkId::new("from_leaves", count), &leaf_refs, |b, refs| {
-            b.iter(|| {
-                let tree = MerkleTree::from_data(refs.as_slice(), black_box(&algo));
-                black_box(tree);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("from_leaves", count),
+            &leaf_refs,
+            |b, refs| {
+                b.iter(|| {
+                    let tree = MerkleTree::from_data(refs.as_slice(), black_box(&algo));
+                    black_box(tree);
+                });
+            },
+        );
 
         // Build tree once for proof gen + verify
         let tree = MerkleTree::from_data(&leaf_refs, &algo);
-        group.bench_with_input(BenchmarkId::new("proof_generation", count), &tree, |b, t| {
-            b.iter(|| {
-                // Generate proof for the last leaf
-                let proof = t.proof(black_box(t.leaves.len() - 1));
-                black_box(proof);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("proof_generation", count),
+            &tree,
+            |b, t| {
+                b.iter(|| {
+                    // Generate proof for the last leaf
+                    let proof = t.proof(black_box(t.leaves.len() - 1));
+                    black_box(proof);
+                });
+            },
+        );
 
         let proof = tree.proof(tree.leaves.len() - 1).unwrap();
-        group.bench_with_input(BenchmarkId::new("proof_verification", count), &proof, |b, p| {
-            b.iter(|| {
-                let ok = MerkleTree::verify_proof(black_box(p), black_box(&algo));
-                black_box(ok);
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::new("proof_verification", count),
+            &proof,
+            |b, p| {
+                b.iter(|| {
+                    let ok = MerkleTree::verify_proof(black_box(p), black_box(&algo));
+                    black_box(ok);
+                });
+            },
+        );
     }
     group.finish();
 }
@@ -622,7 +639,8 @@ fn bench_threshold_signing(c: &mut Criterion) {
 // ═══════════════════════════════════════════════════════════════════════
 
 fn bench_cross_ring_send_recv(c: &mut Criterion) {
-    let network = CrossRingNetwork::new(&chakravyuh::cross_ring::CrossRingConfig::default()).unwrap();
+    let network =
+        CrossRingNetwork::new(&chakravyuh::cross_ring::CrossRingConfig::default()).unwrap();
 
     let mut group = c.benchmark_group("cross_ring/send_recv");
     group.throughput(Throughput::Elements(1));
@@ -667,8 +685,19 @@ fn bench_cross_ring_send_recv(c: &mut Criterion) {
 }
 
 fn bench_cross_ring_broadcast(c: &mut Criterion) {
-    let network = CrossRingNetwork::new(&chakravyuh::cross_ring::CrossRingConfig::default()).unwrap();
-    let destinations = ["shield", "threat", "identity", "memory", "agent", "execution", "reasoning", "governance", "recovery"];
+    let network =
+        CrossRingNetwork::new(&chakravyuh::cross_ring::CrossRingConfig::default()).unwrap();
+    let destinations = [
+        "shield",
+        "threat",
+        "identity",
+        "memory",
+        "agent",
+        "execution",
+        "reasoning",
+        "governance",
+        "recovery",
+    ];
 
     let mut group = c.benchmark_group("cross_ring/broadcast");
     group.throughput(Throughput::Elements(destinations.len() as u64));

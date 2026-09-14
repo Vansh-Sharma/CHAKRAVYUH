@@ -12,9 +12,7 @@ use std::collections::HashMap;
 use crate::keshav::PipelineContext;
 use crate::shield::ShieldRequest;
 
-use super::scenario::{
-    Scenario, ScenarioMetrics, ScenarioOutcome, ScenarioResult, ScenarioType,
-};
+use super::scenario::{Scenario, ScenarioMetrics, ScenarioOutcome, ScenarioResult, ScenarioType};
 use super::state::TwinState;
 
 /// The twin engine — executes scenarios against cloned ring state.
@@ -63,12 +61,8 @@ impl TwinEngine {
             ScenarioType::RecoverySimulation => {
                 self.run_recovery_simulation(scenario, &mut ring_configs)
             }
-            ScenarioType::WhatIf => {
-                self.run_what_if(scenario, &mut ring_configs)
-            }
-            ScenarioType::StateReplay => {
-                self.run_state_replay(scenario, &mut ring_configs)
-            }
+            ScenarioType::WhatIf => self.run_what_if(scenario, &mut ring_configs),
+            ScenarioType::StateReplay => self.run_state_replay(scenario, &mut ring_configs),
         };
 
         let mut result = result;
@@ -183,24 +177,17 @@ impl TwinEngine {
         scenario: &Scenario,
         ring_configs: &mut HashMap<String, serde_json::Value>,
     ) -> ScenarioResult {
-        let ring_name = scenario
-            .param_str("ring")
-            .unwrap_or("threat")
-            .to_string();
+        let ring_name = scenario.param_str("ring").unwrap_or("threat").to_string();
         let failure_severity = scenario.param_f64("failure_severity").unwrap_or(0.8);
-        let expected_threshold = scenario.param_f64("expected_recovery_threshold").unwrap_or(0.7);
+        let expected_threshold = scenario
+            .param_f64("expected_recovery_threshold")
+            .unwrap_or(0.7);
         let max_steps = scenario.param_u64("max_recovery_steps").unwrap_or(10) as usize;
 
         // Simulate ring failure: set trust to near-zero.
         let trust_key = format!("{}_trust", ring_name);
-        ring_configs.insert(
-            trust_key.clone(),
-            serde_json::json!(1.0 - failure_severity),
-        );
-        ring_configs.insert(
-            format!("{}_status", ring_name),
-            serde_json::json!("failed"),
-        );
+        ring_configs.insert(trust_key.clone(), serde_json::json!(1.0 - failure_severity));
+        ring_configs.insert(format!("{}_status", ring_name), serde_json::json!("failed"));
 
         let mut metrics = ScenarioMetrics::default();
         let mut recovered = false;
@@ -344,8 +331,7 @@ impl TwinEngine {
 
         let details = format!(
             "ring='{}' param='{}' {}->{:.2} block_rate: {:.2}->{:.2} (delta={:.3})",
-            ring, parameter, original_value, new_value,
-            baseline_rate, modified_rate, rate_change,
+            ring, parameter, original_value, new_value, baseline_rate, modified_rate, rate_change,
         );
 
         let mut result = ScenarioResult::new(&scenario.id, outcome, details, 0);
@@ -416,9 +402,7 @@ impl TwinEngine {
 
         metrics.trust_impact = -change_rate * 0.1;
 
-        let max_allowed_change = scenario
-            .param_f64("max_outcome_change_rate")
-            .unwrap_or(0.2);
+        let max_allowed_change = scenario.param_f64("max_outcome_change_rate").unwrap_or(0.2);
 
         let outcome = if change_rate <= max_allowed_change {
             ScenarioOutcome::Passed
@@ -449,10 +433,7 @@ impl TwinEngine {
     /// - "injection": requests with SQL/command injection payloads
     /// - "mixed": a mix of benign and malicious requests
     /// - "benign": normal, safe requests
-    pub fn generate_synthetic_requests(
-        count: usize,
-        attack_type: &str,
-    ) -> Vec<PipelineContext> {
+    pub fn generate_synthetic_requests(count: usize, attack_type: &str) -> Vec<PipelineContext> {
         let mut requests = Vec::with_capacity(count);
 
         for i in 0..count {
@@ -477,10 +458,7 @@ impl TwinEngine {
                     let idx = i % payloads.len();
                     (payloads[idx].to_string(), true)
                 }
-                "benign" => (
-                    format!("What is the capital of country {}?", i + 1),
-                    false,
-                ),
+                "benign" => (format!("What is the capital of country {}?", i + 1), false),
                 _ => {
                     // mixed: 70% benign, 30% malicious
                     if i % 10 < 7 {
@@ -642,7 +620,9 @@ impl Default for TwinEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::twin::scenario::{jailbreak_bypass_shield, policy_threshold_change, ring_restart_recovery};
+    use crate::twin::scenario::{
+        jailbreak_bypass_shield, policy_threshold_change, ring_restart_recovery,
+    };
 
     fn twin_state_with_snapshot() -> TwinState {
         let mut state = TwinState::new();
@@ -659,9 +639,7 @@ mod tests {
             "identity".to_string(),
             serde_json::json!({"strict_mode": true, "trust_required": 0.5}),
         );
-        state
-            .capture("baseline", "test baseline", configs)
-            .unwrap();
+        state.capture("baseline", "test baseline", configs).unwrap();
         state
     }
 
@@ -718,9 +696,7 @@ mod tests {
         // Benign requests should not have the attack header.
         for req in &requests {
             assert_eq!(
-                req.shield_request
-                    .headers
-                    .get("x-twin-synthetic-attack"),
+                req.shield_request.headers.get("x-twin-synthetic-attack"),
                 None
             );
         }

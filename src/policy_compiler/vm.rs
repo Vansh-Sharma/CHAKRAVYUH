@@ -183,7 +183,9 @@ impl PolicyVM {
         }
 
         // Map variable names to slot indices for faster Load/Store.
-        let _var_slots: HashMap<String, usize> = env.keys().enumerate()
+        let _var_slots: HashMap<String, usize> = env
+            .keys()
+            .enumerate()
             .map(|(i, k)| (k.clone(), i))
             .collect();
         let slot_values: Vec<Value> = if program.variable_slots.is_empty() {
@@ -411,7 +413,10 @@ impl PolicyVM {
                 OpCode::MatchRegex => {
                     let pattern_idx = instr.operand.unwrap_or(0) as usize;
                     if pattern_idx >= program.constant_pool.len() {
-                        return Err(format!("regex constant index {} out of bounds", pattern_idx));
+                        return Err(format!(
+                            "regex constant index {} out of bounds",
+                            pattern_idx
+                        ));
                     }
                     let subject = self.pop_checked(&mut stack)?;
                     let subject_str = subject.as_string()?;
@@ -706,8 +711,7 @@ mod tests {
     #[test]
     fn vm_deny_decision() {
         let mut prog = BytecodeProgram::new();
-        prog.emit(Instruction::new(OpCode::Deny)
-            .with_source(1, "block_ip"));
+        prog.emit(Instruction::new(OpCode::Deny).with_source(1, "block_ip"));
         let vm = test_vm();
         let result = vm.execute(&prog, &HashMap::new()).unwrap();
         assert!(result.decision.is_deny());
@@ -751,7 +755,10 @@ mod tests {
         let vm = test_vm();
         let result = vm.execute(&prog, &HashMap::new()).unwrap();
         match result.decision {
-            Decision::Escalate { approver_role, timeout_secs } => {
+            Decision::Escalate {
+                approver_role,
+                timeout_secs,
+            } => {
                 assert_eq!(approver_role, "security_admin");
                 assert_eq!(timeout_secs, 300);
             }
@@ -854,10 +861,10 @@ mod tests {
         // index 4: Return
         let mut prog = BytecodeProgram::new();
         prog.emit(Instruction::with_operand(OpCode::Call, 3)); // index 0
-        prog.emit(Instruction::new(OpCode::Halt));               // index 1
-        prog.emit(Instruction::new(OpCode::Nop));                // index 2
-        prog.emit(Instruction::new(OpCode::Nop));                // index 3 (subroutine)
-        prog.emit(Instruction::new(OpCode::Return));              // index 4
+        prog.emit(Instruction::new(OpCode::Halt)); // index 1
+        prog.emit(Instruction::new(OpCode::Nop)); // index 2
+        prog.emit(Instruction::new(OpCode::Nop)); // index 3 (subroutine)
+        prog.emit(Instruction::new(OpCode::Return)); // index 4
         let vm = test_vm();
         let result = vm.execute(&prog, &HashMap::new()).unwrap();
         assert!(result.decision.is_allow());
@@ -940,11 +947,20 @@ mod tests {
     fn vm_values_equal() {
         assert!(values_equal(&Value::Number(1.0), &Value::Number(1.0)));
         assert!(!values_equal(&Value::Number(1.0), &Value::Number(2.0)));
-        assert!(values_equal(&Value::String("a".into()), &Value::String("a".into())));
-        assert!(!values_equal(&Value::String("a".into()), &Value::String("b".into())));
+        assert!(values_equal(
+            &Value::String("a".into()),
+            &Value::String("a".into())
+        ));
+        assert!(!values_equal(
+            &Value::String("a".into()),
+            &Value::String("b".into())
+        ));
         assert!(values_equal(&Value::Bool(true), &Value::Bool(true)));
         assert!(values_equal(&Value::Null, &Value::Null));
-        assert!(!values_equal(&Value::Number(1.0), &Value::String("1".into())));
+        assert!(!values_equal(
+            &Value::Number(1.0),
+            &Value::String("1".into())
+        ));
     }
 
     #[test]

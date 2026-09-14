@@ -19,8 +19,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use crate::identity::session_identity::IdentityProfile;
 use crate::identity::role_resolver::Role;
+use crate::identity::session_identity::IdentityProfile;
 
 /// Trust state for a single identity.
 #[derive(Debug, Clone)]
@@ -109,15 +109,33 @@ pub struct TrustAccumulatorConfig {
     pub excessive_rate: f64,
 }
 
-fn default_enabled() -> bool { true }
-fn default_max_identities() -> usize { 10_000 }
-fn default_decay_rate() -> f64 { 0.02 }
-fn default_w_volume() -> f64 { 0.2 }
-fn default_w_consistency() -> f64 { 0.15 }
-fn default_w_denial() -> f64 { 0.3 }
-fn default_w_base() -> f64 { 0.25 }
-fn default_w_age() -> f64 { 0.1 }
-fn default_excessive_rate() -> f64 { 60.0 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_max_identities() -> usize {
+    10_000
+}
+fn default_decay_rate() -> f64 {
+    0.02
+}
+fn default_w_volume() -> f64 {
+    0.2
+}
+fn default_w_consistency() -> f64 {
+    0.15
+}
+fn default_w_denial() -> f64 {
+    0.3
+}
+fn default_w_base() -> f64 {
+    0.25
+}
+fn default_w_age() -> f64 {
+    0.1
+}
+fn default_excessive_rate() -> f64 {
+    60.0
+}
 
 impl Default for TrustAccumulatorConfig {
     fn default() -> Self {
@@ -270,8 +288,16 @@ impl TrustAccumulator {
         let age_factor = (1.0 - (-hours_since_first / 24.0).exp()).min(1.0);
 
         // 3. Consistency — same IP and same agent = high consistency.
-        let ip_consistency = if entry.seen_ips.len() <= 1 { 1.0 } else { 1.0 / (entry.seen_ips.len() as f64) };
-        let agent_consistency = if entry.seen_agents.len() <= 1 { 1.0 } else { 1.0 / (entry.seen_agents.len() as f64) };
+        let ip_consistency = if entry.seen_ips.len() <= 1 {
+            1.0
+        } else {
+            1.0 / (entry.seen_ips.len() as f64)
+        };
+        let agent_consistency = if entry.seen_agents.len() <= 1 {
+            1.0
+        } else {
+            1.0 / (entry.seen_agents.len() as f64)
+        };
         let consistency_factor = ip_consistency * 0.6 + agent_consistency * 0.4;
 
         // 4. Volume — moderate volume is good, excessive is bad.
@@ -377,7 +403,13 @@ mod tests {
     fn new_identity_low_trust() {
         let engine = default_engine();
         let profile = test_profile("sk-test-new-identity12345");
-        let result = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("test"), false);
+        let result = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            Some("test"),
+            false,
+        );
         // New identity should have moderate trust (base * w_base dominates).
         assert!(result.is_new);
         assert!(result.trust_score > 0.0 && result.trust_score < 1.0);
@@ -390,14 +422,32 @@ mod tests {
         let profile = test_profile("sk-trust-growth-key1234");
 
         // First request.
-        let r1 = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("agent"), false);
+        let r1 = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            false,
+        );
 
         // Simulate 20 more consistent requests.
         for _ in 0..20 {
-            engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("agent"), false);
+            engine.evaluate(
+                &profile,
+                &crate::identity::role_resolver::Role::User,
+                "1.2.3.4",
+                Some("agent"),
+                false,
+            );
         }
 
-        let r_final = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("agent"), false);
+        let r_final = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            Some("agent"),
+            false,
+        );
         // Trust should grow with consistent requests.
         assert!(r_final.trust_score >= r1.trust_score);
         assert_eq!(r_final.request_count, 22);
@@ -410,10 +460,22 @@ mod tests {
 
         // 5 denied requests.
         for _ in 0..5 {
-            engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("test"), true);
+            engine.evaluate(
+                &profile,
+                &crate::identity::role_resolver::Role::User,
+                "1.2.3.4",
+                Some("test"),
+                true,
+            );
         }
 
-        let result = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", Some("test"), false);
+        let result = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            Some("test"),
+            false,
+        );
         assert_eq!(result.denial_count, 5);
         assert!(result.denial_factor < 1.0);
     }
@@ -423,20 +485,53 @@ mod tests {
         let engine = default_engine();
         let profile = test_profile("sk-ip-hop-key123456789");
 
-        engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.1.1.1", Some("agent"), false);
-        engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "2.2.2.2", Some("agent"), false);
-        engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "3.3.3.3", Some("agent"), false);
+        engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.1.1.1",
+            Some("agent"),
+            false,
+        );
+        engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "2.2.2.2",
+            Some("agent"),
+            false,
+        );
+        engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "3.3.3.3",
+            Some("agent"),
+            false,
+        );
 
-        let result = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "4.4.4.4", Some("agent"), false);
+        let result = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "4.4.4.4",
+            Some("agent"),
+            false,
+        );
         // 4 different IPs → consistency factor should be lower.
         assert!(result.consistency_factor < 1.0);
     }
 
     #[test]
     fn disabled_engine_returns_base_trust() {
-        let engine = TrustAccumulator::new(&TrustAccumulatorConfig { enabled: false, ..Default::default() });
+        let engine = TrustAccumulator::new(&TrustAccumulatorConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let profile = test_profile("sk-disabled-test-key12345");
-        let result = engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", None, false);
+        let result = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            None,
+            false,
+        );
         assert_eq!(result.trust_score, profile.trust_base);
     }
 
@@ -453,7 +548,13 @@ mod tests {
                 principal_id: format!("user-{}", i),
                 ..IdentityProfile::default()
             };
-            engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", None, false);
+            engine.evaluate(
+                &profile,
+                &crate::identity::role_resolver::Role::User,
+                "1.2.3.4",
+                None,
+                false,
+            );
         }
 
         assert_eq!(engine.tracked_count(), 3);
@@ -463,7 +564,13 @@ mod tests {
     fn reset_clears_state() {
         let engine = default_engine();
         let profile = test_profile("sk-reset-key12345678901");
-        engine.evaluate(&profile, &crate::identity::role_resolver::Role::User, "1.2.3.4", None, false);
+        engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::User,
+            "1.2.3.4",
+            None,
+            false,
+        );
         assert!(engine.tracked_count() > 0);
         engine.reset();
         assert_eq!(engine.tracked_count(), 0);
@@ -476,7 +583,13 @@ mod tests {
             trust_base: 0.0,
             ..IdentityProfile::default()
         };
-        let result = engine.evaluate(&profile, &crate::identity::role_resolver::Role::Anonymous, "1.2.3.4", None, false);
+        let result = engine.evaluate(
+            &profile,
+            &crate::identity::role_resolver::Role::Anonymous,
+            "1.2.3.4",
+            None,
+            false,
+        );
         assert!(result.trust_score >= 0.0 && result.trust_score <= 1.0);
     }
 }

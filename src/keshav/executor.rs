@@ -17,14 +17,12 @@ use crate::governance::GovernanceRing;
 use crate::identity::IdentityRing;
 use crate::memory::MemoryRing;
 use crate::reasoning::ReasoningRing;
-use crate::shield::{ShieldRequest, ShieldVerdict, ShieldRing};
+use crate::shield::{ShieldRequest, ShieldRing, ShieldVerdict};
 use crate::threat::ThreatRing;
 
-use super::orchestrate::{
-    DepCondition, OrchestrationPlan, RingId,
-};
+use super::orchestrate::{DepCondition, OrchestrationPlan, RingId};
 use super::risk::{ContextSignals, KeshavRisk, RiskSignals};
-use super::{KeshavDecide};
+use super::KeshavDecide;
 
 /// Context required to build per-ring requests.
 /// This is populated from the incoming HTTP request before execution begins.
@@ -78,37 +76,43 @@ impl PipelineResult {
         let mut rings = serde_json::Map::new();
 
         // Shield Ring.
-        rings.insert("shield".into(), serde_json::json!({
-            "decision": format!("{:?}", self.shield_verdict.decision),
-            "latency_ms": self.shield_verdict.latency_ms,
-            "engine_results": self.shield_verdict.engine_results.iter().map(|r| {
-                serde_json::json!({
-                    "engine": r.engine_name,
-                    "decision": format!("{:?}", r.decision),
-                    "reason": r.reason,
-                    "latency_ms": r.latency_ms,
-                })
-            }).collect::<Vec<_>>(),
-        }));
-
-        // Threat Ring.
-        if let Some(threat_v) = &self.threat_verdict {
-            rings.insert("threat".into(), serde_json::json!({
-                "decision": format!("{:?}", threat_v.decision),
-                "composite_score": threat_v.composite_score,
-                "confidence": threat_v.confidence,
-                "latency_ms": threat_v.latency_ms,
-                "engine_results": threat_v.engine_results.iter().map(|r| {
+        rings.insert(
+            "shield".into(),
+            serde_json::json!({
+                "decision": format!("{:?}", self.shield_verdict.decision),
+                "latency_ms": self.shield_verdict.latency_ms,
+                "engine_results": self.shield_verdict.engine_results.iter().map(|r| {
                     serde_json::json!({
                         "engine": r.engine_name,
-                        "score": r.score,
-                        "confidence": r.confidence,
-                        "signals": r.signals,
+                        "decision": format!("{:?}", r.decision),
                         "reason": r.reason,
                         "latency_ms": r.latency_ms,
                     })
                 }).collect::<Vec<_>>(),
-            }));
+            }),
+        );
+
+        // Threat Ring.
+        if let Some(threat_v) = &self.threat_verdict {
+            rings.insert(
+                "threat".into(),
+                serde_json::json!({
+                    "decision": format!("{:?}", threat_v.decision),
+                    "composite_score": threat_v.composite_score,
+                    "confidence": threat_v.confidence,
+                    "latency_ms": threat_v.latency_ms,
+                    "engine_results": threat_v.engine_results.iter().map(|r| {
+                        serde_json::json!({
+                            "engine": r.engine_name,
+                            "score": r.score,
+                            "confidence": r.confidence,
+                            "signals": r.signals,
+                            "reason": r.reason,
+                            "latency_ms": r.latency_ms,
+                        })
+                    }).collect::<Vec<_>>(),
+                }),
+            );
         }
 
         // Identity Ring.
@@ -134,61 +138,70 @@ impl PipelineResult {
 
         // Memory Ring.
         if let Some(mem_v) = &self.memory_verdict {
-            rings.insert("memory".into(), serde_json::json!({
-                "decision": format!("{:?}", mem_v.decision),
-                "memory_risk_score": mem_v.memory_risk_score,
-                "latency_ms": mem_v.latency_ms,
-                "pii_findings": mem_v.pii_findings.as_ref().map(|f| f.len()),
-                "hijack_detected": mem_v.conversation_state.as_ref().map(|c| c.hijack_detected),
-                "rag_verdict": mem_v.rag_verdict.as_ref().map(|r| r.risk_score),
-                "access_denied": mem_v.access_verdict.as_ref().map(|a| a.denied),
-                "engine_results": mem_v.engine_results.iter().map(|r| {
-                    serde_json::json!({
-                        "engine": r.engine_name,
-                        "decision": r.decision,
-                        "reason": r.reason,
-                        "latency_ms": r.latency_ms,
-                    })
-                }).collect::<Vec<_>>(),
-            }));
+            rings.insert(
+                "memory".into(),
+                serde_json::json!({
+                    "decision": format!("{:?}", mem_v.decision),
+                    "memory_risk_score": mem_v.memory_risk_score,
+                    "latency_ms": mem_v.latency_ms,
+                    "pii_findings": mem_v.pii_findings.as_ref().map(|f| f.len()),
+                    "hijack_detected": mem_v.conversation_state.as_ref().map(|c| c.hijack_detected),
+                    "rag_verdict": mem_v.rag_verdict.as_ref().map(|r| r.risk_score),
+                    "access_denied": mem_v.access_verdict.as_ref().map(|a| a.denied),
+                    "engine_results": mem_v.engine_results.iter().map(|r| {
+                        serde_json::json!({
+                            "engine": r.engine_name,
+                            "decision": r.decision,
+                            "reason": r.reason,
+                            "latency_ms": r.latency_ms,
+                        })
+                    }).collect::<Vec<_>>(),
+                }),
+            );
         }
 
         // Agent Ring.
         if let Some(ag_v) = &self.agent_verdict {
-            rings.insert("agent".into(), serde_json::json!({
-                "decision": format!("{:?}", ag_v.decision),
-                "behavior_risk_score": ag_v.behavior_risk_score,
-                "latency_ms": ag_v.latency_ms,
-                "agent_type": ag_v.agent_type.as_ref().map(|t| format!("{:?}", t)),
-                "scope_violated": ag_v.scope_verdict.as_ref().map(|s| s.violated),
-                "chain_risk": ag_v.chain_risk.as_ref().map(|c| c.risk_score),
-                "engine_results": ag_v.engine_results.iter().map(|r| {
-                    serde_json::json!({
-                        "engine": r.engine_name,
-                        "decision": r.decision,
-                        "reason": r.reason,
-                        "latency_ms": r.latency_ms,
-                    })
-                }).collect::<Vec<_>>(),
-            }));
+            rings.insert(
+                "agent".into(),
+                serde_json::json!({
+                    "decision": format!("{:?}", ag_v.decision),
+                    "behavior_risk_score": ag_v.behavior_risk_score,
+                    "latency_ms": ag_v.latency_ms,
+                    "agent_type": ag_v.agent_type.as_ref().map(|t| format!("{:?}", t)),
+                    "scope_violated": ag_v.scope_verdict.as_ref().map(|s| s.violated),
+                    "chain_risk": ag_v.chain_risk.as_ref().map(|c| c.risk_score),
+                    "engine_results": ag_v.engine_results.iter().map(|r| {
+                        serde_json::json!({
+                            "engine": r.engine_name,
+                            "decision": r.decision,
+                            "reason": r.reason,
+                            "latency_ms": r.latency_ms,
+                        })
+                    }).collect::<Vec<_>>(),
+                }),
+            );
         }
 
         // Execution Ring.
         if let Some(exec_v) = &self.execution_verdict {
-            rings.insert("execution".into(), serde_json::json!({
-                "decision": format!("{:?}", exec_v.decision),
-                "latency_ms": exec_v.latency_ms,
-                "sandbox_mode": exec_v.sandbox_config.as_ref().map(|s| format!("{:?}", s.mode)),
-                "approval_required": exec_v.approval_request.is_some(),
-                "engine_results": exec_v.engine_results.iter().map(|r| {
-                    serde_json::json!({
-                        "engine": r.engine_name,
-                        "decision": format!("{:?}", r.decision),
-                        "reason": r.reason,
-                        "latency_ms": r.latency_ms,
-                    })
-                }).collect::<Vec<_>>(),
-            }));
+            rings.insert(
+                "execution".into(),
+                serde_json::json!({
+                    "decision": format!("{:?}", exec_v.decision),
+                    "latency_ms": exec_v.latency_ms,
+                    "sandbox_mode": exec_v.sandbox_config.as_ref().map(|s| format!("{:?}", s.mode)),
+                    "approval_required": exec_v.approval_request.is_some(),
+                    "engine_results": exec_v.engine_results.iter().map(|r| {
+                        serde_json::json!({
+                            "engine": r.engine_name,
+                            "decision": format!("{:?}", r.decision),
+                            "reason": r.reason,
+                            "latency_ms": r.latency_ms,
+                        })
+                    }).collect::<Vec<_>>(),
+                }),
+            );
         }
 
         serde_json::json!({
@@ -231,23 +244,16 @@ impl PipelineExecutor {
     /// 3. Parallel batch rings are evaluated concurrently via tokio::spawn_blocking.
     /// 4. Sequential batch rings are evaluated in order, respecting conditions.
     /// 5. All verdicts are combined via Keshav-Decide and Keshav-Risk.
-    pub async fn execute(
-        &self,
-        plan: &OrchestrationPlan,
-        ctx: &PipelineContext,
-    ) -> PipelineResult {
+    pub async fn execute(&self, plan: &OrchestrationPlan, ctx: &PipelineContext) -> PipelineResult {
         // ── Phase 1: Shield Ring (always first, always sync) ──
         let shield_verdict = self.shield.evaluate(&ctx.shield_request);
 
         // If Shield denies, skip all other rings (Fail Secure).
         if !shield_verdict.decision.is_allow() {
             let source_ip = ctx.shield_request.source_ip.clone();
-            let record = self.decide.evaluate(
-                &shield_verdict,
-                None,
-                &ctx.request_id,
-                &source_ip,
-            );
+            let record = self
+                .decide
+                .evaluate(&shield_verdict, None, &ctx.request_id, &source_ip);
             return PipelineResult {
                 shield_verdict,
                 threat_verdict: None,
@@ -317,35 +323,41 @@ impl PipelineExecutor {
             Some(tokio::task::spawn_blocking(move || {
                 threat.evaluate(&shield_for_threat)
             }))
-        } else { None };
+        } else {
+            None
+        };
 
         let identity_handle = if run_identity {
             let req = identity_req;
-            Some(tokio::task::spawn_blocking(move || {
-                identity.evaluate(&req)
-            }))
-        } else { None };
+            Some(tokio::task::spawn_blocking(move || identity.evaluate(&req)))
+        } else {
+            None
+        };
 
         let memory_handle = if run_memory {
             let req = memory_req;
-            Some(tokio::task::spawn_blocking(move || {
-                memory.evaluate(&req)
-            }))
-        } else { None };
+            Some(tokio::task::spawn_blocking(move || memory.evaluate(&req)))
+        } else {
+            None
+        };
 
         let reasoning_handle = if run_reasoning {
             let req = reasoning_req;
             Some(tokio::task::spawn_blocking(move || {
                 reasoning.evaluate(&req)
             }))
-        } else { None };
+        } else {
+            None
+        };
 
         let governance_handle = if run_governance {
             let req = governance_req;
             Some(tokio::task::spawn_blocking(move || {
                 governance.evaluate(&req)
             }))
-        } else { None };
+        } else {
+            None
+        };
 
         // Await all parallel results.
         let threat_verdict = match threat_handle {
@@ -353,7 +365,10 @@ impl PipelineExecutor {
                 tracing::error!(error = %e, "threat ring task panicked");
                 // Return a deny verdict on panic (Fail Secure).
                 crate::threat::ThreatVerdict {
-                    decision: Decision::Deny { code: "RING_PANIC".into(), retry_after: None },
+                    decision: Decision::Deny {
+                        code: "RING_PANIC".into(),
+                        retry_after: None,
+                    },
                     engine_results: vec![],
                     composite_score: 10.0,
                     confidence: 1.0,
@@ -368,7 +383,10 @@ impl PipelineExecutor {
             Some(h) => Some(h.await.unwrap_or_else(|e| {
                 tracing::error!(error = %e, "identity ring task panicked");
                 crate::identity::IdentityVerdict {
-                    decision: Decision::Deny { code: "RING_PANIC".into(), retry_after: None },
+                    decision: Decision::Deny {
+                        code: "RING_PANIC".into(),
+                        retry_after: None,
+                    },
                     identity_profile: None,
                     role: None,
                     trust_result: None,
@@ -385,7 +403,10 @@ impl PipelineExecutor {
             Some(h) => Some(h.await.unwrap_or_else(|e| {
                 tracing::error!(error = %e, "memory ring task panicked");
                 crate::memory::MemoryVerdict {
-                    decision: Decision::Deny { code: "RING_PANIC".into(), retry_after: None },
+                    decision: Decision::Deny {
+                        code: "RING_PANIC".into(),
+                        retry_after: None,
+                    },
                     pii_findings: None,
                     conversation_state: None,
                     rag_verdict: None,
@@ -403,7 +424,10 @@ impl PipelineExecutor {
             Some(h) => Some(h.await.unwrap_or_else(|e| {
                 tracing::error!(error = %e, "reasoning ring task panicked");
                 crate::reasoning::ReasoningVerdict {
-                    decision: Decision::Deny { code: "RING_PANIC".into(), retry_after: None },
+                    decision: Decision::Deny {
+                        code: "RING_PANIC".into(),
+                        retry_after: None,
+                    },
                     coherence_result: None,
                     hallucination_result: None,
                     depth_result: None,
@@ -422,7 +446,10 @@ impl PipelineExecutor {
             Some(h) => Some(h.await.unwrap_or_else(|e| {
                 tracing::error!(error = %e, "governance ring task panicked");
                 crate::governance::GovernanceVerdict {
-                    decision: Decision::Deny { code: "RING_PANIC".into(), retry_after: None },
+                    decision: Decision::Deny {
+                        code: "RING_PANIC".into(),
+                        retry_after: None,
+                    },
                     policy_result: None,
                     audit_result: None,
                     retention_result: None,
@@ -442,22 +469,29 @@ impl PipelineExecutor {
         let mut execution_verdict: Option<crate::execution::ExecutionVerdict> = None;
 
         // Track dependency verdicts for conditional evaluation.
-        let mut verdicts: std::collections::HashMap<RingId, bool> = std::collections::HashMap::new();
+        let mut verdicts: std::collections::HashMap<RingId, bool> =
+            std::collections::HashMap::new();
         verdicts.insert(RingId::Shield, shield_verdict.decision.is_allow());
-        if let Some(ref v) = threat_verdict { verdicts.insert(RingId::Threat, v.decision.is_allow()); }
-        if let Some(ref v) = identity_verdict { verdicts.insert(RingId::Identity, v.decision.is_allow()); }
-        if let Some(ref v) = memory_verdict { verdicts.insert(RingId::Memory, v.decision.is_allow()); }
-        if let Some(ref v) = reasoning_verdict { verdicts.insert(RingId::Reasoning, v.decision.is_allow()); }
-        if let Some(ref v) = governance_verdict { verdicts.insert(RingId::Governance, v.decision.is_allow()); }
+        if let Some(ref v) = threat_verdict {
+            verdicts.insert(RingId::Threat, v.decision.is_allow());
+        }
+        if let Some(ref v) = identity_verdict {
+            verdicts.insert(RingId::Identity, v.decision.is_allow());
+        }
+        if let Some(ref v) = memory_verdict {
+            verdicts.insert(RingId::Memory, v.decision.is_allow());
+        }
+        if let Some(ref v) = reasoning_verdict {
+            verdicts.insert(RingId::Reasoning, v.decision.is_allow());
+        }
+        if let Some(ref v) = governance_verdict {
+            verdicts.insert(RingId::Governance, v.decision.is_allow());
+        }
 
         for (ring, depends_on, condition) in &plan.sequential_batch {
             let should_run = match condition {
-                DepCondition::AllowOnly => {
-                    verdicts.get(depends_on).copied().unwrap_or(false)
-                }
-                DepCondition::DenyOnly => {
-                    !verdicts.get(depends_on).copied().unwrap_or(true)
-                }
+                DepCondition::AllowOnly => verdicts.get(depends_on).copied().unwrap_or(false),
+                DepCondition::DenyOnly => !verdicts.get(depends_on).copied().unwrap_or(true),
                 DepCondition::Always => true,
             };
 
@@ -475,7 +509,10 @@ impl PipelineExecutor {
                 RingId::Agent => {
                     if let Some(tool_ctx) = &ctx.tool_call {
                         let agent_request = crate::agent::AgentRequest {
-                            agent_id: tool_ctx.agent_id.clone().unwrap_or_else(|| "unknown".into()),
+                            agent_id: tool_ctx
+                                .agent_id
+                                .clone()
+                                .unwrap_or_else(|| "unknown".into()),
                             agent_type: None,
                             action: format!("tool_call:{}", tool_ctx.tool_name),
                             target: None,
@@ -532,7 +569,8 @@ impl PipelineExecutor {
             identity_score: identity_verdict.as_ref().map(|v| v.identity_risk_score),
             agent_score: agent_verdict.as_ref().map(|v| v.behavior_risk_score),
             memory_score: memory_verdict.as_ref().map(|v| v.memory_risk_score),
-            execution_score: execution_verdict.as_ref()
+            execution_score: execution_verdict
+                .as_ref()
                 .map(|v| super::execution_to_risk_score(&v.decision)),
             reasoning_score: reasoning_verdict.as_ref().map(|v| v.reasoning_risk_score),
             governance_score: governance_verdict.as_ref().map(|v| v.governance_risk_score),

@@ -14,8 +14,8 @@
 //   - Never in Keshav's config
 
 use crate::ananta::crypto::signing::{KeyPair, SignAlgorithm};
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// The purpose of a key.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -126,7 +126,9 @@ impl KeyManager {
 
     /// Rotate a key (generate new, mark old as inactive).
     pub fn rotate_key(&mut self, purpose: &KeyPurpose) -> &KeyPair {
-        let old_meta = self.metadata.values()
+        let old_meta = self
+            .metadata
+            .values()
             .find(|m| &m.purpose == purpose && m.is_active);
 
         let new_rotation = old_meta.map_or(1, |m| m.rotation_count + 1);
@@ -164,8 +166,8 @@ impl KeyManager {
     /// Export all keys as encrypted bytes for persistence.
     pub fn export_encrypted(&self) -> Result<Vec<u8>, String> {
         // Serialize metadata only (keys are derived from password + salt).
-        let meta_json = serde_json::to_string(&self.metadata)
-            .map_err(|e| format!("key export: {}", e))?;
+        let meta_json =
+            serde_json::to_string(&self.metadata).map_err(|e| format!("key export: {}", e))?;
 
         // For now, return plaintext metadata. SecureStore handles encryption.
         Ok(meta_json.into_bytes())
@@ -208,7 +210,11 @@ mod tests {
     #[test]
     fn rotate_increments_version() {
         let mut km = KeyManager::new("test");
-        let old_id = km.get_key(&KeyPurpose::Attestation).unwrap().key_id().to_string();
+        let old_id = km
+            .get_key(&KeyPurpose::Attestation)
+            .unwrap()
+            .key_id()
+            .to_string();
         km.rotate_key(&KeyPurpose::Attestation);
         let new_id = km.get_key(&KeyPurpose::Attestation).unwrap().key_id();
         assert_ne!(old_id, new_id);
@@ -218,7 +224,11 @@ mod tests {
     fn rotation_deactivates_old() {
         let mut km = KeyManager::new("test");
         km.rotate_key(&KeyPurpose::Recovery);
-        let active_count = km.list_keys().iter().filter(|m| m.is_active && m.purpose == KeyPurpose::Recovery).count();
+        let active_count = km
+            .list_keys()
+            .iter()
+            .filter(|m| m.is_active && m.purpose == KeyPurpose::Recovery)
+            .count();
         assert_eq!(active_count, 1);
     }
 }

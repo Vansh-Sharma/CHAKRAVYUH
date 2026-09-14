@@ -20,7 +20,11 @@ pub struct Version {
 
 impl Version {
     pub fn new(major: u32, minor: u32, patch: u32) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 
     /// Parse "1.2.3" into a Version.
@@ -340,7 +344,11 @@ impl PluginRegistry {
     }
 
     /// Check if a newer version is available for the given plugin.
-    pub fn check_update(&self, name: &str, new_version: &Version) -> std::result::Result<bool, String> {
+    pub fn check_update(
+        &self,
+        name: &str,
+        new_version: &Version,
+    ) -> std::result::Result<bool, String> {
         let plugin = self
             .plugins
             .get(name)
@@ -410,7 +418,10 @@ impl PluginRegistry {
             .values()
             .filter(|p| {
                 p.manifest.name.to_lowercase().contains(&query_lower)
-                    || p.manifest.display_name.to_lowercase().contains(&query_lower)
+                    || p.manifest
+                        .display_name
+                        .to_lowercase()
+                        .contains(&query_lower)
                     || p.manifest.ring_target.to_lowercase().contains(&query_lower)
             })
             .map(|p| PluginInfo {
@@ -553,11 +564,10 @@ mod tests {
         reg.register(make_manifest("core-lib", "1.0.0"), make_signature(), vec![])
             .unwrap();
         reg.register(
-            make_manifest("shield-plugin", "2.1.0")
-                .with_dependency(PluginDependency {
-                    name: "core-lib".to_string(),
-                    version_req: ">=1.0.0".to_string(),
-                }),
+            make_manifest("shield-plugin", "2.1.0").with_dependency(PluginDependency {
+                name: "core-lib".to_string(),
+                version_req: ">=1.0.0".to_string(),
+            }),
             make_signature(),
             vec![],
         )
@@ -679,8 +689,12 @@ mod tests {
     #[test]
     fn test_check_update() {
         let reg = make_registry_with_plugins();
-        assert!(reg.check_update("core-lib", &Version::new(1, 1, 0)).unwrap());
-        assert!(!reg.check_update("core-lib", &Version::new(0, 9, 0)).unwrap());
+        assert!(reg
+            .check_update("core-lib", &Version::new(1, 1, 0))
+            .unwrap());
+        assert!(!reg
+            .check_update("core-lib", &Version::new(0, 9, 0))
+            .unwrap());
     }
 
     #[test]
@@ -698,21 +712,19 @@ mod tests {
     fn test_resolve_dependencies_cycle() {
         let mut reg = PluginRegistry::new();
         reg.register(
-            make_manifest("a", "1.0.0")
-                .with_dependency(PluginDependency {
-                    name: "b".to_string(),
-                    version_req: "*".to_string(),
-                }),
+            make_manifest("a", "1.0.0").with_dependency(PluginDependency {
+                name: "b".to_string(),
+                version_req: "*".to_string(),
+            }),
             make_signature(),
             vec![],
         )
         .unwrap();
         reg.register(
-            make_manifest("b", "1.0.0")
-                .with_dependency(PluginDependency {
-                    name: "a".to_string(),
-                    version_req: "*".to_string(),
-                }),
+            make_manifest("b", "1.0.0").with_dependency(PluginDependency {
+                name: "a".to_string(),
+                version_req: "*".to_string(),
+            }),
             make_signature(),
             vec![],
         )
@@ -731,16 +743,10 @@ mod tests {
         reg.register(manifest, make_signature(), vec![]).unwrap();
 
         assert!(reg
-            .validate_permissions(
-                "secured",
-                &[PluginPermission::ReadRequest],
-            )
+            .validate_permissions("secured", &[PluginPermission::ReadRequest],)
             .unwrap());
         assert!(!reg
-            .validate_permissions(
-                "secured",
-                &[PluginPermission::NetworkAccess],
-            )
+            .validate_permissions("secured", &[PluginPermission::NetworkAccess],)
             .unwrap());
     }
 
@@ -848,7 +854,10 @@ mod tests {
     #[test]
     fn test_plugin_permission_equality() {
         assert_eq!(PluginPermission::ReadRequest, PluginPermission::ReadRequest);
-        assert_ne!(PluginPermission::ReadRequest, PluginPermission::NetworkAccess);
+        assert_ne!(
+            PluginPermission::ReadRequest,
+            PluginPermission::NetworkAccess
+        );
     }
 
     #[test]

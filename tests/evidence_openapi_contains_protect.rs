@@ -42,8 +42,26 @@ fn router() -> axum::Router {
     let orchestrate = KeshavOrchestrate::new(config.keshav.orchestrate.clone());
     let cross_ring = CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
     build_router(
-        shield, threat, identity, memory, agent, execution, reasoning, governance, recovery_sec,
-        decide, risk, learn, orchestrate, cross_ring, None, None, None, None, None, None,
+        shield,
+        threat,
+        identity,
+        memory,
+        agent,
+        execution,
+        reasoning,
+        governance,
+        recovery_sec,
+        decide,
+        risk,
+        learn,
+        orchestrate,
+        cross_ring,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     )
 }
 

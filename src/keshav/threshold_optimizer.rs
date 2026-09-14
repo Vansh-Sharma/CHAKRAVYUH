@@ -75,9 +75,15 @@ pub struct ThresholdOptimizerConfig {
     pub max_adjustments_per_pass: usize,
 }
 
-fn default_step_size() -> f64 { 0.25 }
-fn default_min_feedback() -> usize { 5 }
-fn default_max_adjustments_per_pass() -> usize { 3 }
+fn default_step_size() -> f64 {
+    0.25
+}
+fn default_min_feedback() -> usize {
+    5
+}
+fn default_max_adjustments_per_pass() -> usize {
+    3
+}
 
 impl Default for ThresholdOptimizerConfig {
     fn default() -> Self {
@@ -131,14 +137,16 @@ impl ThresholdOptimizer {
     /// Register a ring with its default thresholds.
     pub fn register_ring(&self, ring_name: &str, default_deny: f64, default_challenge: f64) {
         let mut thresholds = self.thresholds.write().unwrap();
-        thresholds.entry(ring_name.to_string())
+        thresholds
+            .entry(ring_name.to_string())
             .or_insert_with(|| ThresholdState::new(default_deny, default_challenge));
     }
 
     /// Get the current deny threshold for a ring.
     pub fn deny_threshold(&self, ring_name: &str) -> f64 {
         let thresholds = self.thresholds.read().unwrap();
-        thresholds.get(ring_name)
+        thresholds
+            .get(ring_name)
             .map(|t| t.deny_threshold)
             .unwrap_or(9.0) // default if unregistered
     }
@@ -146,7 +154,8 @@ impl ThresholdOptimizer {
     /// Get the current challenge threshold for a ring.
     pub fn challenge_threshold(&self, ring_name: &str) -> f64 {
         let thresholds = self.thresholds.read().unwrap();
-        thresholds.get(ring_name)
+        thresholds
+            .get(ring_name)
             .map(|t| t.challenge_threshold)
             .unwrap_or(6.0) // default if unregistered
     }
@@ -222,7 +231,8 @@ impl ThresholdOptimizer {
             };
 
             let mut thresholds = self.thresholds.write().unwrap();
-            let state = thresholds.entry(ring_name.clone())
+            let state = thresholds
+                .entry(ring_name.clone())
                 .or_insert_with(|| ThresholdState::new(9.0, 6.0));
 
             let old_deny = state.deny_threshold;
@@ -234,16 +244,20 @@ impl ThresholdOptimizer {
                     let step = step.max(ThresholdState::MIN_STEP);
                     let max_allowed = state.default_deny_threshold + ThresholdState::MAX_DEVIATION;
                     state.deny_threshold = (state.deny_threshold + step).min(max_allowed);
-                    let max_challenge = state.default_challenge_threshold + ThresholdState::MAX_DEVIATION;
-                    state.challenge_threshold = (state.challenge_threshold + step * 0.5).min(max_challenge);
+                    let max_challenge =
+                        state.default_challenge_threshold + ThresholdState::MAX_DEVIATION;
+                    state.challenge_threshold =
+                        (state.challenge_threshold + step * 0.5).min(max_challenge);
                 }
                 OptimizationDirection::Lowered => {
                     let step = self.config.step_size * fn_rate.clamp(0.1, 1.0);
                     let step = step.max(ThresholdState::MIN_STEP);
                     let min_allowed = state.default_deny_threshold - ThresholdState::MAX_DEVIATION;
                     state.deny_threshold = (state.deny_threshold - step).max(min_allowed);
-                    let min_challenge = state.default_challenge_threshold - ThresholdState::MAX_DEVIATION;
-                    state.challenge_threshold = (state.challenge_threshold - step * 0.5).max(min_challenge);
+                    let min_challenge =
+                        state.default_challenge_threshold - ThresholdState::MAX_DEVIATION;
+                    state.challenge_threshold =
+                        (state.challenge_threshold - step * 0.5).max(min_challenge);
                 }
                 OptimizationDirection::Unchanged => continue,
             }
@@ -261,10 +275,10 @@ impl ThresholdOptimizer {
                 direction,
                 reason: format!(
                     "fp_rate={:.2}, fn_rate={:.2}, feedback_count={}, step={:.3}",
-                    fp_rate, fn_rate, total,
-                    self.config.step_size
+                    fp_rate, fn_rate, total, self.config.step_size
                 ),
-                confidence: (total as f64 / self.config.min_feedback_for_adjustment as f64).clamp(0.0, 1.0),
+                confidence: (total as f64 / self.config.min_feedback_for_adjustment as f64)
+                    .clamp(0.0, 1.0),
             });
 
             adjustments += 1;
@@ -325,33 +339,37 @@ mod tests {
     }
 
     fn make_fp_feedback(ring: &str, count: usize) -> Vec<FeedbackEntry> {
-        (0..count).map(|i| FeedbackEntry {
-            feedback_id: format!("fb-fp-{}", i),
-            request_id: format!("req-fp-{}", i),
-            feedback_type: FeedbackType::FalsePositive,
-            severity: FeedbackSeverity::High,
-            target_rings: vec![ring.to_string()],
-            original_decision: "deny:WAF_PATTERN_MATCH".to_string(),
-            explanation: "benign request was blocked".to_string(),
-            submitted_by: "admin".to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            processed: false,
-        }).collect()
+        (0..count)
+            .map(|i| FeedbackEntry {
+                feedback_id: format!("fb-fp-{}", i),
+                request_id: format!("req-fp-{}", i),
+                feedback_type: FeedbackType::FalsePositive,
+                severity: FeedbackSeverity::High,
+                target_rings: vec![ring.to_string()],
+                original_decision: "deny:WAF_PATTERN_MATCH".to_string(),
+                explanation: "benign request was blocked".to_string(),
+                submitted_by: "admin".to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                processed: false,
+            })
+            .collect()
     }
 
     fn make_fn_feedback(ring: &str, count: usize) -> Vec<FeedbackEntry> {
-        (0..count).map(|i| FeedbackEntry {
-            feedback_id: format!("fb-fn-{}", i),
-            request_id: format!("req-fn-{}", i),
-            feedback_type: FeedbackType::FalseNegative,
-            severity: FeedbackSeverity::Critical,
-            target_rings: vec![ring.to_string()],
-            original_decision: "allow".to_string(),
-            explanation: "malicious request was allowed".to_string(),
-            submitted_by: "admin".to_string(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            processed: false,
-        }).collect()
+        (0..count)
+            .map(|i| FeedbackEntry {
+                feedback_id: format!("fb-fn-{}", i),
+                request_id: format!("req-fn-{}", i),
+                feedback_type: FeedbackType::FalseNegative,
+                severity: FeedbackSeverity::Critical,
+                target_rings: vec![ring.to_string()],
+                original_decision: "allow".to_string(),
+                explanation: "malicious request was allowed".to_string(),
+                submitted_by: "admin".to_string(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                processed: false,
+            })
+            .collect()
     }
 
     #[test]

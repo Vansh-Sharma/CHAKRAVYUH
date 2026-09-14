@@ -93,8 +93,8 @@ pub mod webhooks;
 
 // Re-export the Phase 12.0 public handlers so callers can use them directly.
 pub use dto::{
-    ErrorBody, ErrorDetail, HealthResponse as PublicHealthResponse,
-    ProtectRequest, ProtectResponse, VersionResponse as PublicVersionResponse,
+    ErrorBody, ErrorDetail, HealthResponse as PublicHealthResponse, ProtectRequest,
+    ProtectResponse, VersionResponse as PublicVersionResponse,
 };
 pub use handlers::{health as public_health, protect, version as public_version};
 
@@ -108,7 +108,7 @@ use axum::{
     body::Body,
     extract::State,
     http::{HeaderMap, StatusCode},
-    middleware::{from_fn_with_state},
+    middleware::from_fn_with_state,
     response::{IntoResponse, Json, Response},
     routing::{get, post},
     Router,
@@ -122,8 +122,11 @@ use crate::execution::ExecutionRing;
 use crate::governance::GovernanceRing;
 use crate::identity::{AuthService, IdentityRequest, IdentityRing, JwtConfig, PlatformStore};
 use crate::infra::{is_alive, is_ready, metrics_text, ShutdownState};
-use crate::keshav::{KeshavDecide, KeshavLearn, KeshavOrchestrate, KeshavRisk, PipelineExecutor, PipelineContext, PolicyManager};
 use crate::keshav::orchestrate::RequestType;
+use crate::keshav::{
+    KeshavDecide, KeshavLearn, KeshavOrchestrate, KeshavRisk, PipelineContext, PipelineExecutor,
+    PolicyManager,
+};
 use crate::memory::MemoryRing;
 use crate::reasoning::ReasoningRing;
 use crate::recovery_sec::RecoveryRing;
@@ -146,9 +149,16 @@ impl PlatformState {
     /// Create a new PlatformState with default JwtConfig + fresh in-memory store.
     pub fn new() -> Self {
         let store = Arc::new(PlatformStore::new());
-        let auth = Arc::new(AuthService::new(JwtConfig::default(), store.as_ref().clone()));
+        let auth = Arc::new(AuthService::new(
+            JwtConfig::default(),
+            store.as_ref().clone(),
+        ));
         let webhooks = Arc::new(webhooks::WebhookRegistry::new());
-        Self { auth, store, webhooks }
+        Self {
+            auth,
+            store,
+            webhooks,
+        }
     }
 
     /// Create with a custom JWT config (e.g. for production secret).
@@ -156,7 +166,11 @@ impl PlatformState {
         let store = Arc::new(PlatformStore::new());
         let auth = Arc::new(AuthService::new(config, store.as_ref().clone()));
         let webhooks = Arc::new(webhooks::WebhookRegistry::new());
-        Self { auth, store, webhooks }
+        Self {
+            auth,
+            store,
+            webhooks,
+        }
     }
 }
 
@@ -380,31 +394,41 @@ pub fn build_router(
         .route("/v1/ananta/health", get(ananta_health))
         .with_state(state.clone())
         // Phase 13.0: Identity & Multi-Tenant Platform
-        .nest("/v1/auth", Router::new()
-            .route("/signup", post(auth_handlers::signup))
-            .route("/login", post(auth_handlers::login))
-            .route("/refresh", post(auth_handlers::refresh))
-            .route("/logout", post(auth_handlers::logout))
-            .route("/me", get(auth_handlers::me))
-            .with_state(platform.clone())
+        .nest(
+            "/v1/auth",
+            Router::new()
+                .route("/signup", post(auth_handlers::signup))
+                .route("/login", post(auth_handlers::login))
+                .route("/refresh", post(auth_handlers::refresh))
+                .route("/logout", post(auth_handlers::logout))
+                .route("/me", get(auth_handlers::me))
+                .with_state(platform.clone()),
         )
         // Phase 13.0: Organizations, Workspaces, API Keys, Audit
-        .nest("/v1/orgs", Router::new()
-            .route("/", post(org_handlers::create_org))
-            .route("/", get(org_handlers::list_orgs))
-            .route("/:org_id", get(org_handlers::get_org))
-            .route("/:org_id", axum::routing::patch(org_handlers::update_org))
-            .route("/:org_id/workspaces", post(org_handlers::create_workspace))
-            .route("/:org_id/workspaces", get(org_handlers::list_workspaces))
-            .route("/:org_id/keys", post(org_handlers::create_api_key))
-            .route("/:org_id/keys", get(org_handlers::list_api_keys))
-            .route("/:org_id/keys/:key_id", axum::routing::delete(org_handlers::revoke_api_key))
-            .route("/:org_id/audit", get(org_handlers::list_audit_logs))
-            // Phase 14.0: Webhooks
-            .route("/:org_id/webhooks", post(webhooks::create_webhook))
-            .route("/:org_id/webhooks", get(webhooks::list_webhooks))
-            .route("/:org_id/webhooks/:wh_id", axum::routing::delete(webhooks::revoke_webhook))
-            .with_state(platform.clone())
+        .nest(
+            "/v1/orgs",
+            Router::new()
+                .route("/", post(org_handlers::create_org))
+                .route("/", get(org_handlers::list_orgs))
+                .route("/:org_id", get(org_handlers::get_org))
+                .route("/:org_id", axum::routing::patch(org_handlers::update_org))
+                .route("/:org_id/workspaces", post(org_handlers::create_workspace))
+                .route("/:org_id/workspaces", get(org_handlers::list_workspaces))
+                .route("/:org_id/keys", post(org_handlers::create_api_key))
+                .route("/:org_id/keys", get(org_handlers::list_api_keys))
+                .route(
+                    "/:org_id/keys/:key_id",
+                    axum::routing::delete(org_handlers::revoke_api_key),
+                )
+                .route("/:org_id/audit", get(org_handlers::list_audit_logs))
+                // Phase 14.0: Webhooks
+                .route("/:org_id/webhooks", post(webhooks::create_webhook))
+                .route("/:org_id/webhooks", get(webhooks::list_webhooks))
+                .route(
+                    "/:org_id/webhooks/:wh_id",
+                    axum::routing::delete(webhooks::revoke_webhook),
+                )
+                .with_state(platform.clone()),
         )
         // Phase 14.0: Developer platform — OpenAPI, Swagger UI, Postman, Snippets
         .route("/openapi.json", get(openapi::openapi_spec))
@@ -449,7 +473,14 @@ async fn version() -> Json<VersionResponse> {
 }
 
 /// Known ring names for health monitoring.
-const KNOWN_RINGS: &[&str] = &["shield", "threat", "identity", "memory", "agent", "execution"];
+const KNOWN_RINGS: &[&str] = &[
+    "shield",
+    "threat",
+    "identity",
+    "memory",
+    "agent",
+    "execution",
+];
 
 /// GET /v1/recovery — ring health, circuit breaker state, and recovery status.
 async fn recovery_status(State(state): State<ApiState>) -> Json<serde_json::Value> {
@@ -501,8 +532,6 @@ struct EvaluateRequest {
     #[serde(flatten)]
     extra: serde_json::Map<String, serde_json::Value>,
 }
-
-
 
 async fn evaluate(
     State(state): State<ApiState>,
@@ -563,7 +592,10 @@ async fn execute(
     headers: HeaderMap,
     Json(req): Json<ExecuteRequest>,
 ) -> impl IntoResponse {
-    let request_id = req.request_id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let request_id = req
+        .request_id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
     // Build a shield request for the tool call.
     let body = serde_json::json!({
@@ -590,8 +622,14 @@ async fn execute(
     let response = result.shape_full_response();
 
     let status = if result.decision_record.final_decision.is_allow()
-        && result.execution_verdict.as_ref().map_or(true, |v| v.decision.is_allow())
-        && result.agent_verdict.as_ref().map_or(true, |v| v.decision.is_allow())
+        && result
+            .execution_verdict
+            .as_ref()
+            .map_or(true, |v| v.decision.is_allow())
+        && result
+            .agent_verdict
+            .as_ref()
+            .map_or(true, |v| v.decision.is_allow())
     {
         StatusCode::OK
     } else {
@@ -719,16 +757,17 @@ async fn proxy(
                 .insert("x-chakravyuh-decision", "allow".parse().unwrap());
             response.headers_mut().insert(
                 "x-chakravyuh-shield-latency-ms",
-                format!("{:.3}", result.shield_verdict.latency_ms).parse().unwrap(),
+                format!("{:.3}", result.shield_verdict.latency_ms)
+                    .parse()
+                    .unwrap(),
             );
             response.headers_mut().insert(
                 "x-chakravyuh-risk-score",
                 format!("{:.3}", result.risk_score.overall).parse().unwrap(),
             );
-            response.headers_mut().insert(
-                "x-chakravyuh-request-id",
-                request_id.parse().unwrap(),
-            );
+            response
+                .headers_mut()
+                .insert("x-chakravyuh-request-id", request_id.parse().unwrap());
             response.headers_mut().insert(
                 "x-chakravyuh-upstream-latency-ms",
                 format!("{:.3}", upstream_latency_ms).parse().unwrap(),
@@ -761,7 +800,11 @@ async fn proxy(
 /// We deliberately do NOT trust the socket address because in dev/test
 /// we are typically called via `oneshot` or from `127.0.0.1`, and that
 /// would mask any IP-based rules.
-pub(crate) fn build_shield_request(path: &str, headers: &HeaderMap, body: serde_json::Value) -> ShieldRequest {
+pub(crate) fn build_shield_request(
+    path: &str,
+    headers: &HeaderMap,
+    body: serde_json::Value,
+) -> ShieldRequest {
     let source_ip = headers
         .get("x-real-ip")
         .and_then(|v| v.to_str().ok())
@@ -810,7 +853,10 @@ pub(crate) fn build_shield_request(path: &str, headers: &HeaderMap, body: serde_
 }
 
 /// Build an [`IdentityRequest`] from the shield request data.
-pub(crate) fn build_identity_request(shield_req: &ShieldRequest, request_id: &str) -> IdentityRequest {
+pub(crate) fn build_identity_request(
+    shield_req: &ShieldRequest,
+    request_id: &str,
+) -> IdentityRequest {
     IdentityRequest {
         source_ip: shield_req.source_ip.clone(),
         user_agent: shield_req.user_agent.clone(),
@@ -851,7 +897,11 @@ pub(crate) fn build_memory_request(
         role: None,
         prompt: prompt_text.to_string(),
         conversation_id: shield_req.headers.get("x-conversation-id").cloned(),
-        turn_count: shield_req.headers.get("x-turn-count").and_then(|v| v.parse().ok()).unwrap_or(1),
+        turn_count: shield_req
+            .headers
+            .get("x-turn-count")
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(1),
         context_length: prompt_text.len(),
         memory_entries: None,
         headers: shield_req.headers.clone(),
@@ -874,7 +924,10 @@ pub(crate) fn build_agent_request_from_parts(
     exec_req: &ExecuteRequestInternal,
 ) -> crate::agent::AgentRequest {
     crate::agent::AgentRequest {
-        agent_id: exec_req.agent_id.clone().unwrap_or_else(|| "unknown".into()),
+        agent_id: exec_req
+            .agent_id
+            .clone()
+            .unwrap_or_else(|| "unknown".into()),
         agent_type: None,
         action: format!("tool_call:{}", exec_req.tool_name),
         target: None,
@@ -1003,8 +1056,11 @@ struct FeedbackRequest {
     severity: Option<String>,
 }
 
-async fn learn_feedback(State(state): State<ApiState>, Json(req): Json<FeedbackRequest>) -> impl IntoResponse {
-    use crate::keshav::feedback_collector::{FeedbackEntry, FeedbackType, FeedbackSeverity};
+async fn learn_feedback(
+    State(state): State<ApiState>,
+    Json(req): Json<FeedbackRequest>,
+) -> impl IntoResponse {
+    use crate::keshav::feedback_collector::{FeedbackEntry, FeedbackSeverity, FeedbackType};
 
     let feedback_type = match req.feedback_type.to_lowercase().as_str() {
         "false_positive" | "fp" => FeedbackType::FalsePositive,
@@ -1044,10 +1100,14 @@ async fn learn_feedback(State(state): State<ApiState>, Json(req): Json<FeedbackR
         processed: false,
     });
 
-    (StatusCode::OK, Json(serde_json::json!({
-        "status": "accepted",
-        "message": "feedback recorded for learning"
-    }))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "status": "accepted",
+            "message": "feedback recorded for learning"
+        })),
+    )
+        .into_response()
 }
 
 /// GET /v1/learn/thresholds — get all learned thresholds.
@@ -1090,29 +1150,44 @@ async fn learn_patterns_export(State(state): State<ApiState>) -> Response {
         Ok(json) => {
             let mut resp = Response::new(Body::from(json));
             *resp.status_mut() = StatusCode::OK;
-            resp.headers_mut().insert("content-type", "application/json".parse().unwrap());
+            resp.headers_mut()
+                .insert("content-type", "application/json".parse().unwrap());
             resp.headers_mut().insert(
                 "content-disposition",
-                "attachment; filename=\"chakravyuh_patterns.json\"".parse().unwrap(),
+                "attachment; filename=\"chakravyuh_patterns.json\""
+                    .parse()
+                    .unwrap(),
             );
             resp
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(serde_json::json!({"error": "pattern export failed", "detail": format!("{}", e)})),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
 /// POST /v1/learn/patterns/import — import patterns from JSON.
-async fn learn_patterns_import(State(state): State<ApiState>, Json(body): Json<serde_json::Value>) -> Response {
+async fn learn_patterns_import(
+    State(state): State<ApiState>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
     let json_str = serde_json::to_string(&body).unwrap_or_default();
     match state.learn.import_patterns(&json_str) {
-        Ok(count) => (StatusCode::OK, Json(serde_json::json!({
-            "status": "imported",
-            "count": count,
-        }))).into_response(),
-        Err(e) => (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "pattern import failed", "detail": format!("{}", e)}))).into_response(),
+        Ok(count) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "imported",
+                "count": count,
+            })),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "pattern import failed", "detail": format!("{}", e)})),
+        )
+            .into_response(),
     }
 }
 
@@ -1123,7 +1198,10 @@ async fn metrics_endpoint() -> Response {
     let body = metrics_text();
     let mut resp = Response::new(Body::from(body));
     *resp.status_mut() = StatusCode::OK;
-    resp.headers_mut().insert("content-type", "text/plain; version=0.0.4; charset=utf-8".parse().unwrap());
+    resp.headers_mut().insert(
+        "content-type",
+        "text/plain; version=0.0.4; charset=utf-8".parse().unwrap(),
+    );
     resp
 }
 
@@ -1132,35 +1210,50 @@ async fn metrics_endpoint() -> Response {
 /// GET /health/ready — readiness probe. Returns 200 if all enabled rings are healthy.
 async fn health_ready(State(state): State<ApiState>) -> (StatusCode, Json<serde_json::Value>) {
     if state.shutdown.is_shutting_down() {
-        return (StatusCode::SERVICE_UNAVAILABLE, Json(serde_json::json!({
-            "status": "shutting_down",
-            "ready": false,
-        })));
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({
+                "status": "shutting_down",
+                "ready": false,
+            })),
+        );
     }
 
     let ring_health = state.cross_ring.ring_health(KNOWN_RINGS);
-    let ready = is_ready(&ring_health.iter().map(|h| crate::infra::RingHealth {
-        name: h.ring_name.clone(),
-        enabled: true,
-        healthy: h.is_healthy,
-        last_check_ms: 0.0,
-        total_evaluations: h.total_requests,
-        total_errors: h.total_failures,
-        error_rate: h.error_rate,
-    }).collect::<Vec<_>>());
+    let ready = is_ready(
+        &ring_health
+            .iter()
+            .map(|h| crate::infra::RingHealth {
+                name: h.ring_name.clone(),
+                enabled: true,
+                healthy: h.is_healthy,
+                last_check_ms: 0.0,
+                total_evaluations: h.total_requests,
+                total_errors: h.total_failures,
+                error_rate: h.error_rate,
+            })
+            .collect::<Vec<_>>(),
+    );
 
     let (total_reqs, total_errs) = crate::infra::request_counts();
-    let status = if ready { StatusCode::OK } else { StatusCode::SERVICE_UNAVAILABLE };
-    (status, Json(serde_json::json!({
-        "status": if ready { "ready" } else { "not_ready" },
-        "ready": ready,
-        "total_requests": total_reqs,
-        "total_errors": total_errs,
-        "rings": ring_health.iter().map(|h| serde_json::json!({
-            "name": h.ring_name,
-            "healthy": h.is_healthy,
-        })).collect::<Vec<_>>(),
-    })))
+    let status = if ready {
+        StatusCode::OK
+    } else {
+        StatusCode::SERVICE_UNAVAILABLE
+    };
+    (
+        status,
+        Json(serde_json::json!({
+            "status": if ready { "ready" } else { "not_ready" },
+            "ready": ready,
+            "total_requests": total_reqs,
+            "total_errors": total_errs,
+            "rings": ring_health.iter().map(|h| serde_json::json!({
+                "name": h.ring_name,
+                "healthy": h.is_healthy,
+            })).collect::<Vec<_>>(),
+        })),
+    )
 }
 
 /// GET /health/live — liveness probe. Always returns 200 if the process is alive.
@@ -1189,10 +1282,13 @@ async fn policy_export(State(state): State<ApiState>) -> Response {
     let yaml = state.policy_manager.export_policy_yaml();
     let mut resp = Response::new(Body::from(yaml));
     *resp.status_mut() = StatusCode::OK;
-    resp.headers_mut().insert("content-type", "application/x-yaml".parse().unwrap());
+    resp.headers_mut()
+        .insert("content-type", "application/x-yaml".parse().unwrap());
     resp.headers_mut().insert(
         "content-disposition",
-        "attachment; filename=\"chakravyuh_policy.yaml\"".parse().unwrap(),
+        "attachment; filename=\"chakravyuh_policy.yaml\""
+            .parse()
+            .unwrap(),
     );
     resp
 }
@@ -1200,15 +1296,23 @@ async fn policy_export(State(state): State<ApiState>) -> Response {
 /// POST /v1/policy/reload — trigger hot-reload from the configured policy file.
 async fn policy_reload(State(state): State<ApiState>) -> impl IntoResponse {
     match state.policy_manager.reload_from_file() {
-        Ok(version) => (StatusCode::OK, Json(serde_json::json!({
-            "status": "reloaded",
-            "version": version,
-        }))).into_response(),
-        Err(e) => (StatusCode::BAD_REQUEST, Json(serde_json::json!({
-            "status": "reload_failed",
-            "error": e,
-            "note": "existing policy continues to serve requests",
-        }))).into_response(),
+        Ok(version) => (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "reloaded",
+                "version": version,
+            })),
+        )
+            .into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "status": "reload_failed",
+                "error": e,
+                "note": "existing policy continues to serve requests",
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -1259,21 +1363,25 @@ async fn ananta_trust_state(State(state): State<ApiState>) -> Response {
             "alerts": trust_state.alerts,
             "cycles_completed": trust_state.cycle_count,
             "summary": ananta.trust_summary().await,
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 /// GET /v1/ananta/attestation — latest attestation report.
 async fn ananta_attestation(State(state): State<ApiState>) -> Response {
     let ananta = match &state.ananta {
         Some(a) => a,
-        None => return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "active": false,
-                "message": "ANANTA trust plane is not enabled.",
-            }))
-        ).into_response(),
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "active": false,
+                    "message": "ANANTA trust plane is not enabled.",
+                })),
+            )
+                .into_response()
+        }
     };
 
     let report = ananta.latest_attestation().await;
@@ -1290,15 +1398,17 @@ async fn ananta_attestation(State(state): State<ApiState>) -> Response {
                 "signature": r.signature.as_ref().map(|s| hex::encode(&s.bytes)),
                 "timestamp": r.timestamp,
                 "summary": r.summary(),
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         None => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "active": true,
                 "message": "no attestation cycle completed yet",
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -1306,13 +1416,16 @@ async fn ananta_attestation(State(state): State<ApiState>) -> Response {
 async fn ananta_trust_proof(State(state): State<ApiState>) -> Response {
     let ananta = match &state.ananta {
         Some(a) => a,
-        None => return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "active": false,
-                "message": "ANANTA trust plane is not enabled.",
-            }))
-        ).into_response(),
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "active": false,
+                    "message": "ANANTA trust plane is not enabled.",
+                })),
+            )
+                .into_response()
+        }
     };
 
     let proof = ananta.latest_trust_proof().await;
@@ -1328,15 +1441,17 @@ async fn ananta_trust_proof(State(state): State<ApiState>) -> Response {
                 "chain_head": p.trust_chain_head,
                 "signature": p.signature.as_ref().map(|s| hex::encode(&s.bytes)),
                 "timestamp": p.timestamp,
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
         None => (
             StatusCode::OK,
             Json(serde_json::json!({
                 "active": true,
                 "message": "no trust proof generated yet (attestation must complete first)",
-            }))
-        ).into_response(),
+            })),
+        )
+            .into_response(),
     }
 }
 
@@ -1344,13 +1459,16 @@ async fn ananta_trust_proof(State(state): State<ApiState>) -> Response {
 async fn ananta_health(State(state): State<ApiState>) -> Response {
     let ananta = match &state.ananta {
         Some(a) => a,
-        None => return (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({
-                "active": false,
-                "message": "ANANTA trust plane is not enabled.",
-            }))
-        ).into_response(),
+        None => {
+            return (
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "active": false,
+                    "message": "ANANTA trust plane is not enabled.",
+                })),
+            )
+                .into_response()
+        }
     };
 
     let overall = ananta.overall_health().await;
@@ -1362,8 +1480,9 @@ async fn ananta_health(State(state): State<ApiState>) -> Response {
             "status": if overall >= 0.8 { "healthy" }
                        else if overall >= 0.5 { "degraded" }
                        else { "critical" },
-        }))
-    ).into_response()
+        })),
+    )
+        .into_response()
 }
 
 #[cfg(test)]
@@ -1377,18 +1496,25 @@ mod tests {
         let shield = ShieldRing::new(config.clone()).expect("shield builds");
         let threat_config = Arc::new(config.threat.clone());
         let threat = crate::threat::ThreatRing::new(threat_config).expect("threat builds");
-        let identity = crate::identity::IdentityRing::new(&config.identity).expect("identity builds");
+        let identity =
+            crate::identity::IdentityRing::new(&config.identity).expect("identity builds");
         let memory = crate::memory::MemoryRing::new(&config.memory).expect("memory builds");
         let agent = crate::agent::AgentRing::new(&config.agent).expect("agent builds");
-        let execution = crate::execution::ExecutionRing::new(&config.execution).expect("execution builds");
-        let reasoning = crate::reasoning::ReasoningRing::new(&config.reasoning).expect("reasoning builds");
-        let governance = crate::governance::GovernanceRing::new(&config.governance).expect("governance builds");
-        let recovery_sec = crate::recovery_sec::RecoveryRing::new(&config.recovery_sec).expect("recovery_sec builds");
+        let execution =
+            crate::execution::ExecutionRing::new(&config.execution).expect("execution builds");
+        let reasoning =
+            crate::reasoning::ReasoningRing::new(&config.reasoning).expect("reasoning builds");
+        let governance =
+            crate::governance::GovernanceRing::new(&config.governance).expect("governance builds");
+        let recovery_sec = crate::recovery_sec::RecoveryRing::new(&config.recovery_sec)
+            .expect("recovery_sec builds");
         let decide = crate::keshav::KeshavDecide::with_defaults().expect("decide builds");
         let risk = crate::keshav::KeshavRisk::new(config.keshav.risk.clone());
-        let learn = crate::keshav::KeshavLearn::new(config.keshav.learn.clone()).expect("learn builds");
+        let learn =
+            crate::keshav::KeshavLearn::new(config.keshav.learn.clone()).expect("learn builds");
         let orchestrate = crate::keshav::KeshavOrchestrate::new(config.keshav.orchestrate.clone());
-        let cross_ring = crate::cross_ring::CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
+        let cross_ring = crate::cross_ring::CrossRingNetwork::new(&config.cross_ring)
+            .expect("cross_ring builds");
         let pipeline = PipelineExecutor {
             shield: shield.clone(),
             threat: threat.clone(),

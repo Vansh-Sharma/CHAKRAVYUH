@@ -74,21 +74,21 @@ enum Token {
     Ident(String),
 
     // Operators
-    Plus,      // +
-    Minus,     // -
-    Star,      // *
-    Slash,     // /
-    Percent,   // %
-    Gt,        // >
-    Lt,        // <
-    Ge,        // >=
-    Le,        // <=
-    Eq,        // ==
-    Ne,        // !=
-    And,       // AND
-    Or,        // OR
-    Not,       // NOT
-    Bang,      // !
+    Plus,    // +
+    Minus,   // -
+    Star,    // *
+    Slash,   // /
+    Percent, // %
+    Gt,      // >
+    Lt,      // <
+    Ge,      // >=
+    Le,      // <=
+    Eq,      // ==
+    Ne,      // !=
+    And,     // AND
+    Or,      // OR
+    Not,     // NOT
+    Bang,    // !
 
     // Delimiters
     LParen, // (
@@ -136,7 +136,8 @@ fn tokenize(input: &str) -> Result<Vec<Token>> {
         }
 
         // Number literal.
-        if c.is_ascii_digit() || (c == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit()) {
+        if c.is_ascii_digit() || (c == '.' && i + 1 < chars.len() && chars[i + 1].is_ascii_digit())
+        {
             let start = i;
             while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.') {
                 i += 1;
@@ -144,7 +145,12 @@ fn tokenize(input: &str) -> Result<Vec<Token>> {
             let num_str: String = chars[start..i].iter().collect();
             match num_str.parse::<f64>() {
                 Ok(n) => tokens.push(Token::Number(n)),
-                Err(_) => return Err(Error::Evaluation(format!("invalid number literal: {}", num_str))),
+                Err(_) => {
+                    return Err(Error::Evaluation(format!(
+                        "invalid number literal: {}",
+                        num_str
+                    )))
+                }
             }
             continue;
         }
@@ -171,29 +177,86 @@ fn tokenize(input: &str) -> Result<Vec<Token>> {
         if i + 1 < chars.len() {
             let two: String = chars[i..i + 2].iter().collect();
             match two.as_str() {
-                ">=" => { tokens.push(Token::Ge); i += 2; continue; }
-                "<=" => { tokens.push(Token::Le); i += 2; continue; }
-                "==" => { tokens.push(Token::Eq); i += 2; continue; }
-                "!=" => { tokens.push(Token::Ne); i += 2; continue; }
+                ">=" => {
+                    tokens.push(Token::Ge);
+                    i += 2;
+                    continue;
+                }
+                "<=" => {
+                    tokens.push(Token::Le);
+                    i += 2;
+                    continue;
+                }
+                "==" => {
+                    tokens.push(Token::Eq);
+                    i += 2;
+                    continue;
+                }
+                "!=" => {
+                    tokens.push(Token::Ne);
+                    i += 2;
+                    continue;
+                }
                 _ => {}
             }
         }
 
         // Single-character operators and delimiters.
         match c {
-            '+' => { tokens.push(Token::Plus); i += 1; }
-            '-' => { tokens.push(Token::Minus); i += 1; }
-            '*' => { tokens.push(Token::Star); i += 1; }
-            '/' => { tokens.push(Token::Slash); i += 1; }
-            '%' => { tokens.push(Token::Percent); i += 1; }
-            '>' => { tokens.push(Token::Gt); i += 1; }
-            '<' => { tokens.push(Token::Lt); i += 1; }
-            '!' => { tokens.push(Token::Bang); i += 1; }
-            '(' => { tokens.push(Token::LParen); i += 1; }
-            ')' => { tokens.push(Token::RParen); i += 1; }
-            '.' => { tokens.push(Token::Dot); i += 1; }
-            ',' => { tokens.push(Token::Comma); i += 1; }
-            _ => return Err(Error::Evaluation(format!("unexpected character '{}' at position {}", c, i))),
+            '+' => {
+                tokens.push(Token::Plus);
+                i += 1;
+            }
+            '-' => {
+                tokens.push(Token::Minus);
+                i += 1;
+            }
+            '*' => {
+                tokens.push(Token::Star);
+                i += 1;
+            }
+            '/' => {
+                tokens.push(Token::Slash);
+                i += 1;
+            }
+            '%' => {
+                tokens.push(Token::Percent);
+                i += 1;
+            }
+            '>' => {
+                tokens.push(Token::Gt);
+                i += 1;
+            }
+            '<' => {
+                tokens.push(Token::Lt);
+                i += 1;
+            }
+            '!' => {
+                tokens.push(Token::Bang);
+                i += 1;
+            }
+            '(' => {
+                tokens.push(Token::LParen);
+                i += 1;
+            }
+            ')' => {
+                tokens.push(Token::RParen);
+                i += 1;
+            }
+            '.' => {
+                tokens.push(Token::Dot);
+                i += 1;
+            }
+            ',' => {
+                tokens.push(Token::Comma);
+                i += 1;
+            }
+            _ => {
+                return Err(Error::Evaluation(format!(
+                    "unexpected character '{}' at position {}",
+                    c, i
+                )))
+            }
         }
     }
 
@@ -221,15 +284,9 @@ pub enum ASTNode {
         right: Box<ASTNode>,
     },
     /// Unary operation: op operand.
-    UnaryOp {
-        op: UnOp,
-        operand: Box<ASTNode>,
-    },
+    UnaryOp { op: UnOp, operand: Box<ASTNode> },
     /// Function call: name(args...).
-    FunctionCall {
-        name: String,
-        args: Vec<ASTNode>,
-    },
+    FunctionCall { name: String, args: Vec<ASTNode> },
     /// Access to a risk-related value.
     RiskAccess,
 }
@@ -237,15 +294,26 @@ pub enum ASTNode {
 /// Binary operators.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinOp {
-    Add, Sub, Mul, Div, Mod,
-    Gt, Lt, Ge, Le, Eq, Ne,
-    And, Or,
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Gt,
+    Lt,
+    Ge,
+    Le,
+    Eq,
+    Ne,
+    And,
+    Or,
 }
 
 /// Unary operators.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum UnOp {
-    Not, Neg,
+    Not,
+    Neg,
 }
 
 // ── Parser ─────────────────────────────────────────────────────────────
@@ -277,7 +345,8 @@ impl Parser {
         let tok = self.advance();
         if &tok != expected {
             return Err(Error::Evaluation(format!(
-                "expected {:?}, got {:?}", expected, tok
+                "expected {:?}, got {:?}",
+                expected, tok
             )));
         }
         Ok(())
@@ -288,7 +357,8 @@ impl Parser {
         let node = self.parse_or()?;
         if !matches!(self.peek(), Token::Eof | Token::RParen) {
             return Err(Error::Evaluation(format!(
-                "unexpected token after expression: {:?}", self.peek()
+                "unexpected token after expression: {:?}",
+                self.peek()
             )));
         }
         Ok(node)
@@ -331,7 +401,12 @@ impl Parser {
             let op = match self.advance() {
                 Token::Eq => BinOp::Eq,
                 Token::Ne => BinOp::Ne,
-                other => return Err(Error::Evaluation(format!("expected == or !=, got {:?}", other))),
+                other => {
+                    return Err(Error::Evaluation(format!(
+                        "expected == or !=, got {:?}",
+                        other
+                    )))
+                }
             };
             let right = self.parse_comparison()?;
             left = ASTNode::BinaryOp {
@@ -352,7 +427,12 @@ impl Parser {
                 Token::Lt => BinOp::Lt,
                 Token::Ge => BinOp::Ge,
                 Token::Le => BinOp::Le,
-                other => return Err(Error::Evaluation(format!("expected comparison, got {:?}", other))),
+                other => {
+                    return Err(Error::Evaluation(format!(
+                        "expected comparison, got {:?}",
+                        other
+                    )))
+                }
             };
             let right = self.parse_additive()?;
             left = ASTNode::BinaryOp {
@@ -371,7 +451,12 @@ impl Parser {
             let op = match self.advance() {
                 Token::Plus => BinOp::Add,
                 Token::Minus => BinOp::Sub,
-                other => return Err(Error::Evaluation(format!("expected + or -, got {:?}", other))),
+                other => {
+                    return Err(Error::Evaluation(format!(
+                        "expected + or -, got {:?}",
+                        other
+                    )))
+                }
             };
             let right = self.parse_multiplicative()?;
             left = ASTNode::BinaryOp {
@@ -391,7 +476,12 @@ impl Parser {
                 Token::Star => BinOp::Mul,
                 Token::Slash => BinOp::Div,
                 Token::Percent => BinOp::Mod,
-                other => return Err(Error::Evaluation(format!("expected *, /, or %, got {:?}", other))),
+                other => {
+                    return Err(Error::Evaluation(format!(
+                        "expected *, /, or %, got {:?}",
+                        other
+                    )))
+                }
             };
             let right = self.parse_unary()?;
             left = ASTNode::BinaryOp {
@@ -509,7 +599,10 @@ impl Parser {
                     } else {
                         (full_name, args)
                     };
-                    Ok(ASTNode::FunctionCall { name: func_name, args })
+                    Ok(ASTNode::FunctionCall {
+                        name: func_name,
+                        args,
+                    })
                 } else if full_name == "risk_score" {
                     Ok(ASTNode::RiskAccess)
                 } else {
@@ -523,7 +616,8 @@ impl Parser {
                 Ok(node)
             }
             other => Err(Error::Evaluation(format!(
-                "unexpected token in expression: {:?}", other
+                "unexpected token in expression: {:?}",
+                other
             ))),
         }
     }
@@ -566,8 +660,7 @@ impl CodeGen {
             ASTNode::Literal(n) => {
                 let ci = self.program.add_constant(Constant::Number(*n));
                 let idx = self.program.emit(
-                    Instruction::with_operand(OpCode::Push, ci)
-                        .with_source(0, &self.current_rule),
+                    Instruction::with_operand(OpCode::Push, ci).with_source(0, &self.current_rule),
                 );
                 Ok(idx)
             }
@@ -583,8 +676,7 @@ impl CodeGen {
                 let n = if *b { 1.0 } else { 0.0 };
                 let ci = self.program.add_constant(Constant::Number(n));
                 let idx = self.program.emit(
-                    Instruction::with_operand(OpCode::Push, ci)
-                        .with_source(0, &self.current_rule),
+                    Instruction::with_operand(OpCode::Push, ci).with_source(0, &self.current_rule),
                 );
                 Ok(idx)
             }
@@ -622,10 +714,9 @@ impl CodeGen {
                     BinOp::And => OpCode::And,
                     BinOp::Or => OpCode::Or,
                 };
-                let idx = self.program.emit(
-                    Instruction::new(opcode)
-                        .with_source(0, &self.current_rule),
-                );
+                let idx = self
+                    .program
+                    .emit(Instruction::new(opcode).with_source(0, &self.current_rule));
                 Ok(idx)
             }
             ASTNode::UnaryOp { op, operand } => {
@@ -647,18 +738,14 @@ impl CodeGen {
                         Instruction::with_operand(OpCode::Push, ci_neg)
                             .with_source(0, &self.current_rule),
                     );
-                    self.program.emit(
-                        Instruction::new(OpCode::Mul)
-                            .with_source(0, &self.current_rule),
-                    );
+                    self.program
+                        .emit(Instruction::new(OpCode::Mul).with_source(0, &self.current_rule));
                     // The original operand is already on stack, so we have:
                     // operand, -1 → Mul → -operand
                     let _ = (ci, opcode); // suppress unused warnings
                 } else {
-                    self.program.emit(
-                        Instruction::new(opcode)
-                            .with_source(0, &self.current_rule),
-                    );
+                    self.program
+                        .emit(Instruction::new(opcode).with_source(0, &self.current_rule));
                 }
                 // Return the index of the last emitted instruction.
                 Ok(self.program.instructions.len() as u32 - 1)
@@ -671,22 +758,19 @@ impl CodeGen {
                 match name.as_str() {
                     "contains" => {
                         let idx = self.program.emit(
-                            Instruction::new(OpCode::Contains)
-                                .with_source(0, &self.current_rule),
+                            Instruction::new(OpCode::Contains).with_source(0, &self.current_rule),
                         );
                         Ok(idx)
                     }
                     "startswith" | "starts_with" => {
                         let idx = self.program.emit(
-                            Instruction::new(OpCode::StartsWith)
-                                .with_source(0, &self.current_rule),
+                            Instruction::new(OpCode::StartsWith).with_source(0, &self.current_rule),
                         );
                         Ok(idx)
                     }
                     "endswith" | "ends_with" => {
                         let idx = self.program.emit(
-                            Instruction::new(OpCode::EndsWith)
-                                .with_source(0, &self.current_rule),
+                            Instruction::new(OpCode::EndsWith).with_source(0, &self.current_rule),
                         );
                         Ok(idx)
                     }
@@ -725,22 +809,20 @@ impl CodeGen {
         self.emit_node(&ast)?;
 
         // Emit conditional jump past the action.
-        let jump_idx = self.program.emit(
-            Instruction::new(OpCode::JumpIfFalse)
-                .with_source(0, &self.current_rule),
-        );
+        let jump_idx = self
+            .program
+            .emit(Instruction::new(OpCode::JumpIfFalse).with_source(0, &self.current_rule));
 
         // Emit risk weight if > 0.
         if rule.risk_weight > 0.0 {
-            let ci = self.program.add_constant(Constant::Number(rule.risk_weight));
+            let ci = self
+                .program
+                .add_constant(Constant::Number(rule.risk_weight));
             self.program.emit(
-                Instruction::with_operand(OpCode::Push, ci)
-                    .with_source(0, &self.current_rule),
+                Instruction::with_operand(OpCode::Push, ci).with_source(0, &self.current_rule),
             );
-            self.program.emit(
-                Instruction::new(OpCode::RiskAdd)
-                    .with_source(0, &self.current_rule),
-            );
+            self.program
+                .emit(Instruction::new(OpCode::RiskAdd).with_source(0, &self.current_rule));
         }
 
         // Emit action.
@@ -751,10 +833,8 @@ impl CodeGen {
             "challenge" => OpCode::Challenge,
             _ => OpCode::Deny, // default to deny
         };
-        self.program.emit(
-            Instruction::new(action_opcode)
-                .with_source(0, &self.current_rule),
-        );
+        self.program
+            .emit(Instruction::new(action_opcode).with_source(0, &self.current_rule));
 
         // Patch jump target to point after the action.
         let after_idx = self.program.instructions.len() as u32;
@@ -826,8 +906,7 @@ impl Optimizer {
                         if let Some(val) = result {
                             let ci = program.add_constant(Constant::Number(val));
                             // Replace the 3 instructions with 1.
-                            program.instructions[i] =
-                                Instruction::with_operand(OpCode::Push, ci);
+                            program.instructions[i] = Instruction::with_operand(OpCode::Push, ci);
                             program.instructions.remove(i + 2);
                             program.instructions.remove(i + 1);
                             // Don't increment i — check the new instruction next.
@@ -901,7 +980,11 @@ impl PolicyCompilerEngine {
         program.rule_count = policy.rules.len() as u32;
 
         // Build the ordered variable_slots list from the codegen's slot map.
-        let mut slots: Vec<(u32, String)> = codegen.variable_slots.into_iter().map(|(name, slot)| (slot, name)).collect();
+        let mut slots: Vec<(u32, String)> = codegen
+            .variable_slots
+            .into_iter()
+            .map(|(name, slot)| (slot, name))
+            .collect();
         slots.sort_by_key(|(slot, _)| *slot);
         program.variable_slots = slots.into_iter().map(|(_, name)| name).collect();
 
@@ -1149,13 +1232,19 @@ rules:
 
         // Execute with risk_score = 0.9 (should deny).
         let mut env = HashMap::new();
-        env.insert("risk_score".to_string(), super::super::vm::Value::Number(0.9));
+        env.insert(
+            "risk_score".to_string(),
+            super::super::vm::Value::Number(0.9),
+        );
         let vm = super::super::vm::PolicyVM::new();
         let result = vm.execute(&program, &env).unwrap();
         assert!(result.decision.is_deny());
 
         // Execute with risk_score = 0.5 (should allow).
-        env.insert("risk_score".to_string(), super::super::vm::Value::Number(0.5));
+        env.insert(
+            "risk_score".to_string(),
+            super::super::vm::Value::Number(0.5),
+        );
         let result = vm.execute(&program, &env).unwrap();
         assert!(result.decision.is_allow());
     }
@@ -1238,13 +1327,19 @@ rules:
 
         // With malicious payload.
         let mut env = HashMap::new();
-        env.insert("payload".to_string(), super::super::vm::Value::String("DROP TABLE users".into()));
+        env.insert(
+            "payload".to_string(),
+            super::super::vm::Value::String("DROP TABLE users".into()),
+        );
         let vm = super::super::vm::PolicyVM::new();
         let result = vm.execute(&program, &env).unwrap();
         assert!(result.decision.is_deny());
 
         // With safe payload.
-        env.insert("payload".to_string(), super::super::vm::Value::String("hello world".into()));
+        env.insert(
+            "payload".to_string(),
+            super::super::vm::Value::String("hello world".into()),
+        );
         let result = vm.execute(&program, &env).unwrap();
         assert!(result.decision.is_allow());
     }

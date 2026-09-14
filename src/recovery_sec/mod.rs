@@ -18,9 +18,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use sha2::{Sha256, Digest};
 use crate::decision::{Decision, Verdict};
 use crate::error::Result;
+use sha2::{Digest, Sha256};
 
 // ── Configuration ──
 
@@ -52,8 +52,12 @@ pub struct RecoverySecConfig {
     pub deny_threshold: f64,
 }
 
-fn default_enabled() -> bool { true }
-fn default_deny_threshold() -> f64 { 9.0 }
+fn default_enabled() -> bool {
+    true
+}
+fn default_deny_threshold() -> f64 {
+    9.0
+}
 
 impl Default for RecoverySecConfig {
     fn default() -> Self {
@@ -79,8 +83,12 @@ pub struct IncidentClassifierConfig {
     #[serde(default = "default_high_threshold")]
     pub high_threshold: f64,
 }
-fn default_critical_threshold() -> f64 { 8.0 }
-fn default_high_threshold() -> f64 { 5.0 }
+fn default_critical_threshold() -> f64 {
+    8.0
+}
+fn default_high_threshold() -> f64 {
+    5.0
+}
 impl Default for IncidentClassifierConfig {
     fn default() -> Self {
         Self {
@@ -95,9 +103,15 @@ pub struct RollbackEngineConfig {
     #[serde(default = "default_max_rollback_window")]
     pub max_rollback_window_secs: u64,
 }
-fn default_max_rollback_window() -> u64 { 3600 }
+fn default_max_rollback_window() -> u64 {
+    3600
+}
 impl Default for RollbackEngineConfig {
-    fn default() -> Self { Self { max_rollback_window_secs: default_max_rollback_window() } }
+    fn default() -> Self {
+        Self {
+            max_rollback_window_secs: default_max_rollback_window(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -107,7 +121,9 @@ pub struct QuarantineManagerConfig {
     #[serde(default)]
     pub auto_quarantine_on_critical: bool,
 }
-fn default_max_quarantine_size() -> usize { 10000 }
+fn default_max_quarantine_size() -> usize {
+    10000
+}
 impl Default for QuarantineManagerConfig {
     fn default() -> Self {
         Self {
@@ -124,8 +140,12 @@ pub struct EvidenceCollectorConfig {
     #[serde(default = "default_hash_algorithm")]
     pub hash_algorithm: String,
 }
-fn default_evidence_retention() -> u32 { 365 }
-fn default_hash_algorithm() -> String { "sha256".into() }
+fn default_evidence_retention() -> u32 {
+    365
+}
+fn default_hash_algorithm() -> String {
+    "sha256".into()
+}
 impl Default for EvidenceCollectorConfig {
     fn default() -> Self {
         Self {
@@ -142,8 +162,12 @@ pub struct StateRestorerConfig {
     #[serde(default = "default_max_checkpoints")]
     pub max_checkpoints: usize,
 }
-fn default_checkpoint_interval() -> u64 { 300 }
-fn default_max_checkpoints() -> usize { 50 }
+fn default_checkpoint_interval() -> u64 {
+    300
+}
+fn default_max_checkpoints() -> usize {
+    50
+}
 impl Default for StateRestorerConfig {
     fn default() -> Self {
         Self {
@@ -160,7 +184,9 @@ pub struct NotificationEngineConfig {
     #[serde(default = "default_severity_filter")]
     pub severity_filter: f64,
 }
-fn default_severity_filter() -> f64 { 5.0 }
+fn default_severity_filter() -> f64 {
+    5.0
+}
 impl Default for NotificationEngineConfig {
     fn default() -> Self {
         Self {
@@ -213,8 +239,8 @@ pub struct RecoveryEngineResult {
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct IncidentClassification {
-    pub severity: String,      // "low" | "medium" | "high" | "critical"
-    pub severity_score: f64,  // 0.0-10.0
+    pub severity: String,    // "low" | "medium" | "high" | "critical"
+    pub severity_score: f64, // 0.0-10.0
     pub incident_type: String,
     pub requires_immediate_action: bool,
 }
@@ -272,8 +298,12 @@ pub struct RecoveryVerdict {
 }
 
 impl Verdict for RecoveryVerdict {
-    fn decision(&self) -> &Decision { &self.decision }
-    fn latency_ms(&self) -> f64 { self.latency_ms }
+    fn decision(&self) -> &Decision {
+        &self.decision
+    }
+    fn latency_ms(&self) -> f64 {
+        self.latency_ms
+    }
 }
 
 // ── Engines ──
@@ -283,9 +313,16 @@ struct IncidentClassifier {
 }
 
 impl IncidentClassifier {
-    fn new(config: &IncidentClassifierConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &IncidentClassifierConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, request: &RecoveryRequest) -> (IncidentClassification, RecoveryEngineResult) {
+    fn evaluate(
+        &self,
+        request: &RecoveryRequest,
+    ) -> (IncidentClassification, RecoveryEngineResult) {
         let start = std::time::Instant::now();
 
         // Classify incident based on signals
@@ -307,15 +344,16 @@ impl IncidentClassifier {
 
         severity_score = severity_score.clamp(0.0, 10.0);
 
-        let (severity, incident_type, requires_immediate) = if severity_score >= self.config.critical_threshold {
-            ("critical", "security_breach", true)
-        } else if severity_score >= self.config.high_threshold {
-            ("high", "policy_violation", true)
-        } else if severity_score >= 3.0 {
-            ("medium", "anomaly", false)
-        } else {
-            ("low", "routine", false)
-        };
+        let (severity, incident_type, requires_immediate) =
+            if severity_score >= self.config.critical_threshold {
+                ("critical", "security_breach", true)
+            } else if severity_score >= self.config.high_threshold {
+                ("high", "policy_violation", true)
+            } else if severity_score >= 3.0 {
+                ("medium", "anomaly", false)
+            } else {
+                ("low", "routine", false)
+            };
 
         let result = IncidentClassification {
             severity: severity.into(),
@@ -333,7 +371,10 @@ impl IncidentClassifier {
         let engine_result = RecoveryEngineResult {
             engine_name: "incident_classifier".into(),
             decision: decision.into(),
-            reason: format!("severity={}, score={:.2}, type={}", severity, severity_score, incident_type),
+            reason: format!(
+                "severity={}, score={:.2}, type={}",
+                severity, severity_score, incident_type
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "severity": severity, "severity_score": severity_score }),
         };
@@ -347,16 +388,27 @@ struct QuarantineManager {
 }
 
 impl QuarantineManager {
-    fn new(config: &QuarantineManagerConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &QuarantineManagerConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, request: &RecoveryRequest, severity: &str) -> (QuarantineDecision, RecoveryEngineResult) {
+    fn evaluate(
+        &self,
+        request: &RecoveryRequest,
+        severity: &str,
+    ) -> (QuarantineDecision, RecoveryEngineResult) {
         let start = std::time::Instant::now();
 
         let should_quarantine = (self.config.auto_quarantine_on_critical && severity == "critical")
             || (severity == "high" && request.suspected_injection);
 
         let quarantine_reason = if should_quarantine {
-            format!("auto-quarantined: severity={}, injection={}", severity, request.suspected_injection)
+            format!(
+                "auto-quarantined: severity={}, injection={}",
+                severity, request.suspected_injection
+            )
         } else {
             "no quarantine needed".into()
         };
@@ -382,7 +434,10 @@ impl QuarantineManager {
         let engine_result = RecoveryEngineResult {
             engine_name: "quarantine_manager".into(),
             decision: decision.into(),
-            reason: format!("quarantined={}, reason={}", should_quarantine, quarantine_reason),
+            reason: format!(
+                "quarantined={}, reason={}",
+                should_quarantine, quarantine_reason
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "quarantined": should_quarantine }),
         };
@@ -396,9 +451,17 @@ struct EvidenceCollector {
 }
 
 impl EvidenceCollector {
-    fn new(config: &EvidenceCollectorConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &EvidenceCollectorConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, request: &RecoveryRequest, severity: &str) -> (EvidenceRecord, RecoveryEngineResult) {
+    fn evaluate(
+        &self,
+        request: &RecoveryRequest,
+        severity: &str,
+    ) -> (EvidenceRecord, RecoveryEngineResult) {
         let start = std::time::Instant::now();
 
         // Collect evidence for medium+ severity incidents
@@ -455,14 +518,26 @@ struct RollbackEngine {
 }
 
 impl RollbackEngine {
-    fn new(config: &RollbackEngineConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &RollbackEngineConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, request: &RecoveryRequest, severity: &str) -> (RollbackAssessment, RecoveryEngineResult) {
+    fn evaluate(
+        &self,
+        request: &RecoveryRequest,
+        severity: &str,
+    ) -> (RollbackAssessment, RecoveryEngineResult) {
         let start = std::time::Instant::now();
 
-        let rollback_possible = severity == "critical" || (severity == "high" && request.was_denied);
+        let rollback_possible =
+            severity == "critical" || (severity == "high" && request.was_denied);
         let rollback_reason = if rollback_possible {
-            format!("rollback recommended: severity={}, action={}", severity, request.trigger_action)
+            format!(
+                "rollback recommended: severity={}, action={}",
+                severity, request.trigger_action
+            )
         } else {
             "no rollback needed".into()
         };
@@ -482,7 +557,10 @@ impl RollbackEngine {
         let engine_result = RecoveryEngineResult {
             engine_name: "rollback_engine".into(),
             decision: decision.into(),
-            reason: format!("rollback_possible={}, window={}s", rollback_possible, self.config.max_rollback_window_secs),
+            reason: format!(
+                "rollback_possible={}, window={}s",
+                rollback_possible, self.config.max_rollback_window_secs
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "rollback_possible": rollback_possible }),
         };
@@ -496,16 +574,27 @@ struct StateRestorer {
 }
 
 impl StateRestorer {
-    fn new(config: &StateRestorerConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &StateRestorerConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
-    fn evaluate(&self, _request: &RecoveryRequest, severity: &str) -> (StateRestorePlan, RecoveryEngineResult) {
+    fn evaluate(
+        &self,
+        _request: &RecoveryRequest,
+        severity: &str,
+    ) -> (StateRestorePlan, RecoveryEngineResult) {
         let start = std::time::Instant::now();
 
         let restore_possible = severity == "critical";
         let checkpoint_available = restore_possible; // Assume checkpoint available for critical
 
         let restore_reason = if restore_possible {
-            format!("state restore recommended for {} severity incident", severity)
+            format!(
+                "state restore recommended for {} severity incident",
+                severity
+            )
         } else {
             "no state restore needed".into()
         };
@@ -521,7 +610,10 @@ impl StateRestorer {
         let engine_result = RecoveryEngineResult {
             engine_name: "state_restorer".into(),
             decision: decision.into(),
-            reason: format!("restore_possible={}, checkpoint_available={}", restore_possible, checkpoint_available),
+            reason: format!(
+                "restore_possible={}, checkpoint_available={}",
+                restore_possible, checkpoint_available
+            ),
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "restore_possible": restore_possible }),
         };
@@ -535,7 +627,11 @@ struct NotificationEngine {
 }
 
 impl NotificationEngine {
-    fn new(config: &NotificationEngineConfig) -> Self { Self { config: config.clone() } }
+    fn new(config: &NotificationEngineConfig) -> Self {
+        Self {
+            config: config.clone(),
+        }
+    }
 
     fn evaluate(&self, severity_score: f64) -> (NotificationStatus, RecoveryEngineResult) {
         let start = std::time::Instant::now();
@@ -559,7 +655,10 @@ impl NotificationEngine {
             reason: if should_send {
                 format!("alert sent via {:?}", channels)
             } else {
-                format!("severity {:.1} below threshold {:.1}, no alert", severity_score, self.config.severity_filter)
+                format!(
+                    "severity {:.1} below threshold {:.1}, no alert",
+                    severity_score, self.config.severity_filter
+                )
             },
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
             metadata: serde_json::json!({ "sent": should_send }),
@@ -644,7 +743,8 @@ impl RecoveryRing {
         engine_results.push(incident_eng);
 
         // 2. Quarantine Manager
-        let (quarantine_decision, quarantine_eng) = self.quarantine_manager.evaluate(request, &severity);
+        let (quarantine_decision, quarantine_eng) =
+            self.quarantine_manager.evaluate(request, &severity);
         match quarantine_eng.decision.as_str() {
             "denied" => risk_accumulator += 5.0,
             "flagged" => risk_accumulator += 1.5,
@@ -712,7 +812,9 @@ impl RecoveryRing {
     }
 
     /// Get the configuration reference.
-    pub fn config(&self) -> &RecoverySecConfig { &self.config }
+    pub fn config(&self) -> &RecoverySecConfig {
+        &self.config
+    }
 }
 
 #[cfg(test)]
@@ -735,7 +837,9 @@ mod tests {
         }
     }
 
-    fn default_config() -> RecoverySecConfig { RecoverySecConfig::default() }
+    fn default_config() -> RecoverySecConfig {
+        RecoverySecConfig::default()
+    }
 
     #[test]
     fn recovery_ring_constructs() {
@@ -756,7 +860,10 @@ mod tests {
         let ring = RecoveryRing::new(&default_config()).unwrap();
         let verdict = ring.evaluate(&benign_request());
         assert!(verdict.incident_classification.is_some());
-        assert_eq!(verdict.incident_classification.as_ref().unwrap().severity, "low");
+        assert_eq!(
+            verdict.incident_classification.as_ref().unwrap().severity,
+            "low"
+        );
     }
 
     #[test]

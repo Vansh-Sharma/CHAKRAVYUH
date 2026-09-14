@@ -18,9 +18,10 @@ use serde_json::{json, Value};
 use tower::ServiceExt;
 
 use chakravyuh::{
-    api::{build_router as build_chakravyuh_router, PlatformState}, AgentRing, Config, CrossRingNetwork, ExecutionRing,
-    GovernanceRing, IdentityRing, KeshavDecide, KeshavLearn, KeshavOrchestrate, KeshavRisk,
-    MemoryRing, ReasoningRing, RecoveryRing, ShieldRing, ThreatRing,
+    api::{build_router as build_chakravyuh_router, PlatformState},
+    AgentRing, Config, CrossRingNetwork, ExecutionRing, GovernanceRing, IdentityRing, KeshavDecide,
+    KeshavLearn, KeshavOrchestrate, KeshavRisk, MemoryRing, ReasoningRing, RecoveryRing,
+    ShieldRing, ThreatRing,
 };
 
 // Each test thread gets its own router with its own PlatformState.
@@ -54,14 +55,35 @@ fn build_router() -> axum::Router {
     let orchestrate = KeshavOrchestrate::new(config.keshav.orchestrate.clone());
     let cross_ring = CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
     build_chakravyuh_router(
-        shield, threat, identity, memory, agent, execution, reasoning, governance, recovery_sec,
-        decide, risk, learn, orchestrate, cross_ring, None, None, None, None, None,
+        shield,
+        threat,
+        identity,
+        memory,
+        agent,
+        execution,
+        reasoning,
+        governance,
+        recovery_sec,
+        decide,
+        risk,
+        learn,
+        orchestrate,
+        cross_ring,
+        None,
+        None,
+        None,
+        None,
+        None,
         Some(PlatformState::new()),
     )
 }
 
 async fn get_json(path: &str) -> (StatusCode, Value, String) {
-    let request = Request::builder().method("GET").uri(path).body(Body::empty()).unwrap();
+    let request = Request::builder()
+        .method("GET")
+        .uri(path)
+        .body(Body::empty())
+        .unwrap();
     let response = router().oneshot(request).await.unwrap();
     let status = response.status();
     let ct = response
@@ -82,7 +104,11 @@ async fn get_json(path: &str) -> (StatusCode, Value, String) {
 }
 
 async fn get_text(path: &str) -> (StatusCode, String, String) {
-    let request = Request::builder().method("GET").uri(path).body(Body::empty()).unwrap();
+    let request = Request::builder()
+        .method("GET")
+        .uri(path)
+        .body(Body::empty())
+        .unwrap();
     let response = router().oneshot(request).await.unwrap();
     let status = response.status();
     let ct = response
@@ -124,7 +150,10 @@ async fn test_openapi_json_returns_valid_spec() {
     assert_eq!(status, StatusCode::OK);
     assert!(ct.contains("json"));
     assert_eq!(json["openapi"], "3.1.0");
-    assert_eq!(json["info"]["title"], "CHAKRAVYUH Security Operating System");
+    assert_eq!(
+        json["info"]["title"],
+        "CHAKRAVYUH Security Operating System"
+    );
 }
 
 #[tokio::test]
@@ -183,7 +212,11 @@ async fn test_postman_collection() {
     assert!(ct.contains("json"));
     assert_eq!(json["info"]["name"], "CHAKRAVYUH Security OS");
     let items = json["item"].as_array().unwrap();
-    assert!(items.len() >= 10, "expected at least 10 items, got {}", items.len());
+    assert!(
+        items.len() >= 10,
+        "expected at least 10 items, got {}",
+        items.len()
+    );
 
     // Verify all workflow steps are present
     let names: Vec<&str> = items.iter().filter_map(|i| i["name"].as_str()).collect();
@@ -227,7 +260,10 @@ async fn test_snippets_returns_all_languages() {
 async fn test_snippets_protect_includes_auth() {
     let (_, json, _) = get_json("/snippets").await;
     let endpoints = json["endpoints"].as_array().unwrap();
-    let protect = endpoints.iter().find(|e| e["path"] == "/v1/protect").unwrap();
+    let protect = endpoints
+        .iter()
+        .find(|e| e["path"] == "/v1/protect")
+        .unwrap();
     let curl = protect["snippets"]["curl"].as_str().unwrap();
     assert!(curl.contains("Authorization: Bearer"));
 }
@@ -236,9 +272,15 @@ async fn test_snippets_protect_includes_auth() {
 async fn test_snippets_signup_has_no_auth() {
     let (_, json, _) = get_json("/snippets").await;
     let endpoints = json["endpoints"].as_array().unwrap();
-    let signup = endpoints.iter().find(|e| e["path"] == "/v1/auth/signup").unwrap();
+    let signup = endpoints
+        .iter()
+        .find(|e| e["path"] == "/v1/auth/signup")
+        .unwrap();
     let curl = signup["snippets"]["curl"].as_str().unwrap();
-    assert!(!curl.contains("Authorization"), "signup should not require auth");
+    assert!(
+        !curl.contains("Authorization"),
+        "signup should not require auth"
+    );
 }
 
 #[tokio::test]
@@ -296,7 +338,12 @@ async fn test_list_webhooks_does_not_return_secret() {
     let (token, org_id) = signup_and_create_org().await;
 
     let body = json!({"url": "https://example.com/hook", "events": []});
-    post_json(&format!("/v1/orgs/{}/webhooks", org_id), &body, Some(&token)).await;
+    post_json(
+        &format!("/v1/orgs/{}/webhooks", org_id),
+        &body,
+        Some(&token),
+    )
+    .await;
 
     // List — should not include secrets
     let request = Request::builder()
@@ -311,7 +358,10 @@ async fn test_list_webhooks_does_not_return_secret() {
     let json: Value = serde_json::from_slice(&bytes).unwrap();
     let webhooks = json["webhooks"].as_array().unwrap();
     assert_eq!(webhooks.len(), 1);
-    assert!(webhooks[0]["secret"].is_null(), "secret should not be in list response");
+    assert!(
+        webhooks[0]["secret"].is_null(),
+        "secret should not be in list response"
+    );
 }
 
 #[tokio::test]

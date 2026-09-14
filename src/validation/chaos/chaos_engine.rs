@@ -138,12 +138,18 @@ pub struct ChaosResult {
 impl ChaosResult {
     /// Number of faults that passed (system recovered as expected).
     pub fn pass_count(&self) -> usize {
-        self.fault_results.iter().filter(|r| r.verdict == Verdict::Pass).count()
+        self.fault_results
+            .iter()
+            .filter(|r| r.verdict == Verdict::Pass)
+            .count()
     }
 
     /// Number of faults that failed.
     pub fn fail_count(&self) -> usize {
-        self.fault_results.iter().filter(|r| r.verdict == Verdict::Fail).count()
+        self.fault_results
+            .iter()
+            .filter(|r| r.verdict == Verdict::Fail)
+            .count()
     }
 }
 
@@ -199,9 +205,7 @@ impl ChaosEngine {
         };
 
         if filtered.is_empty() {
-            return Err(
-                "No faults match configured targets; scenario would be empty".to_string()
-            );
+            return Err("No faults match configured targets; scenario would be empty".to_string());
         }
 
         Ok(ChaosScenario::new(
@@ -238,7 +242,8 @@ impl ChaosEngine {
         let mut cascade_map: HashMap<String, Vec<String>> = HashMap::new();
 
         for fault in &scenario.faults {
-            let fr = self.execute_single_fault(fault, &mut recovery_metrics_list, &mut cascade_map)?;
+            let fr =
+                self.execute_single_fault(fault, &mut recovery_metrics_list, &mut cascade_map)?;
 
             // Record evidence for this fault.
             self.record_fault_evidence(&fr, fault, report);
@@ -248,7 +253,12 @@ impl ChaosEngine {
             // Enforce max concurrent faults.
             while self.injector.active_count() >= self.config.max_concurrent_faults {
                 // Release the oldest active fault.
-                let oldest = self.injector.active_faults().iter().find(|f| f.active).cloned();
+                let oldest = self
+                    .injector
+                    .active_faults()
+                    .iter()
+                    .find(|f| f.active)
+                    .cloned();
                 if let Some(active) = oldest {
                     let _ = self.injector.release(&active.injection_id);
                     // Simulate recovery for released fault's target.
@@ -313,8 +323,7 @@ impl ChaosEngine {
 
         // 2. Simulate health impact: mark primary target unhealthy.
         if let Some(target) = fault.fault.primary_target() {
-            self.monitor
-                .sample(target.clone(), false, None, 1.0);
+            self.monitor.sample(target.clone(), false, None, 1.0);
 
             // 3. Simulate cascade for certain fault types.
             if matches!(
@@ -332,9 +341,9 @@ impl ChaosEngine {
             }
 
             // 4. Detect cascades.
-            let cascaded =
-                self.monitor.detect_cascade(target.clone(), &injected_at);
-            let cascade_labels: Vec<String> = cascaded.iter().map(|t| t.label().to_string()).collect();
+            let cascaded = self.monitor.detect_cascade(target.clone(), &injected_at);
+            let cascade_labels: Vec<String> =
+                cascaded.iter().map(|t| t.label().to_string()).collect();
             if !cascade_labels.is_empty() {
                 cascade_map.insert(fault.id.clone(), cascade_labels.clone());
             }
@@ -343,18 +352,14 @@ impl ChaosEngine {
             self.injector.release(&injection_id)?;
 
             // 6. Simulate recovery.
-            self.monitor
-                .sample(target.clone(), true, Some(5), 0.0);
+            self.monitor.sample(target.clone(), true, Some(5), 0.0);
             // Also recover cascade targets.
             for ct in &cascaded {
-                self.monitor
-                    .sample(ct.clone(), true, Some(10), 0.0);
+                self.monitor.sample(ct.clone(), true, Some(10), 0.0);
             }
 
             // 7. Measure recovery time.
-            let recovery_time = self
-                .monitor
-                .recovery_time(target.clone(), &injected_at);
+            let recovery_time = self.monitor.recovery_time(target.clone(), &injected_at);
             let recovered = recovery_time.is_some();
 
             // Detect data loss for state faults.
@@ -364,9 +369,7 @@ impl ChaosEngine {
 
             let verdict = if recovered {
                 Verdict::Pass
-            } else if recovery_time.is_none()
-                && self.config.recovery_timeout_ms > 0
-            {
+            } else if recovery_time.is_none() && self.config.recovery_timeout_ms > 0 {
                 Verdict::Fail
             } else {
                 Verdict::Pass
@@ -383,11 +386,7 @@ impl ChaosEngine {
             };
 
             // Build recovery metrics.
-            let mut rm = RecoveryMetrics::new(
-                &fault.id,
-                &fault_type_str,
-                &target_label,
-            );
+            let mut rm = RecoveryMetrics::new(&fault.id, &fault_type_str, &target_label);
             if let Some(rt) = recovery_time {
                 rm = rm.recovered(rt);
             }
@@ -462,7 +461,12 @@ impl ChaosEngine {
     }
 
     /// Record evidence for a fault result into the validation report.
-    fn record_fault_evidence(&self, result: &FaultResult, fault: &FaultInjection, report: &mut ValidationReport) {
+    fn record_fault_evidence(
+        &self,
+        result: &FaultResult,
+        fault: &FaultInjection,
+        report: &mut ValidationReport,
+    ) {
         let (verdict, evidence) = match result.verdict {
             Verdict::Pass => {
                 let ev = Evidence::pass(
@@ -531,10 +535,15 @@ mod tests {
     use crate::validation::verification::Severity;
 
     fn make_fault_injection(id: &str, fault: FaultType) -> FaultInjection {
-        FaultInjection::new(id, fault, &format!("fault-{}", id), &format!("Test fault {}", id))
-            .expected_behavior("System should recover")
-            .severity(Severity::High)
-            .tag("test")
+        FaultInjection::new(
+            id,
+            fault,
+            &format!("fault-{}", id),
+            &format!("Test fault {}", id),
+        )
+        .expected_behavior("System should recover")
+        .severity(Severity::High)
+        .tag("test")
     }
 
     #[test]
@@ -604,11 +613,8 @@ mod tests {
                 target: FaultTarget::Agent,
             },
         );
-        let scenario = ChaosScenario::new(
-            "single-crash",
-            "Test single crash recovery",
-            vec![fault],
-        );
+        let scenario =
+            ChaosScenario::new("single-crash", "Test single crash recovery", vec![fault]);
 
         let result = engine.execute_scenario(&scenario, &mut report).unwrap();
         assert_eq!(result.fault_results.len(), 1);
@@ -651,7 +657,9 @@ mod tests {
 
         let result = engine.execute_scenario(&scenario, &mut report).unwrap();
         // Network partition should cause cascade.
-        assert!(!result.cascade_map.is_empty() || result.fault_results[0].cascade_targets.is_empty());
+        assert!(
+            !result.cascade_map.is_empty() || result.fault_results[0].cascade_targets.is_empty()
+        );
     }
 
     #[test]

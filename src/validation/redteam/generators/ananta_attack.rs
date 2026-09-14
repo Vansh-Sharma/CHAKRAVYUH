@@ -6,7 +6,9 @@
 //   - OVAPH loop disruption
 //   - Attestation forgery
 
-use crate::validation::redteam::attack_types::{AttackCategory, AttackPayload, AttackPayloadBuilder};
+use crate::validation::redteam::attack_types::{
+    AttackCategory, AttackPayload, AttackPayloadBuilder,
+};
 use crate::validation::redteam::generators::Generator;
 use crate::validation::verification::Severity;
 

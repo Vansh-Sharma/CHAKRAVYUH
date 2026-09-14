@@ -41,8 +41,7 @@ pub use differential_privacy::{
     DifferentialPrivacyEngine as DPEngine, PrivacyAccountant, PrivacyReport as DPReport,
 };
 pub use fedavg::{
-    FedAvgAggregator as Aggregator, GlobalModel as FedGlobalModel,
-    ModelUpdate as FedModelUpdate,
+    FedAvgAggregator as Aggregator, GlobalModel as FedGlobalModel, ModelUpdate as FedModelUpdate,
 };
 pub use model_manager::{
     CheckpointId, FederatedModelManager as ModelManager, ModelDiff,
@@ -421,7 +420,8 @@ impl FederatedOrchestrator {
         let mut sanitized_updates = updates;
         for update in &mut sanitized_updates {
             for weight in &mut update.weights {
-                self.dp_engine.clip_gradients(&mut weight.weights, self.config.privacy.clip_norm);
+                self.dp_engine
+                    .clip_gradients(&mut weight.weights, self.config.privacy.clip_norm);
             }
             for weight in &mut update.weights {
                 self.dp_engine.apply_noise(&mut weight.weights);

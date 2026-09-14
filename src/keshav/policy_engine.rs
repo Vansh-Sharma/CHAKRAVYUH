@@ -23,8 +23,8 @@
 //  10. "challenge_on_memory_mid"    — if Memory challenges, challenge
 //  11. "allow_default"               — if all rings allow, allow
 
-use crate::decision::{Decision, RiskScore};
 use super::decide::AllRingVerdicts;
+use crate::decision::{Decision, RiskScore};
 use crate::shield::ShieldVerdict;
 use crate::threat::ThreatVerdict;
 
@@ -193,7 +193,9 @@ impl PolicyEngine {
         risk: &RiskScore,
     ) -> Option<(Decision, Option<String>, String)> {
         let all = PartialVerdicts {
-            shield, threat, risk,
+            shield,
+            threat,
+            risk,
         };
         self.evaluate_partial(&all)
     }
@@ -236,19 +238,26 @@ impl PolicyEngine {
         match &rule.condition {
             RuleCondition::ShieldDeny => all.shield.decision.is_deny(),
             RuleCondition::ThreatDeny => all.threat.map(|t| t.decision.is_deny()).unwrap_or(false),
-            RuleCondition::ThreatChallenge => all.threat
+            RuleCondition::ThreatChallenge => all
+                .threat
                 .map(|t| matches!(t.decision, Decision::Challenge { .. }))
                 .unwrap_or(false),
-            RuleCondition::IdentityDeny => all.identity.map(|i| i.decision.is_deny()).unwrap_or(false),
-            RuleCondition::IdentityChallenge => all.identity
+            RuleCondition::IdentityDeny => {
+                all.identity.map(|i| i.decision.is_deny()).unwrap_or(false)
+            }
+            RuleCondition::IdentityChallenge => all
+                .identity
                 .map(|i| matches!(i.decision, Decision::Challenge { .. }))
                 .unwrap_or(false),
             RuleCondition::MemoryDeny => all.memory.map(|m| m.decision.is_deny()).unwrap_or(false),
-            RuleCondition::MemoryChallenge => all.memory
+            RuleCondition::MemoryChallenge => all
+                .memory
                 .map(|m| matches!(m.decision, Decision::Challenge { .. }))
                 .unwrap_or(false),
             RuleCondition::AgentDeny => all.agent.map(|a| a.decision.is_deny()).unwrap_or(false),
-            RuleCondition::ExecutionDeny => all.execution.map(|e| e.decision.is_deny()).unwrap_or(false),
+            RuleCondition::ExecutionDeny => {
+                all.execution.map(|e| e.decision.is_deny()).unwrap_or(false)
+            }
             RuleCondition::AllRingsAllow => {
                 all.shield.decision.is_allow()
                     && all.threat.map(|t| t.decision.is_allow()).unwrap_or(true)
@@ -261,32 +270,46 @@ impl PolicyEngine {
         }
     }
 
-    fn apply_action_all(
-        &self,
-        rule: &PolicyRule,
-        all: &AllRingVerdicts<'_>,
-    ) -> Decision {
+    fn apply_action_all(&self, rule: &PolicyRule, all: &AllRingVerdicts<'_>) -> Decision {
         match rule.action {
             RuleAction::PassThrough => {
                 // Return the most restrictive ring's decision.
-                if all.shield.decision.is_deny() { return all.shield.decision.clone(); }
+                if all.shield.decision.is_deny() {
+                    return all.shield.decision.clone();
+                }
                 if let Some(t) = all.threat {
-                    if t.decision.is_deny() { return t.decision.clone(); }
-                    if matches!(t.decision, Decision::Challenge { .. }) { return t.decision.clone(); }
+                    if t.decision.is_deny() {
+                        return t.decision.clone();
+                    }
+                    if matches!(t.decision, Decision::Challenge { .. }) {
+                        return t.decision.clone();
+                    }
                 }
                 if let Some(i) = all.identity {
-                    if i.decision.is_deny() { return i.decision.clone(); }
-                    if matches!(i.decision, Decision::Challenge { .. }) { return i.decision.clone(); }
+                    if i.decision.is_deny() {
+                        return i.decision.clone();
+                    }
+                    if matches!(i.decision, Decision::Challenge { .. }) {
+                        return i.decision.clone();
+                    }
                 }
                 if let Some(m) = all.memory {
-                    if m.decision.is_deny() { return m.decision.clone(); }
-                    if matches!(m.decision, Decision::Challenge { .. }) { return m.decision.clone(); }
+                    if m.decision.is_deny() {
+                        return m.decision.clone();
+                    }
+                    if matches!(m.decision, Decision::Challenge { .. }) {
+                        return m.decision.clone();
+                    }
                 }
                 if let Some(a) = all.agent {
-                    if a.decision.is_deny() { return a.decision.clone(); }
+                    if a.decision.is_deny() {
+                        return a.decision.clone();
+                    }
                 }
                 if let Some(e) = all.execution {
-                    if e.decision.is_deny() { return e.decision.clone(); }
+                    if e.decision.is_deny() {
+                        return e.decision.clone();
+                    }
                 }
                 Decision::Allow
             }
@@ -305,15 +328,15 @@ impl PolicyEngine {
         }
     }
 
-    fn condition_matches_partial(
-        &self,
-        rule: &PolicyRule,
-        partial: &PartialVerdicts<'_>,
-    ) -> bool {
+    fn condition_matches_partial(&self, rule: &PolicyRule, partial: &PartialVerdicts<'_>) -> bool {
         match &rule.condition {
             RuleCondition::ShieldDeny => partial.shield.decision.is_deny(),
-            RuleCondition::ThreatDeny => partial.threat.map(|t| t.decision.is_deny()).unwrap_or(false),
-            RuleCondition::ThreatChallenge => partial.threat
+            RuleCondition::ThreatDeny => partial
+                .threat
+                .map(|t| t.decision.is_deny())
+                .unwrap_or(false),
+            RuleCondition::ThreatChallenge => partial
+                .threat
                 .map(|t| matches!(t.decision, Decision::Challenge { .. }))
                 .unwrap_or(false),
             RuleCondition::IdentityDeny | RuleCondition::IdentityChallenge => false,
@@ -322,23 +345,28 @@ impl PolicyEngine {
             RuleCondition::ExecutionDeny => false,
             RuleCondition::AllRingsAllow => {
                 partial.shield.decision.is_allow()
-                    && partial.threat.map(|t| t.decision.is_allow()).unwrap_or(true)
+                    && partial
+                        .threat
+                        .map(|t| t.decision.is_allow())
+                        .unwrap_or(true)
             }
             RuleCondition::RiskAbove(threshold) => partial.risk.overall >= *threshold,
         }
     }
 
-    fn apply_action_partial(
-        &self,
-        rule: &PolicyRule,
-        partial: &PartialVerdicts<'_>,
-    ) -> Decision {
+    fn apply_action_partial(&self, rule: &PolicyRule, partial: &PartialVerdicts<'_>) -> Decision {
         match rule.action {
             RuleAction::PassThrough => {
-                if partial.shield.decision.is_deny() { return partial.shield.decision.clone(); }
+                if partial.shield.decision.is_deny() {
+                    return partial.shield.decision.clone();
+                }
                 if let Some(t) = partial.threat {
-                    if t.decision.is_deny() { return t.decision.clone(); }
-                    if matches!(t.decision, Decision::Challenge { .. }) { return t.decision.clone(); }
+                    if t.decision.is_deny() {
+                        return t.decision.clone();
+                    }
+                    if matches!(t.decision, Decision::Challenge { .. }) {
+                        return t.decision.clone();
+                    }
                 }
                 Decision::Allow
             }

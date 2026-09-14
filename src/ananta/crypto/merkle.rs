@@ -5,8 +5,8 @@
 //   - Trust Proof Engine: compact proof that N items are unchanged
 //   - Audit: compact proof of log integrity
 
-use crate::ananta::crypto::hashing::{hash_bytes, hash_combined, HashDigest};
 use crate::ananta::config::HashAlgorithm;
+use crate::ananta::crypto::hashing::{hash_bytes, hash_combined, HashDigest};
 use serde::{Deserialize, Serialize};
 
 /// A Merkle tree built from a list of data items.
@@ -123,10 +123,8 @@ impl MerkleTree {
                         path.push((current[i].clone(), false));
                         new_idx = next.len();
                     }
-                    let combined = hash_combined(
-                        &[&current[i].bytes, &current[i + 1].bytes],
-                        &self.algorithm,
-                    );
+                    let combined =
+                        hash_combined(&[&current[i].bytes, &current[i + 1].bytes], &self.algorithm);
                     next.push(combined);
                     i += 2;
                 } else {
@@ -134,10 +132,8 @@ impl MerkleTree {
                         path.push((current[i].clone(), true));
                         new_idx = next.len();
                     }
-                    let combined = hash_combined(
-                        &[&current[i].bytes, &current[i].bytes],
-                        &self.algorithm,
-                    );
+                    let combined =
+                        hash_combined(&[&current[i].bytes, &current[i].bytes], &self.algorithm);
                     next.push(combined);
                     i += 1;
                 }

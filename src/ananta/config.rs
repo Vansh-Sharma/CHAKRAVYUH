@@ -60,8 +60,12 @@ pub struct AnantaConfig {
     pub crypto: CryptoConfig,
 }
 
-fn default_enabled() -> bool { true }
-fn default_state_path() -> String { "./ananta_state".into() }
+fn default_enabled() -> bool {
+    true
+}
+fn default_state_path() -> String {
+    "./ananta_state".into()
+}
 
 impl Default for AnantaConfig {
     fn default() -> Self {
@@ -158,11 +162,21 @@ pub struct SentinelConfig {
     pub trust_state_interval_ms: u64,
 }
 
-fn default_check_interval() -> u64 { 1000 }
-fn default_window_size() -> usize { 1000 }
-fn default_drift_threshold() -> f64 { 3.0 }
-fn default_true() -> bool { true }
-fn default_trust_state_interval() -> u64 { 5000 }
+fn default_check_interval() -> u64 {
+    1000
+}
+fn default_window_size() -> usize {
+    1000
+}
+fn default_drift_threshold() -> f64 {
+    3.0
+}
+fn default_true() -> bool {
+    true
+}
+fn default_trust_state_interval() -> u64 {
+    5000
+}
 
 impl Default for SentinelConfig {
     fn default() -> Self {
@@ -201,10 +215,18 @@ pub struct PhoenixConfig {
     pub action_confidence_threshold: f64,
 }
 
-fn default_max_recovery() -> u32 { 20 }
-fn default_cooldown() -> u64 { 30_000 }
-fn default_history_hours() -> u64 { 168 } // 7 days
-fn default_action_confidence() -> f64 { 0.85 }
+fn default_max_recovery() -> u32 {
+    20
+}
+fn default_cooldown() -> u64 {
+    30_000
+}
+fn default_history_hours() -> u64 {
+    168
+} // 7 days
+fn default_action_confidence() -> f64 {
+    0.85
+}
 
 impl Default for PhoenixConfig {
     fn default() -> Self {
@@ -242,8 +264,12 @@ pub struct AnchorConfig {
     pub encrypted_store: bool,
 }
 
-fn default_manifest_path() -> String { "./ananta_state/manifest.json".into() }
-fn default_key_rotation() -> u64 { 720 } // 30 days
+fn default_manifest_path() -> String {
+    "./ananta_state/manifest.json".into()
+}
+fn default_key_rotation() -> u64 {
+    720
+} // 30 days
 
 impl Default for AnchorConfig {
     fn default() -> Self {
@@ -278,8 +304,12 @@ pub struct AdapterConfig {
     pub adaptation_grace_period_ms: u64,
 }
 
-fn default_max_reconfig() -> u32 { 10 }
-fn default_grace_period() -> u64 { 300_000 } // 5 min
+fn default_max_reconfig() -> u32 {
+    10
+}
+fn default_grace_period() -> u64 {
+    300_000
+} // 5 min
 
 impl Default for AdapterConfig {
     fn default() -> Self {
@@ -312,8 +342,12 @@ pub struct TrustProofConfig {
     pub include_runtime_hashes: bool,
 }
 
-fn default_proof_interval() -> u64 { 5000 }
-fn default_proof_retention() -> usize { 1000 }
+fn default_proof_interval() -> u64 {
+    5000
+}
+fn default_proof_retention() -> usize {
+    1000
+}
 
 impl Default for TrustProofConfig {
     fn default() -> Self {
@@ -342,8 +376,12 @@ pub struct HealthConfig {
     pub prediction_window_secs: u64,
 }
 
-fn default_health_interval() -> u64 { 2000 }
-fn default_prediction_window() -> u64 { 300 } // 5 min
+fn default_health_interval() -> u64 {
+    2000
+}
+fn default_prediction_window() -> u64 {
+    300
+} // 5 min
 
 impl Default for HealthConfig {
     fn default() -> Self {
@@ -371,7 +409,9 @@ pub struct AuditConfig {
     pub chained_entries: bool,
 }
 
-fn default_max_entries() -> usize { 100_000 }
+fn default_max_entries() -> usize {
+    100_000
+}
 
 impl Default for AuditConfig {
     fn default() -> Self {
@@ -402,7 +442,9 @@ pub struct DistributedConfig {
     pub peers: Vec<String>,
 }
 
-fn default_quorum() -> u8 { 3 }
+fn default_quorum() -> u8 {
+    3
+}
 
 impl Default for DistributedConfig {
     fn default() -> Self {
@@ -427,8 +469,12 @@ pub struct CryptoConfig {
     pub kdf_iterations: u32,
 }
 
-fn default_hash_algo() -> HashAlgorithm { HashAlgorithm::Sha256 }
-fn default_kdf_iterations() -> u32 { 100_000 }
+fn default_hash_algo() -> HashAlgorithm {
+    HashAlgorithm::Sha256
+}
+fn default_kdf_iterations() -> u32 {
+    100_000
+}
 
 impl Default for CryptoConfig {
     fn default() -> Self {
@@ -485,7 +531,9 @@ mod tests {
         let mut config = AnantaConfig::default();
         config.sentinel.check_interval_ms = 50;
         let warnings = config.validate();
-        assert!(warnings.iter().any(|w| w.field == "sentinel.check_interval_ms"));
+        assert!(warnings
+            .iter()
+            .any(|w| w.field == "sentinel.check_interval_ms"));
     }
 
     #[test]
@@ -494,7 +542,9 @@ mod tests {
         config.distributed.enabled = true;
         config.distributed.quorum_size = 1;
         let warnings = config.validate();
-        assert!(warnings.iter().any(|w| w.field == "distributed.quorum_size"));
+        assert!(warnings
+            .iter()
+            .any(|w| w.field == "distributed.quorum_size"));
     }
 
     #[test]

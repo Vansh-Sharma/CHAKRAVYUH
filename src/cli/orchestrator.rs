@@ -19,7 +19,7 @@ use crate::error::{Error, Result};
 use super::ananta_status::{self, AnantaStatusConfig};
 use super::audit_export::{self, AuditEntryExport, AuditQuery, ExportFormat as AuditExportFormat};
 use super::benchmark::{self, BenchmarkConfig};
-use super::policy_validate::self;
+use super::policy_validate;
 use super::simulate_attack::{self, SimulateAttackConfig};
 
 // ── Output format ─────────────────────────────────────────────────────────
@@ -214,22 +214,14 @@ impl CliOrchestrator {
             CliCommand::PolicyValidate { file_path } => {
                 self.exec_policy_validate(&file_path, format)
             }
-            CliCommand::Bench { config } => {
-                self.exec_bench(&config, format)
-            }
+            CliCommand::Bench { config } => self.exec_bench(&config, format),
             CliCommand::AuditExport {
                 query,
                 entries,
                 format: export_fmt,
-            } => {
-                self.exec_audit_export(&query, &entries, export_fmt, format)
-            }
-            CliCommand::AnantaStatus { config } => {
-                self.exec_ananta_status(&config, format)
-            }
-            CliCommand::SimulateAttack { config } => {
-                self.exec_simulate_attack(&config, format)
-            }
+            } => self.exec_audit_export(&query, &entries, export_fmt, format),
+            CliCommand::AnantaStatus { config } => self.exec_ananta_status(&config, format),
+            CliCommand::SimulateAttack { config } => self.exec_simulate_attack(&config, format),
         };
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -281,26 +273,30 @@ impl CliOrchestrator {
 
     // ── Command handlers ──────────────────────────────────────────────────
 
-    fn exec_policy_validate(&self, file_path: &str, format: OutputFormat) -> std::result::Result<String, String> {
+    fn exec_policy_validate(
+        &self,
+        file_path: &str,
+        format: OutputFormat,
+    ) -> std::result::Result<String, String> {
         let yaml_str = std::fs::read_to_string(file_path)
             .map_err(|e| format!("failed to read file '{}': {}", file_path, e))?;
 
         let result = policy_validate::PolicyValidator::validate_yaml(&yaml_str);
 
         let output = match format {
-            OutputFormat::Json => {
-                serde_json::to_string_pretty(&result)
-                    .map_err(|e| format!("serialization failed: {}", e))?
-            }
-            OutputFormat::Text | OutputFormat::Table => {
-                format_validation_result(&result)
-            }
+            OutputFormat::Json => serde_json::to_string_pretty(&result)
+                .map_err(|e| format!("serialization failed: {}", e))?,
+            OutputFormat::Text | OutputFormat::Table => format_validation_result(&result),
         };
 
         Ok(output)
     }
 
-    fn exec_bench(&self, config: &BenchmarkConfig, format: OutputFormat) -> std::result::Result<String, String> {
+    fn exec_bench(
+        &self,
+        config: &BenchmarkConfig,
+        format: OutputFormat,
+    ) -> std::result::Result<String, String> {
         let report = benchmark::run_benchmark(config);
         let output = benchmark::format_report(&report, format);
         Ok(output)
@@ -317,13 +313,21 @@ impl CliOrchestrator {
         Ok(output)
     }
 
-    fn exec_ananta_status(&self, config: &AnantaStatusConfig, format: OutputFormat) -> std::result::Result<String, String> {
+    fn exec_ananta_status(
+        &self,
+        config: &AnantaStatusConfig,
+        format: OutputFormat,
+    ) -> std::result::Result<String, String> {
         let report = ananta_status::check_status(config);
         let output = ananta_status::format_status(&report, format);
         Ok(output)
     }
 
-    fn exec_simulate_attack(&self, config: &SimulateAttackConfig, format: OutputFormat) -> std::result::Result<String, String> {
+    fn exec_simulate_attack(
+        &self,
+        config: &SimulateAttackConfig,
+        format: OutputFormat,
+    ) -> std::result::Result<String, String> {
         let result = simulate_attack::run_simulation(config);
         let output = simulate_attack::format_results(&result, format);
         Ok(output)
@@ -362,7 +366,8 @@ fn parse_bench_command(args: &[String]) -> Result<CliCommand> {
                 if i >= args.len() {
                     return Err(Error::Other("--warmup requires a value".into()));
                 }
-                config.warmup_iterations = args[i].parse()
+                config.warmup_iterations = args[i]
+                    .parse()
                     .map_err(|e| Error::Other(format!("invalid warmup value: {}", e)))?;
             }
             "--iterations" | "-n" => {
@@ -370,7 +375,8 @@ fn parse_bench_command(args: &[String]) -> Result<CliCommand> {
                 if i >= args.len() {
                     return Err(Error::Other("--iterations requires a value".into()));
                 }
-                config.measure_iterations = args[i].parse()
+                config.measure_iterations = args[i]
+                    .parse()
                     .map_err(|e| Error::Other(format!("invalid iterations value: {}", e)))?;
             }
             "--ring" => {
@@ -417,7 +423,8 @@ fn parse_audit_command(args: &[String]) -> Result<CliCommand> {
                         if i >= args.len() {
                             return Err(Error::Other("--limit requires a value".into()));
                         }
-                        query.limit = args[i].parse()
+                        query.limit = args[i]
+                            .parse()
                             .map_err(|e| Error::Other(format!("invalid limit: {}", e)))?;
                     }
                     "--severity" => {
@@ -435,7 +442,10 @@ fn parse_audit_command(args: &[String]) -> Result<CliCommand> {
                         query.source_ring_filter = Some(args[i].clone());
                     }
                     other => {
-                        return Err(Error::Other(format!("unknown audit export option: {}", other)));
+                        return Err(Error::Other(format!(
+                            "unknown audit export option: {}",
+                            other
+                        )));
                     }
                 }
                 i += 1;
@@ -474,7 +484,10 @@ fn parse_ananta_command(args: &[String]) -> Result<CliCommand> {
                         config.ananta_config_path = Some(args[i].clone());
                     }
                     other => {
-                        return Err(Error::Other(format!("unknown ananta status option: {}", other)));
+                        return Err(Error::Other(format!(
+                            "unknown ananta status option: {}",
+                            other
+                        )));
                     }
                 }
                 i += 1;
@@ -510,11 +523,15 @@ fn parse_simulate_command(args: &[String]) -> Result<CliCommand> {
                         if i >= args.len() {
                             return Err(Error::Other("--iterations requires a value".into()));
                         }
-                        config.iterations = args[i].parse()
+                        config.iterations = args[i]
+                            .parse()
                             .map_err(|e| Error::Other(format!("invalid iterations: {}", e)))?;
                     }
                     other => {
-                        return Err(Error::Other(format!("unknown simulate attack option: {}", other)));
+                        return Err(Error::Other(format!(
+                            "unknown simulate attack option: {}",
+                            other
+                        )));
                     }
                 }
                 i += 1;
@@ -547,7 +564,10 @@ fn format_validation_result(result: &policy_validate::ValidationResult) -> Strin
         lines.push(String::new());
         lines.push(format!("Errors ({}):", result.errors.len()));
         for issue in &result.errors {
-            lines.push(format!("  [{}] {} @ {}", issue.severity, issue.message, issue.location));
+            lines.push(format!(
+                "  [{}] {} @ {}",
+                issue.severity, issue.message, issue.location
+            ));
             if let Some(ref suggestion) = issue.suggestion {
                 lines.push(format!("    Suggestion: {}", suggestion));
             }
@@ -558,7 +578,10 @@ fn format_validation_result(result: &policy_validate::ValidationResult) -> Strin
         lines.push(String::new());
         lines.push(format!("Warnings ({}):", result.warnings.len()));
         for issue in &result.warnings {
-            lines.push(format!("  [{}] {} @ {}", issue.severity, issue.message, issue.location));
+            lines.push(format!(
+                "  [{}] {} @ {}",
+                issue.severity, issue.message, issue.location
+            ));
         }
     }
 
@@ -600,8 +623,13 @@ mod tests {
     #[test]
     fn test_parse_bench_with_options() {
         let args = vec![
-            "bench".into(), "--warmup".into(), "50".into(),
-            "--iterations".into(), "500".into(), "--ring".into(), "shield".into(),
+            "bench".into(),
+            "--warmup".into(),
+            "50".into(),
+            "--iterations".into(),
+            "500".into(),
+            "--ring".into(),
+            "shield".into(),
         ];
         let cmd = CliOrchestrator::parse_command(&args).unwrap();
         match cmd {
@@ -617,8 +645,12 @@ mod tests {
     #[test]
     fn test_parse_audit_export() {
         let args = vec![
-            "audit".into(), "export".into(), "--format".into(), "csv".into(),
-            "--limit".into(), "100".into(),
+            "audit".into(),
+            "export".into(),
+            "--format".into(),
+            "csv".into(),
+            "--limit".into(),
+            "100".into(),
         ];
         let cmd = CliOrchestrator::parse_command(&args).unwrap();
         match cmd {
@@ -645,8 +677,12 @@ mod tests {
     #[test]
     fn test_parse_simulate_attack() {
         let args = vec![
-            "simulate".into(), "attack".into(), "--scenario".into(),
-            "prompt_injection".into(), "--iterations".into(), "10".into(),
+            "simulate".into(),
+            "attack".into(),
+            "--scenario".into(),
+            "prompt_injection".into(),
+            "--iterations".into(),
+            "10".into(),
         ];
         let cmd = CliOrchestrator::parse_command(&args).unwrap();
         match cmd {
@@ -696,7 +732,10 @@ mod tests {
     fn test_output_format_from_str() {
         assert_eq!("json".parse::<OutputFormat>().unwrap(), OutputFormat::Json);
         assert_eq!("text".parse::<OutputFormat>().unwrap(), OutputFormat::Text);
-        assert_eq!("table".parse::<OutputFormat>().unwrap(), OutputFormat::Table);
+        assert_eq!(
+            "table".parse::<OutputFormat>().unwrap(),
+            OutputFormat::Table
+        );
         assert!("yaml".parse::<OutputFormat>().is_err());
     }
 

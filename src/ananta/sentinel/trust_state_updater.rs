@@ -5,8 +5,7 @@
 
 use crate::ananta::sentinel::drift::{DriftAlert, DriftType};
 use crate::ananta::trust::trust_state::{
-    TrustState, AlertSeverity as TrustAlertSeverity,
-    TrustAlert, AlertType,
+    AlertSeverity as TrustAlertSeverity, AlertType, TrustAlert, TrustState,
 };
 
 /// Maps drift alerts to trust state updates.
@@ -34,8 +33,7 @@ impl TrustStateUpdater {
         let current = state.domain_level(domain);
 
         // Reduce trust proportional to z-score severity.
-        let reduction = self.trust_reduction_per_alert
-            * (alert.z_score.abs() / 10.0).min(1.0);
+        let reduction = self.trust_reduction_per_alert * (alert.z_score.abs() / 10.0).min(1.0);
 
         let new_level = (current - reduction).max(self.min_trust);
         state.set_domain_level(domain, new_level);
@@ -90,7 +88,9 @@ impl TrustStateUpdater {
 }
 
 impl Default for TrustStateUpdater {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[cfg(test)]
@@ -107,7 +107,11 @@ mod tests {
             observed_value: 0.9,
             context: String::new(),
             timestamp: chrono::Utc::now().to_rfc3339(),
-            severity: if z > 6.0 { AlertSeverity::Critical } else { AlertSeverity::Warning },
+            severity: if z > 6.0 {
+                AlertSeverity::Critical
+            } else {
+                AlertSeverity::Warning
+            },
         }
     }
 

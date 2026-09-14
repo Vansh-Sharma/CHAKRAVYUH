@@ -5,11 +5,9 @@
 // and cost. It includes A* path finding with composite heuristics, circuit
 // breaking, multiple load-balancing strategies, and adaptive weight tuning.
 
-use std::cmp::Ordering;
-use std::collections::{
-    BTreeMap, BinaryHeap, HashMap, HashSet, VecDeque,
-};
 use serde::{Deserialize, Serialize};
+use std::cmp::Ordering;
+use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet, VecDeque};
 
 use super::{Node, NodeRole, NodeStatus};
 
@@ -44,12 +42,7 @@ impl Default for RoutingWeights {
 
 impl RoutingWeights {
     /// Create a new RoutingWeights, clamping all values to [0.0, 1.0].
-    pub fn new(
-        latency: f64,
-        trust: f64,
-        load: f64,
-        cost: f64,
-    ) -> Self {
+    pub fn new(latency: f64, trust: f64, load: f64, cost: f64) -> Self {
         Self {
             latency_weight: latency.clamp(0.0, 1.0),
             trust_weight: trust.clamp(0.0, 1.0),
@@ -60,10 +53,7 @@ impl RoutingWeights {
 
     /// Return the sum of all weights (useful for normalization check).
     pub fn total(&self) -> f64 {
-        self.latency_weight
-            + self.trust_weight
-            + self.load_weight
-            + self.cost_weight
+        self.latency_weight + self.trust_weight + self.load_weight + self.cost_weight
     }
 
     /// Return normalized weights that sum to 1.0.
@@ -232,8 +222,7 @@ impl NetworkGraph {
 
     /// Add a coordinate for a node (used in geographic heuristic).
     pub fn set_coordinate(&mut self, node_id: &str, lat: f64, lon: f64) {
-        self.coordinates
-            .insert(node_id.to_string(), (lat, lon));
+        self.coordinates.insert(node_id.to_string(), (lat, lon));
     }
 
     /// Get all outgoing edges from a node.
@@ -260,10 +249,7 @@ impl NetworkGraph {
     /// using their coordinates (Haversine approximation in km).
     /// Returns a default estimate if coordinates are missing.
     pub fn estimated_distance_km(&self, from: &str, to: &str) -> f64 {
-        match (
-            self.coordinates.get(from),
-            self.coordinates.get(to),
-        ) {
+        match (self.coordinates.get(from), self.coordinates.get(to)) {
             (Some(&(lat1, lon1)), Some(&(lat2, lon2))) => {
                 let to_radians = |deg: f64| deg * std::f64::consts::PI / 180.0;
                 let lat1 = to_radians(lat1);
@@ -365,11 +351,7 @@ impl Route {
             }
         }
 
-        let hop_count = if path.len() > 1 {
-            path.len() - 1
-        } else {
-            0
-        };
+        let hop_count = if path.len() > 1 { path.len() - 1 } else { 0 };
 
         let min_trust = trust_scores.iter().cloned().fold(1.0, f64::min);
         let avg_trust = if trust_scores.is_empty() {
@@ -532,7 +514,10 @@ impl PartialOrd for AStarState {
 impl Ord for AStarState {
     fn cmp(&self, other: &Self) -> Ordering {
         // Reverse for min-heap behavior.
-        other.f_cost.partial_cmp(&self.f_cost).unwrap_or(Ordering::Equal)
+        other
+            .f_cost
+            .partial_cmp(&self.f_cost)
+            .unwrap_or(Ordering::Equal)
             .then_with(|| self.node.cmp(&other.node))
     }
 }
@@ -572,19 +557,13 @@ fn heuristic_estimate(
         }
         HeuristicKind::TrustWeighted => {
             let geo = graph.estimated_distance_km(current, goal) / 200.0;
-            let avg_load = node_loads
-                .get(current)
-                .copied()
-                .unwrap_or(0.5);
+            let avg_load = node_loads.get(current).copied().unwrap_or(0.5);
             let trust_penalty = (1.0 - avg_load) * 0.5;
             geo + trust_penalty
         }
         HeuristicKind::LoadBalanced => {
             let geo = graph.estimated_distance_km(current, goal) / 200.0;
-            let load_penalty = node_loads
-                .get(current)
-                .copied()
-                .unwrap_or(0.5)
+            let load_penalty = node_loads.get(current).copied().unwrap_or(0.5)
                 * weights.normalized().load_weight
                 * 2.0;
             geo + load_penalty
@@ -592,10 +571,7 @@ fn heuristic_estimate(
         HeuristicKind::Composite => {
             let norm = weights.normalized();
             let geo = graph.estimated_distance_km(current, goal) / 200.0;
-            let load_penalty = node_loads
-                .get(current)
-                .copied()
-                .unwrap_or(0.5);
+            let load_penalty = node_loads.get(current).copied().unwrap_or(0.5);
             let trust_penalty = (1.0 - load_penalty) * 0.3;
             norm.latency_weight * geo
                 + norm.trust_weight * trust_penalty
@@ -678,11 +654,7 @@ pub fn astar_search(
 
     while let Some(current) = open.pop() {
         if current.node == goal {
-            let route = Route::from_path(
-                current.path,
-                &graph.adjacency,
-                weights,
-            );
+            let route = Route::from_path(current.path, &graph.adjacency, weights);
             return AStarResult {
                 path: Some(route),
                 nodes_expanded,
@@ -736,11 +708,7 @@ pub fn astar_search(
         if beam_width > 0 && open.len() > beam_width {
             let pruned: Vec<AStarState> = open.drain().collect();
             let mut best = pruned;
-            best.sort_by(|a, b| {
-                a.f_cost
-                    .partial_cmp(&b.f_cost)
-                    .unwrap_or(Ordering::Equal)
-            });
+            best.sort_by(|a, b| a.f_cost.partial_cmp(&b.f_cost).unwrap_or(Ordering::Equal));
             for item in best.into_iter().take(beam_width) {
                 open.push(item);
             }
@@ -937,8 +905,8 @@ impl CircuitBreaker {
             }
             CircuitState::HalfOpen => {
                 // Any failure in half-open re-opens the circuit.
-                self.backoff_exponent = (self.backoff_exponent + 1)
-                    .min(self.config.backoff_max_multiplier);
+                self.backoff_exponent =
+                    (self.backoff_exponent + 1).min(self.config.backoff_max_multiplier);
                 self.transition_to(CircuitState::Open);
             }
             CircuitState::Open => {
@@ -1223,17 +1191,8 @@ impl NodeLoadTracker {
 
     /// Get the effective load for a node: combine request count and reported load.
     pub fn effective_load(&self, node_id: &str) -> f64 {
-        let request_load = self
-            .request_counts
-            .get(node_id)
-            .copied()
-            .unwrap_or(0) as f64
-            / 100.0; // Normalize: 100 requests = full load
-        let reported = self
-            .reported_loads
-            .get(node_id)
-            .copied()
-            .unwrap_or(0.0);
+        let request_load = self.request_counts.get(node_id).copied().unwrap_or(0) as f64 / 100.0; // Normalize: 100 requests = full load
+        let reported = self.reported_loads.get(node_id).copied().unwrap_or(0.0);
         (request_load + reported) / 2.0
     }
 }
@@ -1291,24 +1250,15 @@ impl LoadBalancer {
             LoadBalanceStrategy::RoundRobinTrustWeighted => {
                 self.select_round_robin_trust(candidates)
             }
-            LoadBalanceStrategy::LeastLoaded => {
-                self.select_least_loaded(candidates)
-            }
-            LoadBalanceStrategy::PowerOfTwoChoices => {
-                self.select_power_of_two(candidates)
-            }
-            LoadBalanceStrategy::ConsistentHash => {
-                self.select_consistent_hash(candidates)
-            }
+            LoadBalanceStrategy::LeastLoaded => self.select_least_loaded(candidates),
+            LoadBalanceStrategy::PowerOfTwoChoices => self.select_power_of_two(candidates),
+            LoadBalanceStrategy::ConsistentHash => self.select_consistent_hash(candidates),
         }
     }
 
     /// Round-robin with trust weighting: iterate through candidates,
     /// but weight selection probability by trust score.
-    fn select_round_robin_trust(
-        &mut self,
-        candidates: &[String],
-    ) -> Option<String> {
+    fn select_round_robin_trust(&mut self, candidates: &[String]) -> Option<String> {
         if candidates.is_empty() {
             return None;
         }
@@ -1318,13 +1268,7 @@ impl LoadBalancer {
         // more often by expanding their slot.
         let weights: Vec<f64> = candidates
             .iter()
-            .map(|id| {
-                self.tracker
-                    .trust_scores
-                    .get(id)
-                    .copied()
-                    .unwrap_or(0.5)
-            })
+            .map(|id| self.tracker.trust_scores.get(id).copied().unwrap_or(0.5))
             .collect();
 
         let total_weight: f64 = weights.iter().sum();
@@ -1336,10 +1280,7 @@ impl LoadBalancer {
         }
 
         // Weighted selection using cumulative distribution.
-        let normalized: Vec<f64> = weights
-            .iter()
-            .map(|w| w / total_weight)
-            .collect();
+        let normalized: Vec<f64> = weights.iter().map(|w| w / total_weight).collect();
 
         // Use the rr_index to pick a slot.
         let slot = self.tracker.rr_index;
@@ -1585,10 +1526,8 @@ impl AdaptiveWeightTuner {
         avg_load_violation /= n;
         avg_cost_violation /= n;
 
-        let total_violation = avg_latency_violation
-            + avg_trust_violation
-            + avg_load_violation
-            + avg_cost_violation;
+        let total_violation =
+            avg_latency_violation + avg_trust_violation + avg_load_violation + avg_cost_violation;
 
         if total_violation < 0.01 {
             // SLA is being met well; no adjustment needed.
@@ -1598,26 +1537,20 @@ impl AdaptiveWeightTuner {
 
         // Gradient-like step: increase weight for the most-violated dimension.
         let lr = self.learning_rate;
-        let new_latency = (self.weights.latency_weight
-            + lr * avg_latency_violation
+        let new_latency = (self.weights.latency_weight + lr * avg_latency_violation
             - lr * self.smoothing * (1.0 - avg_latency_violation))
             .clamp(0.05, 0.8);
-        let new_trust = (self.weights.trust_weight
-            + lr * avg_trust_violation
+        let new_trust = (self.weights.trust_weight + lr * avg_trust_violation
             - lr * self.smoothing * (1.0 - avg_trust_violation))
             .clamp(0.05, 0.8);
-        let new_load = (self.weights.load_weight
-            + lr * avg_load_violation
+        let new_load = (self.weights.load_weight + lr * avg_load_violation
             - lr * self.smoothing * (1.0 - avg_load_violation))
             .clamp(0.05, 0.8);
-        let new_cost = (self.weights.cost_weight
-            + lr * avg_cost_violation
+        let new_cost = (self.weights.cost_weight + lr * avg_cost_violation
             - lr * self.smoothing * (1.0 - avg_cost_violation))
             .clamp(0.05, 0.8);
 
-        self.weights = RoutingWeights::new(
-            new_latency, new_trust, new_load, new_cost,
-        );
+        self.weights = RoutingWeights::new(new_latency, new_trust, new_load, new_cost);
         self.iterations += 1;
         self.weights.clone()
     }
@@ -1629,24 +1562,13 @@ impl AdaptiveWeightTuner {
             return 0.0;
         }
         let len = self.observations.len();
-        let first_half: Vec<_> =
-            self.observations.iter().take(len / 2).collect();
-        let second_half: Vec<_> = self
-            .observations
-            .iter()
-            .skip(len / 2)
-            .collect();
+        let first_half: Vec<_> = self.observations.iter().take(len / 2).collect();
+        let second_half: Vec<_> = self.observations.iter().skip(len / 2).collect();
 
-        let avg_first: f64 = first_half
-            .iter()
-            .map(|o| o.latency_ms)
-            .sum::<f64>()
-            / first_half.len() as f64;
-        let avg_second: f64 = second_half
-            .iter()
-            .map(|o| o.latency_ms)
-            .sum::<f64>()
-            / second_half.len() as f64;
+        let avg_first: f64 =
+            first_half.iter().map(|o| o.latency_ms).sum::<f64>() / first_half.len() as f64;
+        let avg_second: f64 =
+            second_half.iter().map(|o| o.latency_ms).sum::<f64>() / second_half.len() as f64;
 
         // Positive = degrading, negative = improving.
         (avg_second - avg_first) / avg_first.max(1.0)
@@ -1658,24 +1580,13 @@ impl AdaptiveWeightTuner {
             return 0.0;
         }
         let len = self.observations.len();
-        let first_half: Vec<_> =
-            self.observations.iter().take(len / 2).collect();
-        let second_half: Vec<_> = self
-            .observations
-            .iter()
-            .skip(len / 2)
-            .collect();
+        let first_half: Vec<_> = self.observations.iter().take(len / 2).collect();
+        let second_half: Vec<_> = self.observations.iter().skip(len / 2).collect();
 
-        let avg_first: f64 = first_half
-            .iter()
-            .map(|o| o.trust_score)
-            .sum::<f64>()
-            / first_half.len() as f64;
-        let avg_second: f64 = second_half
-            .iter()
-            .map(|o| o.trust_score)
-            .sum::<f64>()
-            / second_half.len() as f64;
+        let avg_first: f64 =
+            first_half.iter().map(|o| o.trust_score).sum::<f64>() / first_half.len() as f64;
+        let avg_second: f64 =
+            second_half.iter().map(|o| o.trust_score).sum::<f64>() / second_half.len() as f64;
 
         // Negative = degrading trust, positive = improving.
         (avg_second - avg_first) / avg_first.max(0.01)
@@ -1810,12 +1721,7 @@ impl AdaptiveRouter {
         let node_loads: HashMap<String, f64> = self
             .known_nodes
             .keys()
-            .map(|id| {
-                (
-                    id.clone(),
-                    self.load_balancer.tracker.effective_load(id),
-                )
-            })
+            .map(|id| (id.clone(), self.load_balancer.tracker.effective_load(id)))
             .collect();
 
         let result = astar_multi_heuristic(
@@ -1847,22 +1753,13 @@ impl AdaptiveRouter {
     }
 
     /// Find all Pareto-optimal routes from source to destination.
-    pub fn find_pareto_routes(
-        &mut self,
-        source: &str,
-        destination: &str,
-    ) -> Vec<Route> {
+    pub fn find_pareto_routes(&mut self, source: &str, destination: &str) -> Vec<Route> {
         let mut all_routes = Vec::new();
         let blocked = self.blocked_nodes();
         let node_loads: HashMap<String, f64> = self
             .known_nodes
             .keys()
-            .map(|id| {
-                (
-                    id.clone(),
-                    self.load_balancer.tracker.effective_load(id),
-                )
-            })
+            .map(|id| (id.clone(), self.load_balancer.tracker.effective_load(id)))
             .collect();
 
         // Run A* with each heuristic.
@@ -1889,7 +1786,10 @@ impl AdaptiveRouter {
             if let Some(route) = result.path {
                 // Avoid duplicates.
                 let path_str = route.nodes.join("->");
-                if !all_routes.iter().any(|r: &Route| r.nodes.join("->") == path_str) {
+                if !all_routes
+                    .iter()
+                    .any(|r: &Route| r.nodes.join("->") == path_str)
+                {
                     all_routes.push(route);
                 }
             }
@@ -2414,16 +2314,7 @@ mod tests {
         let weights = default_weights();
         let blocked = HashSet::new();
         let loads = HashMap::new();
-        let result = astar_multi_heuristic(
-            &graph,
-            "A",
-            "D",
-            &weights,
-            15,
-            0,
-            &loads,
-            &blocked,
-        );
+        let result = astar_multi_heuristic(&graph, "A", "D", &weights, 15, 0, &loads, &blocked);
         assert!(result.path.is_some());
     }
 
@@ -2614,10 +2505,7 @@ mod tests {
     #[test]
     fn test_lb_single_candidate() {
         let mut lb = LoadBalancer::new(LoadBalanceStrategy::LeastLoaded);
-        assert_eq!(
-            lb.select(&["only".to_string()]),
-            Some("only".to_string())
-        );
+        assert_eq!(lb.select(&["only".to_string()]), Some("only".to_string()));
     }
 
     // ---------------------------------------------------------------
@@ -2625,30 +2513,16 @@ mod tests {
     // ---------------------------------------------------------------
     #[test]
     fn test_tuner_records_observations() {
-        let mut tuner = AdaptiveWeightTuner::new(
-            default_weights(),
-            SlaTarget::default(),
-            10,
-            0.05,
-        );
-        tuner.record_observation(RouteObservation::new(
-            50.0, 0.9, 0.2, 1.0, 0.1,
-        ));
+        let mut tuner = AdaptiveWeightTuner::new(default_weights(), SlaTarget::default(), 10, 0.05);
+        tuner.record_observation(RouteObservation::new(50.0, 0.9, 0.2, 1.0, 0.1));
         assert_eq!(tuner.observations.len(), 1);
     }
 
     #[test]
     fn test_tuner_window_eviction() {
-        let mut tuner = AdaptiveWeightTuner::new(
-            default_weights(),
-            SlaTarget::default(),
-            3,
-            0.05,
-        );
+        let mut tuner = AdaptiveWeightTuner::new(default_weights(), SlaTarget::default(), 3, 0.05);
         for i in 0..5 {
-            tuner.record_observation(RouteObservation::new(
-                50.0 + i as f64, 0.9, 0.2, 1.0, 0.1,
-            ));
+            tuner.record_observation(RouteObservation::new(50.0 + i as f64, 0.9, 0.2, 1.0, 0.1));
         }
         assert_eq!(tuner.observations.len(), 3);
     }
@@ -2679,17 +2553,10 @@ mod tests {
 
     #[test]
     fn test_tuner_no_tune_when_sla_met() {
-        let mut tuner = AdaptiveWeightTuner::new(
-            default_weights(),
-            SlaTarget::default(),
-            10,
-            0.05,
-        );
+        let mut tuner = AdaptiveWeightTuner::new(default_weights(), SlaTarget::default(), 10, 0.05);
         // All observations well within SLA.
         for _ in 0..5 {
-            tuner.record_observation(RouteObservation::new(
-                10.0, 0.99, 0.1, 0.5, 0.05,
-            ));
+            tuner.record_observation(RouteObservation::new(10.0, 0.99, 0.1, 0.5, 0.05));
         }
         let w_before = tuner.weights.clone();
         tuner.tune();
@@ -2699,16 +2566,15 @@ mod tests {
 
     #[test]
     fn test_tuner_latency_trend() {
-        let mut tuner = AdaptiveWeightTuner::new(
-            default_weights(),
-            SlaTarget::default(),
-            10,
-            0.05,
-        );
+        let mut tuner = AdaptiveWeightTuner::new(default_weights(), SlaTarget::default(), 10, 0.05);
         // Improving latency.
         for i in 0..8 {
             tuner.record_observation(RouteObservation::new(
-                100.0 - i as f64 * 10.0, 0.9, 0.2, 1.0, 0.1,
+                100.0 - i as f64 * 10.0,
+                0.9,
+                0.2,
+                1.0,
+                0.1,
             ));
         }
         let trend = tuner.latency_trend();
@@ -2735,12 +2601,8 @@ mod tests {
     #[test]
     fn test_router_records_outcome_and_tunes() {
         let mut router = AdaptiveRouter::new(default_config());
-        router.record_route_outcome(RouteObservation::new(
-            150.0, 0.8, 0.3, 2.0, 0.5,
-        ));
-        router.record_route_outcome(RouteObservation::new(
-            180.0, 0.7, 0.4, 2.5, 0.6,
-        ));
+        router.record_route_outcome(RouteObservation::new(150.0, 0.8, 0.3, 2.0, 0.5));
+        router.record_route_outcome(RouteObservation::new(180.0, 0.7, 0.4, 2.5, 0.6));
         let w = router.tune_weights();
         assert!(w.total() > 0.0);
     }
@@ -2789,10 +2651,7 @@ mod tests {
         for _ in 0..5 {
             router.record_failure("n1");
         }
-        let selected = router.select_next_hop(&[
-            "n1".to_string(),
-            "n2".to_string(),
-        ]);
+        let selected = router.select_next_hop(&["n1".to_string(), "n2".to_string()]);
         assert_eq!(selected, Some("n2".to_string()));
     }
 

@@ -186,20 +186,25 @@ struct ConsensusRound {
 impl DistributedManager {
     /// Create a new distributed manager.
     pub fn new(config: DistributedConfig) -> Self {
-        let self_node_id = config.node_id.clone()
+        let self_node_id = config
+            .node_id
+            .clone()
             .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
         // Register self as a node.
         let mut nodes = HashMap::new();
-        nodes.insert(self_node_id.clone(), Node {
-            node_id: self_node_id.clone(),
-            address: "self".into(),
-            status: NodeStatus::Active,
-            last_heartbeat: chrono::Utc::now().to_rfc3339(),
-            trust_score: 1.0,
-            reported_trust_state: None,
-            role: NodeRole::Leader,
-        });
+        nodes.insert(
+            self_node_id.clone(),
+            Node {
+                node_id: self_node_id.clone(),
+                address: "self".into(),
+                status: NodeStatus::Active,
+                last_heartbeat: chrono::Utc::now().to_rfc3339(),
+                trust_score: 1.0,
+                reported_trust_state: None,
+                role: NodeRole::Leader,
+            },
+        );
 
         Self {
             config,
@@ -212,15 +217,18 @@ impl DistributedManager {
 
     /// Register a peer node.
     pub fn register_node(&mut self, node_id: &str, address: &str, role: NodeRole) {
-        self.nodes.insert(node_id.into(), Node {
-            node_id: node_id.into(),
-            address: address.into(),
-            status: NodeStatus::Joining,
-            last_heartbeat: chrono::Utc::now().to_rfc3339(),
-            trust_score: 0.5, // New nodes start with partial trust.
-            reported_trust_state: None,
-            role,
-        });
+        self.nodes.insert(
+            node_id.into(),
+            Node {
+                node_id: node_id.into(),
+                address: address.into(),
+                status: NodeStatus::Joining,
+                last_heartbeat: chrono::Utc::now().to_rfc3339(),
+                trust_score: 0.5, // New nodes start with partial trust.
+                reported_trust_state: None,
+                role,
+            },
+        );
     }
 
     /// Record a heartbeat from a node.
@@ -287,18 +295,34 @@ impl DistributedManager {
     ///
     /// Returns the consensus result.
     pub fn tally(&self, round_id: &str) -> Result<ConsensusResult, String> {
-        let round = self.rounds.get(round_id)
+        let round = self
+            .rounds
+            .get(round_id)
             .ok_or_else(|| format!("round '{}' not found", round_id))?;
 
-        let approve_count = round.votes.iter().filter(|v| v.decision == VoteDecision::Approve).count();
-        let reject_count = round.votes.iter().filter(|v| v.decision == VoteDecision::Reject).count();
-        let abstain_count = round.votes.iter().filter(|v| v.decision == VoteDecision::Abstain).count();
+        let approve_count = round
+            .votes
+            .iter()
+            .filter(|v| v.decision == VoteDecision::Approve)
+            .count();
+        let reject_count = round
+            .votes
+            .iter()
+            .filter(|v| v.decision == VoteDecision::Reject)
+            .count();
+        let abstain_count = round
+            .votes
+            .iter()
+            .filter(|v| v.decision == VoteDecision::Abstain)
+            .count();
         let total_voters = round.votes.len();
 
         let quorum_reached = (approve_count as u8) >= round.required_quorum;
 
         // Aggregate trust from approvers.
-        let approver_trust: f64 = round.votes.iter()
+        let approver_trust: f64 = round
+            .votes
+            .iter()
             .filter(|v| v.decision == VoteDecision::Approve)
             .map(|v| v.trust_level)
             .sum();
@@ -337,18 +361,24 @@ impl DistributedManager {
 
     /// Get active node count.
     pub fn active_count(&self) -> usize {
-        self.nodes.values().filter(|n| n.status == NodeStatus::Active).count()
+        self.nodes
+            .values()
+            .filter(|n| n.status == NodeStatus::Active)
+            .count()
     }
 
     /// Add a federation link.
     pub fn add_federation(&mut self, cluster_id: &str, endpoint: &str) {
-        self.federation.insert(cluster_id.into(), FederationLink {
-            cluster_id: cluster_id.into(),
-            endpoint: endpoint.into(),
-            trust_level: 0.5,
-            last_sync: chrono::Utc::now().to_rfc3339(),
-            status: FederationStatus::Connected,
-        });
+        self.federation.insert(
+            cluster_id.into(),
+            FederationLink {
+                cluster_id: cluster_id.into(),
+                endpoint: endpoint.into(),
+                trust_level: 0.5,
+                last_sync: chrono::Utc::now().to_rfc3339(),
+                status: FederationStatus::Connected,
+            },
+        );
     }
 
     /// Get federation links.
@@ -363,7 +393,9 @@ impl DistributedManager {
 
     /// Compute aggregate trust across all active nodes.
     pub fn aggregate_trust(&self) -> f64 {
-        let active: Vec<&Node> = self.nodes.values()
+        let active: Vec<&Node> = self
+            .nodes
+            .values()
             .filter(|n| n.status == NodeStatus::Active)
             .collect();
 
@@ -430,22 +462,28 @@ mod tests {
         let mut mgr = DistributedManager::new(test_config());
         let round_id = mgr.start_round("trust_level_ok");
 
-        mgr.cast_vote(&round_id, Vote {
-            voter_id: "node-1".into(),
-            round_id: round_id.clone(),
-            decision: VoteDecision::Approve,
-            trust_level: 0.9,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            reason: Some("trust is good".into()),
-        });
-        mgr.cast_vote(&round_id, Vote {
-            voter_id: "node-2".into(),
-            round_id: round_id.clone(),
-            decision: VoteDecision::Approve,
-            trust_level: 0.85,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            reason: None,
-        });
+        mgr.cast_vote(
+            &round_id,
+            Vote {
+                voter_id: "node-1".into(),
+                round_id: round_id.clone(),
+                decision: VoteDecision::Approve,
+                trust_level: 0.9,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                reason: Some("trust is good".into()),
+            },
+        );
+        mgr.cast_vote(
+            &round_id,
+            Vote {
+                voter_id: "node-2".into(),
+                round_id: round_id.clone(),
+                decision: VoteDecision::Approve,
+                trust_level: 0.85,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                reason: None,
+            },
+        );
 
         let result = mgr.tally(&round_id).unwrap();
         assert_eq!(result.decision, ConsensusDecision::Approved);
@@ -458,14 +496,17 @@ mod tests {
         let mut mgr = DistributedManager::new(test_config());
         let round_id = mgr.start_round("test");
 
-        mgr.cast_vote(&round_id, Vote {
-            voter_id: "node-1".into(),
-            round_id: round_id.clone(),
-            decision: VoteDecision::Approve,
-            trust_level: 0.9,
-            timestamp: chrono::Utc::now().to_rfc3339(),
-            reason: None,
-        });
+        mgr.cast_vote(
+            &round_id,
+            Vote {
+                voter_id: "node-1".into(),
+                round_id: round_id.clone(),
+                decision: VoteDecision::Approve,
+                trust_level: 0.9,
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                reason: None,
+            },
+        );
 
         let result = mgr.tally(&round_id).unwrap();
         assert_eq!(result.decision, ConsensusDecision::NoQuorum);
@@ -506,7 +547,10 @@ mod tests {
         let mut mgr = DistributedManager::new(test_config());
         mgr.add_federation("cluster-b", "https://cluster-b.example.com");
         assert!(mgr.federation().contains_key("cluster-b"));
-        assert_eq!(mgr.federation()["cluster-b"].status, FederationStatus::Connected);
+        assert_eq!(
+            mgr.federation()["cluster-b"].status,
+            FederationStatus::Connected
+        );
     }
 
     #[test]

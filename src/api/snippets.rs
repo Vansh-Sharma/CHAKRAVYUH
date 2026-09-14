@@ -104,9 +104,15 @@ fn generate_python(method: &str, path: &str, body: &Value) -> String {
     if needs_body {
         let body_str = serde_json::to_string_pretty(body).unwrap_or_default();
         s.push_str(&format!("payload = {}\n\n", body_str));
-        s.push_str(&format!("response = requests.{}(url, headers=headers, json=payload)\n", method.to_lowercase()));
+        s.push_str(&format!(
+            "response = requests.{}(url, headers=headers, json=payload)\n",
+            method.to_lowercase()
+        ));
     } else {
-        s.push_str(&format!("response = requests.{}(url, headers=headers)\n", method.to_lowercase()));
+        s.push_str(&format!(
+            "response = requests.{}(url, headers=headers)\n",
+            method.to_lowercase()
+        ));
     }
     s.push_str("print(response.status_code)\nprint(response.json())\n");
     s
@@ -130,9 +136,15 @@ fn generate_typescript(method: &str, path: &str, body: &Value) -> String {
     if needs_body {
         let body_str = serde_json::to_string_pretty(body).unwrap_or_default();
         s.push_str(&format!("  const body = JSON.stringify({});\n\n", body_str));
-        s.push_str(&format!("  const res = await fetch(url, {{ method: \"{}\", headers, body }});\n", method));
+        s.push_str(&format!(
+            "  const res = await fetch(url, {{ method: \"{}\", headers, body }});\n",
+            method
+        ));
     } else {
-        s.push_str(&format!("  const res = await fetch(url, {{ method: \"{}\", headers }});\n", method));
+        s.push_str(&format!(
+            "  const res = await fetch(url, {{ method: \"{}\", headers }});\n",
+            method
+        ));
     }
     s.push_str("  const data = await res.json();\n");
     s.push_str("  console.log(res.status, data);\n");
@@ -151,9 +163,15 @@ fn generate_go(method: &str, path: &str, body: &Value) -> String {
     if needs_body {
         let body_str = serde_json::to_string(body).unwrap_or_default();
         s.push_str(&format!("    body := strings.NewReader(`{}`)\n", body_str));
-        s.push_str(&format!("    req, _ := http.NewRequest(\"{}\", url, body)\n", method));
+        s.push_str(&format!(
+            "    req, _ := http.NewRequest(\"{}\", url, body)\n",
+            method
+        ));
     } else {
-        s.push_str(&format!("    req, _ := http.NewRequest(\"{}\", url, nil)\n", method));
+        s.push_str(&format!(
+            "    req, _ := http.NewRequest(\"{}\", url, nil)\n",
+            method
+        ));
     }
     if needs_auth {
         s.push_str("    req.Header.Set(\"Authorization\", \"Bearer \"+apiKey)\n");
@@ -188,7 +206,10 @@ mod tests {
     fn curl_includes_auth_header_for_protected_endpoints() {
         let s = snippets_json();
         let endpoints = s["endpoints"].as_array().unwrap();
-        let protect = endpoints.iter().find(|e| e["path"] == "/v1/protect").unwrap();
+        let protect = endpoints
+            .iter()
+            .find(|e| e["path"] == "/v1/protect")
+            .unwrap();
         let curl = protect["snippets"]["curl"].as_str().unwrap();
         assert!(curl.contains("Authorization: Bearer"));
     }
@@ -197,9 +218,15 @@ mod tests {
     fn curl_omits_auth_for_signup() {
         let s = snippets_json();
         let endpoints = s["endpoints"].as_array().unwrap();
-        let signup = endpoints.iter().find(|e| e["path"] == "/v1/auth/signup").unwrap();
+        let signup = endpoints
+            .iter()
+            .find(|e| e["path"] == "/v1/auth/signup")
+            .unwrap();
         let curl = signup["snippets"]["curl"].as_str().unwrap();
-        assert!(!curl.contains("Authorization"), "signup should not require auth");
+        assert!(
+            !curl.contains("Authorization"),
+            "signup should not require auth"
+        );
     }
 
     #[test]

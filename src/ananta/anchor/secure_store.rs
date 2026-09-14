@@ -26,8 +26,7 @@ impl SecureStore {
     pub fn new(password: &str, base_path: &str) -> Result<Self, String> {
         let path = PathBuf::from(base_path);
         if !path.exists() {
-            std::fs::create_dir_all(&path)
-                .map_err(|e| format!("secure_store mkdir: {}", e))?;
+            std::fs::create_dir_all(&path).map_err(|e| format!("secure_store mkdir: {}", e))?;
         }
         Ok(Self {
             password: password.into(),
@@ -47,8 +46,7 @@ impl SecureStore {
         std::fs::create_dir_all(&self.base_path)
             .map_err(|e| format!("secure_store ensure_dir: {}", e))?;
         let file_path = self.file_path(key);
-        std::fs::write(&file_path, json)
-            .map_err(|e| format!("secure_store write: {}", e))?;
+        std::fs::write(&file_path, json).map_err(|e| format!("secure_store write: {}", e))?;
         self.cache.insert(key.into(), value.to_vec());
         Ok(())
     }
@@ -67,10 +65,10 @@ impl SecureStore {
         if !file_path.exists() {
             return Ok(None);
         }
-        let json = std::fs::read_to_string(&file_path)
-            .map_err(|e| format!("secure_store read: {}", e))?;
-        let encrypted: EncryptedPayload = serde_json::from_str(&json)
-            .map_err(|e| format!("secure_store deserialize: {}", e))?;
+        let json =
+            std::fs::read_to_string(&file_path).map_err(|e| format!("secure_store read: {}", e))?;
+        let encrypted: EncryptedPayload =
+            serde_json::from_str(&json).map_err(|e| format!("secure_store deserialize: {}", e))?;
         let value = encryption::decrypt(&self.password, &encrypted)
             .map_err(|e| format!("secure_store decrypt: {}", e))?;
         self.cache.insert(key.into(), value.clone());
@@ -80,8 +78,9 @@ impl SecureStore {
     /// Retrieve a string value.
     pub fn get_string(&mut self, key: &str) -> Result<Option<String>, String> {
         match self.get(key)? {
-            Some(bytes) => Ok(Some(String::from_utf8(bytes)
-                .map_err(|e| format!("secure_store utf8: {}", e))?)),
+            Some(bytes) => Ok(Some(
+                String::from_utf8(bytes).map_err(|e| format!("secure_store utf8: {}", e))?,
+            )),
             None => Ok(None),
         }
     }
@@ -90,8 +89,7 @@ impl SecureStore {
     pub fn delete(&mut self, key: &str) -> Result<(), String> {
         let file_path = self.file_path(key);
         if file_path.exists() {
-            std::fs::remove_file(&file_path)
-                .map_err(|e| format!("secure_store delete: {}", e))?;
+            std::fs::remove_file(&file_path).map_err(|e| format!("secure_store delete: {}", e))?;
         }
         self.cache.remove(key);
         Ok(())
@@ -119,10 +117,8 @@ impl SecureStore {
         // 2. Extract only the last safe filename component
         // 3. Strip any remaining non-alphanumeric chars (except _ and -)
         // 4. Verify the resolved path stays within base_path (canonicalize check)
-        let is_dangerous = key.contains('\0')
-            || key.contains('/')
-            || key.contains('\\')
-            || key.contains("..");
+        let is_dangerous =
+            key.contains('\0') || key.contains('/') || key.contains('\\') || key.contains("..");
 
         let safe_key = if is_dangerous {
             // Take only the last path component, filtering out traversal segments
@@ -144,8 +140,8 @@ impl SecureStore {
             if let Ok(base_resolved) = self.base_path.canonicalize() {
                 if !resolved.starts_with(&base_resolved) {
                     // Path escapes base_path — use fully sanitized fallback
-                    let clean = key
-                        .replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
+                    let clean =
+                        key.replace(|c: char| !c.is_alphanumeric() && c != '_' && c != '-', "_");
                     return self.base_path.join(format!("{}.enc", clean));
                 }
             }
@@ -220,7 +216,9 @@ mod tests {
     #[test]
     fn path_traversal_prevented() {
         let (mut store, dir) = temp_store();
-        store.put_string("../../etc/passwd", "hack attempt").unwrap();
+        store
+            .put_string("../../etc/passwd", "hack attempt")
+            .unwrap();
         let keys = store.list_keys();
         // The key should be sanitized.
         assert!(!keys.iter().any(|k| k.contains("..")));

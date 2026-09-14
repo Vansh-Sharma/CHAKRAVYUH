@@ -185,8 +185,14 @@ impl Combinator {
 
         // Compute per-ring and per-category counts.
         for s in &scenarios {
-            *stats.scenarios_per_ring.entry(s.target_ring.clone()).or_insert(0) += 1;
-            *stats.scenarios_per_category.entry(s.attack_category.clone()).or_insert(0) += 1;
+            *stats
+                .scenarios_per_ring
+                .entry(s.target_ring.clone())
+                .or_insert(0) += 1;
+            *stats
+                .scenarios_per_category
+                .entry(s.attack_category.clone())
+                .or_insert(0) += 1;
         }
 
         self.finalize_bundle(scenarios, stats)
@@ -250,7 +256,8 @@ mod tests {
         config.max_scenarios = 5;
         let combinator = Combinator::new(config);
 
-        let payloads: Vec<AttackPayload> = (0..3).map(|i| make_payload(&format!("p{}", i))).collect();
+        let payloads: Vec<AttackPayload> =
+            (0..3).map(|i| make_payload(&format!("p{}", i))).collect();
         let mutations: Vec<Box<dyn MutationStrategy>> = vec![Box::new(IdentityMutation)];
         let encoders: Vec<Box<dyn Encoder>> = vec![Box::new(IdentityEncoder)];
 

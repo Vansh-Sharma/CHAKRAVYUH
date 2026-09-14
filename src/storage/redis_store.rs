@@ -28,8 +28,9 @@ impl RedisStore {
             .map_err(|e| crate::error::Error::Other(format!("Redis connection error: {}", e)))?;
 
         // Verify connectivity with a PING.
-        let mut conn = client.get_connection()
-            .map_err(|e| crate::error::Error::Other(format!("Redis get_connection error: {}", e)))?;
+        let mut conn = client.get_connection().map_err(|e| {
+            crate::error::Error::Other(format!("Redis get_connection error: {}", e))
+        })?;
         let _: String = redis::cmd("PING")
             .query(&mut conn)
             .map_err(|e| crate::error::Error::Other(format!("Redis PING failed: {}", e)))?;
@@ -83,22 +84,31 @@ impl Store for RedisStore {
         };
         let result: Vec<String> = conn.keys(&*rk).unwrap_or_default();
         // Strip prefix.
-        result.iter()
+        result
+            .iter()
             .map(|k| k.strip_prefix(&self.prefix).unwrap_or(k).to_string())
             .collect()
     }
 
     fn health_check(&self) -> StoreHealth {
         let start = std::time::Instant::now();
-        let reachable = self.client.get_connection().and_then(|mut conn| {
-            let _: String = redis::cmd("PING").query(&mut conn)?;
-            Ok(())
-        }).is_ok();
+        let reachable = self
+            .client
+            .get_connection()
+            .and_then(|mut conn| {
+                let _: String = redis::cmd("PING").query(&mut conn)?;
+                Ok(())
+            })
+            .is_ok();
         StoreHealth {
             backend: "redis".into(),
             reachable,
             latency_ms: start.elapsed().as_secs_f64() * 1000.0,
-            detail: if reachable { "connected".into() } else { "unreachable".into() },
+            detail: if reachable {
+                "connected".into()
+            } else {
+                "unreachable".into()
+            },
         }
     }
 }
@@ -107,17 +117,25 @@ impl Store for RedisStore {
 impl RedisStore {
     pub fn new(_config: &StorageConfig) -> crate::Result<Self> {
         Err(crate::error::Error::Other(
-            "RedisStore requires the `redis` Cargo feature".into()
+            "RedisStore requires the `redis` Cargo feature".into(),
         ))
     }
 }
 
 #[cfg(not(feature = "redis"))]
 impl Store for RedisStore {
-    fn get(&self, _key: &str) -> Option<Vec<u8>> { None }
-    fn set(&self, _key: &str, _value: &[u8]) -> bool { false }
-    fn delete(&self, _key: &str) -> bool { false }
-    fn keys(&self, _prefix: &str) -> Vec<String> { vec![] }
+    fn get(&self, _key: &str) -> Option<Vec<u8>> {
+        None
+    }
+    fn set(&self, _key: &str, _value: &[u8]) -> bool {
+        false
+    }
+    fn delete(&self, _key: &str) -> bool {
+        false
+    }
+    fn keys(&self, _prefix: &str) -> Vec<String> {
+        vec![]
+    }
     fn health_check(&self) -> StoreHealth {
         StoreHealth {
             backend: "redis(disabled)".into(),

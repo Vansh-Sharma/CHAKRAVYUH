@@ -168,8 +168,8 @@ impl TwinState {
     ///
     /// Returns the imported snapshot ID.
     pub fn import_json(&mut self, json: &str) -> Result<String, String> {
-        let snapshot: StateSnapshot =
-            serde_json::from_str(json).map_err(|e| format!("failed to parse snapshot JSON: {}", e))?;
+        let snapshot: StateSnapshot = serde_json::from_str(json)
+            .map_err(|e| format!("failed to parse snapshot JSON: {}", e))?;
         let id = snapshot.id.clone();
         tracing::info!(snapshot_id = %id, name = %snapshot.name, "twin state: snapshot imported");
         self.snapshots.push(snapshot);
@@ -243,9 +243,7 @@ mod tests {
             "shield".to_string(),
             serde_json::json!({"threshold": 0.5, "mode": "permissive"}),
         );
-        let id2 = state
-            .capture("after", "after change", modified)
-            .unwrap();
+        let id2 = state.capture("after", "after change", modified).unwrap();
 
         let diffs = state.diff(&id1, &id2).unwrap();
         assert!(diffs.contains_key("shield"));

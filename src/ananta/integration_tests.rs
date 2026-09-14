@@ -21,14 +21,13 @@ use std::sync::Arc;
 
 use super::*;
 use crate::ananta::adapter::{
-    AdaptationProposal, AdaptationStatus, Adapter, DynamicPipelineManager,
-    ParameterChange, PipelineConfig, PipelineStage, StageType,
+    AdaptationProposal, AdaptationStatus, Adapter, DynamicPipelineManager, ParameterChange,
+    PipelineConfig, PipelineStage, StageType,
 };
 use crate::ananta::config::AdapterConfig;
 use crate::ananta::ovaph_loop::{
-    CycleOutcome, OvaphAttestationResult, OvaphConfig,
-    OvaphLoop, OvaphMetrics, OvaphObservation, OvaphStage, OvaphVerificationResult,
-    Severity, StageOutcome, VerifiedSignal,
+    CycleOutcome, OvaphAttestationResult, OvaphConfig, OvaphLoop, OvaphMetrics, OvaphObservation,
+    OvaphStage, OvaphVerificationResult, Severity, StageOutcome, VerifiedSignal,
 };
 use crate::ananta::phoenix::rollback_engine::{
     RollbackConfig, RollbackExecutor, RollbackOutcome, SnapshotStore, StateDiff, StateSnapshot,
@@ -68,7 +67,10 @@ async fn ovaph_full_cycle_with_attestation() {
     let config = test_config();
     let plane = AnantaPlane::new(config).unwrap();
 
-    let report = plane.run_ovaph_cycle().await.expect("OVAPH cycle should succeed");
+    let report = plane
+        .run_ovaph_cycle()
+        .await
+        .expect("OVAPH cycle should succeed");
 
     // All 5 stages must be present (O, V, A, H, P).
     assert_eq!(
@@ -79,15 +81,17 @@ async fn ovaph_full_cycle_with_attestation() {
     );
 
     let stage_names: Vec<&str> = report.stages.iter().map(|s| s.stage.name()).collect();
-    assert_eq!(stage_names, vec!["Observe", "Verify", "Attest", "Heal", "Prove"]);
+    assert_eq!(
+        stage_names,
+        vec!["Observe", "Verify", "Attest", "Heal", "Prove"]
+    );
 
     // Each stage must have completed or been skipped — not failed.
     for sr in &report.stages {
         assert!(
             sr.success,
             "stage {} should succeed or skip: errors={:?}",
-            sr.stage,
-            sr.errors
+            sr.stage, sr.errors
         );
     }
 
@@ -106,15 +110,18 @@ async fn ovaph_consecutive_cycles() {
         let _ = plane.run_ovaph_cycle().await.unwrap();
         let metrics = plane.ovaph_metrics().await;
         assert_eq!(
-            metrics.total_cycles,
-            i as u64,
+            metrics.total_cycles, i as u64,
             "after {} cycles, metrics.total_cycles should be {}",
             i, i
         );
     }
 
     let metrics = plane.ovaph_metrics().await;
-    assert!(metrics.completed_cycles >= 3, "expected >= 3 completed, got {}", metrics.completed_cycles);
+    assert!(
+        metrics.completed_cycles >= 3,
+        "expected >= 3 completed, got {}",
+        metrics.completed_cycles
+    );
     assert_eq!(metrics.failed_cycles, 0, "no cycles should fail");
     assert!(metrics.avg_cycle_duration_ms > 0.0);
     assert!(metrics.last_cycle_at.is_some());
@@ -175,7 +182,10 @@ async fn ovaph_with_integrity_failure() {
         .await;
 
     let report = plane.run_ovaph_cycle().await.unwrap();
-    assert!(!report.attestation_passed, "attestation should fail with tampered provider");
+    assert!(
+        !report.attestation_passed,
+        "attestation should fail with tampered provider"
+    );
 }
 
 /// A.5 — With heal_autonomous=false, verify no recovery actions are taken.
@@ -202,10 +212,19 @@ async fn ovaph_heal_stage_disabled() {
 
     let (heal_result, healing) = loop_engine.run_heal(&verification).await;
 
-    assert!(matches!(heal_result.outcome, StageOutcome::Skipped(_)), "heal stage should be skipped when autonomous=false");
+    assert!(
+        matches!(heal_result.outcome, StageOutcome::Skipped(_)),
+        "heal stage should be skipped when autonomous=false"
+    );
     assert!(healing.healing_required);
-    assert_eq!(healing.actions_executed, 0, "no actions should execute when autonomous=false");
-    assert_eq!(healing.actions_planned, 0, "no actions planned when autonomous=false");
+    assert_eq!(
+        healing.actions_executed, 0,
+        "no actions should execute when autonomous=false"
+    );
+    assert_eq!(
+        healing.actions_planned, 0,
+        "no actions planned when autonomous=false"
+    );
 }
 
 /// A.6 — After attestation, verify the Prove stage generates a proof.
@@ -230,7 +249,10 @@ async fn ovaph_prove_stage_generates_proof() {
     let (prove_result, proof) = loop_engine.run_prove(&attestation).await;
 
     assert!(prove_result.success, "Prove stage should complete");
-    assert!(proof.proof_generated, "proof should be generated when attestation passes");
+    assert!(
+        proof.proof_generated,
+        "proof should be generated when attestation passes"
+    );
     assert!(proof.proof_id.is_some(), "proof_id should be present");
     assert!(proof.all_domains_passed);
     assert!(proof.trust_score > 0.0);
@@ -280,7 +302,11 @@ async fn ovaph_concurrent_cycles_safe() {
 
     // At least 2 cycles should be recorded.
     let metrics = loop_engine.metrics().unwrap();
-    assert!(metrics.total_cycles >= 2, "expected >= 2 cycles, got {}", metrics.total_cycles);
+    assert!(
+        metrics.total_cycles >= 2,
+        "expected >= 2 cycles, got {}",
+        metrics.total_cycles
+    );
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -288,14 +314,12 @@ async fn ovaph_concurrent_cycles_safe() {
 // ═══════════════════════════════════════════════════════════════
 
 fn make_rollback_executor(max_snapshots: usize) -> RollbackExecutor {
-    let store = Arc::new(std::sync::Mutex::new(SnapshotStore::new(
-        RollbackConfig {
-            max_snapshots_per_domain: max_snapshots,
-            verify_after_rollback: true,
-            auto_snapshot_before_recovery: false,
-            ..RollbackConfig::default()
-        },
-    )));
+    let store = Arc::new(std::sync::Mutex::new(SnapshotStore::new(RollbackConfig {
+        max_snapshots_per_domain: max_snapshots,
+        verify_after_rollback: true,
+        auto_snapshot_before_recovery: false,
+        ..RollbackConfig::default()
+    })));
     RollbackExecutor::new(
         store,
         RollbackConfig {
@@ -401,11 +425,11 @@ fn rollback_multiple_domains() {
     // Verify each domain was rolled back.
     for domain in &domains {
         let guard = executor.store.lock().unwrap();
-        let latest = guard
-            .latest(domain)
-            .unwrap();
+        let latest = guard.latest(domain).unwrap();
         assert_eq!(
-            latest.get(&format!("{}_key1", "good")).and_then(|v| v.as_str()),
+            latest
+                .get(&format!("{}_key1", "good"))
+                .and_then(|v| v.as_str()),
             Some("value1")
         );
     }
@@ -510,8 +534,7 @@ fn rollback_snapshot_pruning() {
     assert_eq!(
         count, max_snaps,
         "store should prune to max_snapshots={}, got {}",
-        max_snaps,
-        count
+        max_snaps, count
     );
 }
 
@@ -553,7 +576,8 @@ async fn drift_detection_updates_trust() {
     assert!(
         after < before,
         "trust should decrease after anomalous drift: before={} after={}",
-        before, after
+        before,
+        after
     );
 }
 
@@ -600,7 +624,11 @@ async fn multi_type_drift_concurrent() {
     // Check that trust didn't panic and overall score is well-defined.
     let state = plane.trust_state().await;
     let overall = state.overall_score();
-    assert!(overall >= 0.0 && overall <= 1.0, "overall trust should be in [0,1]: {}", overall);
+    assert!(
+        overall >= 0.0 && overall <= 1.0,
+        "overall trust should be in [0,1]: {}",
+        overall
+    );
 }
 
 /// C.3 — After drift, feed stable data, verify trust recovery.
@@ -639,7 +667,8 @@ async fn drift_recovery_trust_restores() {
     assert!(
         drifted_trust < baseline_trust,
         "trust should have dropped from drift: baseline={} drifted={}",
-        baseline_trust, drifted_trust
+        baseline_trust,
+        drifted_trust
     );
 
     // Run recovery drift cycle (applies trust recovery).
@@ -648,7 +677,8 @@ async fn drift_recovery_trust_restores() {
     assert!(
         recovered_trust >= drifted_trust,
         "trust should not decrease further after recovery: drifted={} recovered={}",
-        drifted_trust, recovered_trust
+        drifted_trust,
+        recovered_trust
     );
 }
 
@@ -678,12 +708,18 @@ async fn sentinel_baseline_warming() {
     assert!(
         drop < 0.3,
         "trust should not drop more than 0.3 from stable data: before={} after={} drop={}",
-        before, after, drop
+        before,
+        after,
+        drop
     );
 
     // No critical alerts should be present.
     let state = plane.trust_state().await;
-    assert_eq!(state.critical_count(), 0, "no critical alerts from stable data");
+    assert_eq!(
+        state.critical_count(),
+        0,
+        "no critical alerts from stable data"
+    );
 }
 
 /// C.5 — Verify drift alerts appear in audit log.
@@ -748,7 +784,10 @@ async fn degraded_trust_proposes_tightening() {
 
     // Should propose tightening for the pipeline.
     let has_pipeline = proposals.iter().any(|p| p.target == "pipeline");
-    assert!(has_pipeline, "should propose pipeline tightening when trust is degraded");
+    assert!(
+        has_pipeline,
+        "should propose pipeline tightening when trust is degraded"
+    );
 
     // The proposal should contain parameter changes.
     if let Some(p) = proposals.iter().find(|p| p.target == "pipeline") {
@@ -797,7 +836,10 @@ async fn adapter_rate_limiting() {
 
     // First call should produce proposals.
     let first = adapter.evaluate(&trust_state);
-    assert!(!first.is_empty(), "first evaluation should produce proposals");
+    assert!(
+        !first.is_empty(),
+        "first evaluation should produce proposals"
+    );
 
     // Second call — may still produce for the second domain.
     let _ = adapter.evaluate(&trust_state);
@@ -868,8 +910,14 @@ fn evidence_updates_trust() {
         engine.record_evidence(from, to, true, 0.8, "test_positive");
     }
 
-    let after = engine.trust_score(from, to).expect("should have trust score after evidence");
-    assert!(after > 0.5, "trust should be high after positive evidence: {}", after);
+    let after = engine
+        .trust_score(from, to)
+        .expect("should have trust score after evidence");
+    assert!(
+        after > 0.5,
+        "trust should be high after positive evidence: {}",
+        after
+    );
 }
 
 /// E.2 — Add negative evidence, verify trust decreases.
@@ -894,7 +942,8 @@ fn negative_evidence_decreases_trust() {
     assert!(
         negative_score < positive_score,
         "trust should decrease after negative evidence: positive={} negative={}",
-        positive_score, negative_score
+        positive_score,
+        negative_score
     );
 }
 
@@ -915,7 +964,12 @@ fn multi_domain_propagation() {
     // All domains should have trust > 0.
     for domain in &domains {
         let score = result.get(domain);
-        assert!(score > 0.0, "domain {} should have trust > 0 after propagation: {}", domain, score);
+        assert!(
+            score > 0.0,
+            "domain {} should have trust > 0 after propagation: {}",
+            domain,
+            score
+        );
     }
 }
 
@@ -941,13 +995,18 @@ fn trust_divergence_detection() {
         .divergence_report
         .iter()
         .find(|d| d.domain == "decision");
-    assert!(decision_div.is_some(), "decision domain should appear in divergence report");
+    assert!(
+        decision_div.is_some(),
+        "decision domain should appear in divergence report"
+    );
 
     let div = decision_div.unwrap();
     assert!(
         div.divergence > 0.3,
         "divergence between simple ({}) and Bayesian ({}) should be > 0.3, got {}",
-        div.simple_level, div.bayesian_level, div.divergence
+        div.simple_level,
+        div.bayesian_level,
+        div.divergence
     );
     assert!(
         div.severity >= crate::ananta::trust::trust_propagation_bridge::DivergenceSeverity::High
@@ -1040,7 +1099,11 @@ fn trust_propagation_full_cycle() {
     assert_eq!(result.pending_result.events_processed, 2);
     assert_eq!(result.pending_result.evidence_added, 2);
     assert!(result.propagation_result.iterations > 0);
-    assert_eq!(orchestrator.get_pending_count(), 0, "pending events should be flushed");
+    assert_eq!(
+        orchestrator.get_pending_count(),
+        0,
+        "pending events should be flushed"
+    );
 }
 
 /// F.4 — DynamicPipelineManager with adaptation proposal.
@@ -1077,8 +1140,10 @@ fn dynamic_pipeline_propose_and_apply() {
         .propose_and_apply(&proposal)
         .expect("propose_and_apply should succeed");
 
-    assert!(result.status == crate::ananta::adapter::ExecutionStatus::Applied
-        || result.status == crate::ananta::adapter::ExecutionStatus::Applied);
+    assert!(
+        result.status == crate::ananta::adapter::ExecutionStatus::Applied
+            || result.status == crate::ananta::adapter::ExecutionStatus::Applied
+    );
 
     // The stage config should have been updated.
     let config = manager.current_config();
@@ -1116,7 +1181,10 @@ fn sentinel_hub_full_pipeline() {
     let result = hub.observe(anomalous).expect("observe should succeed");
 
     // Should detect anomaly.
-    assert!(result.is_some(), "anomalous observation should produce a fused signal");
+    assert!(
+        result.is_some(),
+        "anomalous observation should produce a fused signal"
+    );
     let signal = result.unwrap();
     assert!(signal.is_anomaly, "fused signal should be an anomaly");
     assert!(signal.composite_confidence > 0.0);
@@ -1141,7 +1209,10 @@ fn rollback_nonexistent_target() {
         .unwrap();
 
     let result = executor.execute_rollback(domain, "nonexistent-snapshot-id");
-    assert!(result.is_err(), "rollback to nonexistent snapshot should fail");
+    assert!(
+        result.is_err(),
+        "rollback to nonexistent snapshot should fail"
+    );
 }
 
 /// G.2 — Empty domain rollback returns error.
@@ -1164,14 +1235,20 @@ fn sentinel_hub_invalid_config() {
         advanced_weight: 0.0,
         ..FusionConfig::default()
     };
-    assert!(bad_config.validate().is_err(), "zero weights should be invalid");
+    assert!(
+        bad_config.validate().is_err(),
+        "zero weights should be invalid"
+    );
 
     // Zero baseline min samples.
     let bad_config2 = FusionConfig {
         baseline_min_samples: 0,
         ..FusionConfig::default()
     };
-    assert!(bad_config2.validate().is_err(), "zero baseline_min_samples should be invalid");
+    assert!(
+        bad_config2.validate().is_err(),
+        "zero baseline_min_samples should be invalid"
+    );
 }
 
 /// G.4 — Trust propagation event buffer overflow.
@@ -1304,7 +1381,10 @@ async fn ovaph_cycle_with_enriched_observation() {
     // The Verify stage should have produced a signal for the anomalous drift.
     let verify_stage = report.stages.iter().find(|s| s.stage == OvaphStage::Verify);
     assert!(verify_stage.is_some());
-    assert!(verify_stage.unwrap().findings_count >= 1, "verify should find the anomalous drift");
+    assert!(
+        verify_stage.unwrap().findings_count >= 1,
+        "verify should find the anomalous drift"
+    );
 }
 
 /// F.8 — StateSnapshot checksum verification.
@@ -1315,18 +1395,27 @@ fn state_snapshot_checksum_roundtrip() {
     data.insert("key2".into(), serde_json::json!(42));
 
     let mut snapshot = StateSnapshot::new("test_domain", data).unwrap();
-    assert!(snapshot.verify_checksum().unwrap(), "fresh snapshot should verify");
+    assert!(
+        snapshot.verify_checksum().unwrap(),
+        "fresh snapshot should verify"
+    );
 
     // Serialize and deserialize.
     let json = snapshot.to_json().unwrap();
     let restored = StateSnapshot::from_json(&json).unwrap();
-    assert!(restored.verify_checksum().unwrap(), "restored snapshot should verify");
+    assert!(
+        restored.verify_checksum().unwrap(),
+        "restored snapshot should verify"
+    );
     assert_eq!(snapshot.snapshot_id, restored.snapshot_id);
     assert_eq!(snapshot.domain, restored.domain);
 
     // Mutate and verify checksum fails.
     snapshot.set("key1", serde_json::json!("tampered")).unwrap();
-    assert!(snapshot.verify_checksum().unwrap(), "after set(), checksum should be recomputed");
+    assert!(
+        snapshot.verify_checksum().unwrap(),
+        "after set(), checksum should be recomputed"
+    );
 }
 
 /// F.9 — StateDiff computation and reverse application.
@@ -1349,24 +1438,44 @@ fn state_diff_reverse_application() {
     // Check diff types.
     let a_diff = diff.fields.iter().find(|f| f.key == "a");
     assert!(a_diff.is_some());
-    assert_eq!(a_diff.unwrap().diff_type, crate::ananta::phoenix::rollback_engine::DiffType::Modified);
+    assert_eq!(
+        a_diff.unwrap().diff_type,
+        crate::ananta::phoenix::rollback_engine::DiffType::Modified
+    );
 
     let b_diff = diff.fields.iter().find(|f| f.key == "b");
     assert!(b_diff.is_some());
-    assert_eq!(b_diff.unwrap().diff_type, crate::ananta::phoenix::rollback_engine::DiffType::Removed);
+    assert_eq!(
+        b_diff.unwrap().diff_type,
+        crate::ananta::phoenix::rollback_engine::DiffType::Removed
+    );
 
     let c_diff = diff.fields.iter().find(|f| f.key == "c");
     assert!(c_diff.is_some());
-    assert_eq!(c_diff.unwrap().diff_type, crate::ananta::phoenix::rollback_engine::DiffType::Added);
+    assert_eq!(
+        c_diff.unwrap().diff_type,
+        crate::ananta::phoenix::rollback_engine::DiffType::Added
+    );
 
     // Apply reverse: start from 'to' and revert to 'from'.
     let mut reverted = to.clone();
     diff.apply_reverse(&mut reverted).unwrap();
 
     // After reverse, 'a' should be back to 1, 'c' should be removed, 'b' should be restored.
-    assert_eq!(reverted.get("a"), Some(&serde_json::json!(1)), "'a' should be reverted to 1");
-    assert!(reverted.get("c").is_none(), "'c' should be removed by reverse");
-    assert_eq!(reverted.get("b"), Some(&serde_json::json!(2)), "'b' should be restored");
+    assert_eq!(
+        reverted.get("a"),
+        Some(&serde_json::json!(1)),
+        "'a' should be reverted to 1"
+    );
+    assert!(
+        reverted.get("c").is_none(),
+        "'c' should be removed by reverse"
+    );
+    assert_eq!(
+        reverted.get("b"),
+        Some(&serde_json::json!(2)),
+        "'b' should be restored"
+    );
 }
 
 /// F.10 — DriftBaselines compute and update correctly.
@@ -1419,7 +1528,10 @@ fn ovaph_verification_critical_health() {
     };
 
     let result = OvaphVerificationResult::from_observation(&observation, 3.0);
-    assert!(result.requires_healing, "critical health should require healing");
+    assert!(
+        result.requires_healing,
+        "critical health should require healing"
+    );
     assert_eq!(result.composite_severity, Severity::Critical);
 
     // Should contain a health signal.
@@ -1450,7 +1562,10 @@ async fn ovaph_healing_autonomous_executes() {
     let (_stage_result, healing) = loop_engine.run_heal(&verification).await;
 
     assert!(healing.healing_required);
-    assert_eq!(healing.actions_executed, 2, "should execute 2 healing actions");
+    assert_eq!(
+        healing.actions_executed, 2,
+        "should execute 2 healing actions"
+    );
     assert_eq!(healing.actions_succeeded, 2);
     assert_eq!(healing.strategies_used.len(), 2);
 }

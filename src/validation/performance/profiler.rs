@@ -92,14 +92,15 @@ impl Profiler {
 
     /// Record a region entry directly (used by RegionGuard).
     pub fn record_region(&mut self, name: &str, elapsed_us: u64) {
-        let region = self.regions.entry(name.to_string()).or_insert_with(|| {
-            ProfilingRegion {
+        let region = self
+            .regions
+            .entry(name.to_string())
+            .or_insert_with(|| ProfilingRegion {
                 name: name.to_string(),
                 entries: Vec::new(),
                 total_us: 0,
                 call_count: 0,
-            }
-        });
+            });
         region.entries.push(elapsed_us);
         region.total_us += elapsed_us;
         region.call_count += 1;

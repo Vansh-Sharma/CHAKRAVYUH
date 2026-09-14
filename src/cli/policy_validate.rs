@@ -61,7 +61,12 @@ impl ValidationIssue {
     }
 
     /// Create a validation issue with a suggestion.
-    pub fn with_suggestion(severity: IssueSeverity, message: &str, location: &str, suggestion: &str) -> Self {
+    pub fn with_suggestion(
+        severity: IssueSeverity,
+        message: &str,
+        location: &str,
+        suggestion: &str,
+    ) -> Self {
         Self {
             severity,
             message: message.to_string(),
@@ -213,9 +218,9 @@ impl PolicyValidator {
             // Check for duplicate rule IDs.
             let rule_id = rule_val
                 .get("id")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("<missing>")
-                        .to_string();
+                .and_then(|v| v.as_str())
+                .unwrap_or("<missing>")
+                .to_string();
             if !seen_ids.insert(rule_id.clone()) {
                 issues.push(ValidationIssue::with_suggestion(
                     IssueSeverity::Error,
@@ -226,9 +231,7 @@ impl PolicyValidator {
             }
 
             // Check priority ordering consistency.
-            let priority = rule_val
-                .get("priority")
-                        .and_then(|v| v.as_i64());
+            let priority = rule_val.get("priority").and_then(|v| v.as_i64());
             if let Some(p) = priority {
                 if let Some(prev) = last_priority {
                     if p < prev {
@@ -306,8 +309,11 @@ impl PolicyValidator {
             if !VALID_ACTIONS.contains(&action) {
                 issues.push(ValidationIssue::with_suggestion(
                     IssueSeverity::Error,
-                    &format!("invalid action type: '{}' (expected one of: {})",
-                        action, VALID_ACTIONS.join(", ")),
+                    &format!(
+                        "invalid action type: '{}' (expected one of: {})",
+                        action,
+                        VALID_ACTIONS.join(", ")
+                    ),
                     &location,
                     "use one of the valid action types",
                 ));
@@ -389,7 +395,8 @@ rules:
     action: allow
     priority: 50
     risk_threshold: 0.0
-"#.to_string()
+"#
+        .to_string()
     }
 
     #[test]
@@ -406,7 +413,8 @@ rules:
     fn test_missing_top_level_fields() {
         let yaml = r#"
 name: "incomplete"
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         // Should have errors for missing 'version' and 'rules'.
@@ -419,7 +427,8 @@ name: "incomplete"
 version: "1.0"
   bad indentation: [
     unclosed
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         assert!(!result.errors.is_empty());
@@ -446,7 +455,8 @@ rules:
     action: deny
     priority: 100
     pattern: "[invalid("
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.message.contains("regex")));
@@ -468,10 +478,14 @@ rules:
     condition: "always"
     action: deny
     priority: 20
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.message.contains("duplicate")));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("duplicate")));
     }
 
     #[test]
@@ -486,7 +500,8 @@ rules:
     action: deny
     priority: 100
     risk_threshold: 15.0
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.message.contains("range")));
@@ -504,7 +519,8 @@ rules:
     action: deny
     priority: 100
     risk_threshold: -1.0
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.message.contains("range")));
@@ -521,10 +537,14 @@ rules:
     condition: "always"
     action: explode
     priority: 100
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
-        assert!(result.errors.iter().any(|e| e.message.contains("invalid action")));
+        assert!(result
+            .errors
+            .iter()
+            .any(|e| e.message.contains("invalid action")));
     }
 
     #[test]
@@ -535,7 +555,8 @@ name: "incomplete-rules"
 rules:
   - id: "rule-incomplete"
     name: "Missing action and priority"
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         assert!(result.errors.iter().any(|e| e.message.contains("action")));
@@ -548,7 +569,8 @@ rules:
 version: "1.0"
 name: "empty-rules"
 rules: []
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(result.is_valid);
         assert_eq!(result.stats.rule_count, 0);
@@ -570,11 +592,15 @@ rules:
     condition: "always"
     action: allow
     priority: 50
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         // Should be valid (just a warning).
         assert!(result.is_valid);
-        assert!(result.warnings.iter().any(|w| w.message.contains("priority")));
+        assert!(result
+            .warnings
+            .iter()
+            .any(|w| w.message.contains("priority")));
     }
 
     #[test]
@@ -589,7 +615,8 @@ rules:
     priority: 100
     risk_threshold: 99.0
     pattern: "[broken(" 
-"#.to_string();
+"#
+        .to_string();
         let result = PolicyValidator::validate_yaml(&yaml);
         assert!(!result.is_valid);
         // Invalid action, out-of-range threshold, bad regex = at least 3 errors.
@@ -617,13 +644,16 @@ rules:
 
     #[test]
     fn test_validate_single_rule() {
-        let rule_yaml = serde_yaml::from_str(r#"
+        let rule_yaml = serde_yaml::from_str(
+            r#"
     id: "rule-100"
     name: "Test rule"
     condition: "request.path == '/test'"
     action: allow
     priority: 10
-    "#).unwrap();
+    "#,
+        )
+        .unwrap();
         let issues = PolicyValidator::validate_rule(&rule_yaml, 0);
         assert!(issues.is_empty());
     }

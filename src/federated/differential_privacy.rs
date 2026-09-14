@@ -125,8 +125,7 @@ impl PrivacyAccountant {
         } else {
             0.0
         };
-        let epsilon_total =
-            (2.0 * t * ln_term).sqrt() * max_eps + t * max_eps * (max_eps.exp_m1());
+        let epsilon_total = (2.0 * t * ln_term).sqrt() * max_eps + t * max_eps * (max_eps.exp_m1());
         let delta_total = t * max_delta + delta_prime;
 
         PrivacyAccountant {
@@ -234,16 +233,12 @@ impl SecureAggregation {
         let mut hasher = Sha256::new();
         hasher.update(peer_id.as_bytes());
         let hash = hasher.finalize();
-        let seed = u64::from_le_bytes(
-            hash[..8].try_into().unwrap_or([0u8; 8]),
-        );
+        let seed = u64::from_le_bytes(hash[..8].try_into().unwrap_or([0u8; 8]));
         let seed_bytes = seed.to_le_bytes();
         let mut full_seed = [0u8; 32];
         full_seed[..8].copy_from_slice(&seed_bytes);
         let mut rng = rand::rngs::StdRng::from_seed(full_seed);
-        (0..len)
-            .map(|_| rng.random_range(-0.01..0.01))
-            .collect()
+        (0..len).map(|_| rng.random_range(-0.01..0.01)).collect()
     }
 
     /// Clear all stored masks.
@@ -442,11 +437,7 @@ mod tests {
         let mut w2 = vec![1.0; 100];
         engine.apply_noise(&mut w1);
         engine.apply_noise(&mut w2);
-        let sum_diff: f64 = w1
-            .iter()
-            .zip(w2.iter())
-            .map(|(a, b)| (a - b).abs())
-            .sum();
+        let sum_diff: f64 = w1.iter().zip(w2.iter()).map(|(a, b)| (a - b).abs()).sum();
         assert!(
             sum_diff > 0.0,
             "Two identical vectors should diverge after independent noise"
@@ -545,7 +536,10 @@ mod tests {
         let mut weights = original.clone();
 
         sa.mask("peer-1", &mut weights);
-        assert_ne!(weights, original, "Masked weights should differ from original");
+        assert_ne!(
+            weights, original,
+            "Masked weights should differ from original"
+        );
 
         let success = sa.unmask("peer-1", &mut weights);
         assert!(success);

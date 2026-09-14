@@ -27,7 +27,11 @@ pub struct PolicyVersion {
 impl PolicyVersion {
     /// Create a new policy version.
     pub const fn new(major: u32, minor: u32, patch: u32) -> Self {
-        Self { major, minor, patch }
+        Self {
+            major,
+            minor,
+            patch,
+        }
     }
 
     /// Parse a version string "MAJOR.MINOR.PATCH".
@@ -39,13 +43,20 @@ impl PolicyVersion {
                 s
             ));
         }
-        let major = parts[0].parse::<u32>()
+        let major = parts[0]
+            .parse::<u32>()
             .map_err(|e| format!("invalid major version '{}': {}", parts[0], e))?;
-        let minor = parts[1].parse::<u32>()
+        let minor = parts[1]
+            .parse::<u32>()
             .map_err(|e| format!("invalid minor version '{}': {}", parts[1], e))?;
-        let patch = parts[2].parse::<u32>()
+        let patch = parts[2]
+            .parse::<u32>()
             .map_err(|e| format!("invalid patch version '{}': {}", parts[2], e))?;
-        Ok(Self { major, minor, patch })
+        Ok(Self {
+            major,
+            minor,
+            patch,
+        })
     }
 
     /// Bump the major version.
@@ -171,8 +182,10 @@ pub struct VersionDiff {
 impl VersionDiff {
     /// Returns true if this diff represents no changes.
     pub fn is_empty(&self) -> bool {
-        !self.bytecode_changed && !self.source_changed
-            && self.rules_added == 0 && self.rules_removed == 0
+        !self.bytecode_changed
+            && !self.source_changed
+            && self.rules_added == 0
+            && self.rules_removed == 0
     }
 }
 
@@ -250,9 +263,13 @@ impl PolicyVersionStore {
 
     /// Compute a diff between two versions.
     pub fn diff(&self, old_version: &str, new_version: &str) -> Result<VersionDiff, String> {
-        let old = self.versions.get(old_version)
+        let old = self
+            .versions
+            .get(old_version)
             .ok_or_else(|| format!("version '{}' not found", old_version))?;
-        let new = self.versions.get(new_version)
+        let new = self
+            .versions
+            .get(new_version)
             .ok_or_else(|| format!("version '{}' not found", new_version))?;
 
         let bytecode_changed = old.bytecode_hash != new.bytecode_hash;
@@ -294,7 +311,8 @@ impl PolicyVersionStore {
     ///
     /// Does not remove newer versions — they remain in history.
     pub fn rollback(&self, version: &str) -> Result<&VersionedPolicy, String> {
-        self.versions.get(version)
+        self.versions
+            .get(version)
             .ok_or_else(|| format!("version '{}' not found for rollback", version))
     }
 
@@ -420,12 +438,22 @@ mod tests {
     fn store_latest() {
         let mut store = PolicyVersionStore::new(10);
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 0, 0), "h1".into(), "y1".into(), 1, None, vec![], 1,
+            PolicyVersion::new(1, 0, 0),
+            "h1".into(),
+            "y1".into(),
+            1,
+            None,
+            vec![],
+            1,
         ));
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 1, 0), "h2".into(), "y2".into(), 2,
+            PolicyVersion::new(1, 1, 0),
+            "h2".into(),
+            "y2".into(),
+            2,
             Some(PolicyVersion::new(1, 0, 0)),
-            vec![0x01], 2,
+            vec![0x01],
+            2,
         ));
 
         let latest = store.latest().unwrap();
@@ -451,12 +479,22 @@ mod tests {
     fn store_diff() {
         let mut store = PolicyVersionStore::new(10);
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 0, 0), "hash_a".into(), "yaml_a".into(), 1, None, vec![], 3,
+            PolicyVersion::new(1, 0, 0),
+            "hash_a".into(),
+            "yaml_a".into(),
+            1,
+            None,
+            vec![],
+            3,
         ));
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 1, 0), "hash_b".into(), "yaml_b".into(), 2,
+            PolicyVersion::new(1, 1, 0),
+            "hash_b".into(),
+            "yaml_b".into(),
+            2,
             Some(PolicyVersion::new(1, 0, 0)),
-            vec![0x01], 5,
+            vec![0x01],
+            5,
         ));
 
         let diff = store.diff("1.0.0", "1.1.0").unwrap();
@@ -470,12 +508,22 @@ mod tests {
     fn store_diff_empty() {
         let mut store = PolicyVersionStore::new(10);
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 0, 0), "hash".into(), "yaml".into(), 1, None, vec![], 3,
+            PolicyVersion::new(1, 0, 0),
+            "hash".into(),
+            "yaml".into(),
+            1,
+            None,
+            vec![],
+            3,
         ));
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 0, 1), "hash".into(), "yaml".into(), 2,
+            PolicyVersion::new(1, 0, 1),
+            "hash".into(),
+            "yaml".into(),
+            2,
             Some(PolicyVersion::new(1, 0, 0)),
-            vec![], 3,
+            vec![],
+            3,
         ));
 
         let diff = store.diff("1.0.0", "1.0.1").unwrap();
@@ -488,13 +536,22 @@ mod tests {
     fn store_rollback() {
         let mut store = PolicyVersionStore::new(10);
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(1, 0, 0), "old_hash".into(), "old_yaml".into(), 1, None,
-            vec![0xAA, 0xBB], 3,
+            PolicyVersion::new(1, 0, 0),
+            "old_hash".into(),
+            "old_yaml".into(),
+            1,
+            None,
+            vec![0xAA, 0xBB],
+            3,
         ));
         store.store(VersionedPolicy::new(
-            PolicyVersion::new(2, 0, 0), "new_hash".into(), "new_yaml".into(), 2,
+            PolicyVersion::new(2, 0, 0),
+            "new_hash".into(),
+            "new_yaml".into(),
+            2,
             Some(PolicyVersion::new(1, 0, 0)),
-            vec![0xCC, 0xDD], 7,
+            vec![0xCC, 0xDD],
+            7,
         ));
 
         let rolled_back = store.rollback("1.0.0").unwrap();

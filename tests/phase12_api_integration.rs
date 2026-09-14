@@ -50,8 +50,26 @@ fn router() -> axum::Router {
     let orchestrate = KeshavOrchestrate::new(config.keshav.orchestrate.clone());
     let cross_ring = CrossRingNetwork::new(&config.cross_ring).expect("cross_ring builds");
     build_router(
-        shield, threat, identity, memory, agent, execution, reasoning, governance, recovery_sec,
-        decide, risk, learn, orchestrate, cross_ring, None, None, None, None, None, None,
+        shield,
+        threat,
+        identity,
+        memory,
+        agent,
+        execution,
+        reasoning,
+        governance,
+        recovery_sec,
+        decide,
+        risk,
+        learn,
+        orchestrate,
+        cross_ring,
+        None,
+        None,
+        None,
+        None,
+        None,
+        None,
     )
 }
 
@@ -127,21 +145,38 @@ async fn test_safe_prompt_returns_allow() {
 
     assert_eq!(status, StatusCode::OK, "safe prompt should return 200");
     assert_eq!(json["allowed"], true, "allowed should be true");
-    assert_eq!(json["action"], "allow", "action should be 'allow' (lowercase, SDK-compatible)");
+    assert_eq!(
+        json["action"], "allow",
+        "action should be 'allow' (lowercase, SDK-compatible)"
+    );
     // Benign prompts should have a low risk score (well below 0.5 on
     // the normalized 0–1 scale). We don't assert an exact value because
     // the score depends on which rings evaluated and their confidence.
-    let risk = json["risk_score"].as_f64().expect("risk_score must be a number");
+    let risk = json["risk_score"]
+        .as_f64()
+        .expect("risk_score must be a number");
     assert!(
         risk < 0.5,
         "risk score for benign prompt should be low (<0.5), got {}",
         risk
     );
     assert!(json["request_id"].is_string(), "request_id must be present");
-    assert!(json["latency_ms"].as_f64().unwrap() > 0.0, "latency must be measured");
-    assert!(json["policy_id"].is_string(), "policy_id must be present (SDK requires it)");
-    assert!(json["evidence_id"].is_string(), "evidence_id must be present");
-    assert!(json["ring_scores"].is_object(), "ring_scores must be present (SDK requires it)");
+    assert!(
+        json["latency_ms"].as_f64().unwrap() > 0.0,
+        "latency must be measured"
+    );
+    assert!(
+        json["policy_id"].is_string(),
+        "policy_id must be present (SDK requires it)"
+    );
+    assert!(
+        json["evidence_id"].is_string(),
+        "evidence_id must be present"
+    );
+    assert!(
+        json["ring_scores"].is_object(),
+        "ring_scores must be present (SDK requires it)"
+    );
 }
 
 // ── Acceptance Test 2: Prompt injection → DENY ──────────────────────────
@@ -157,7 +192,10 @@ async fn test_prompt_injection_returns_deny() {
 
     assert_eq!(status, StatusCode::FORBIDDEN, "injection should return 403");
     assert_eq!(json["allowed"], false, "allowed should be false");
-    assert_eq!(json["action"], "block", "action should be 'block' (lowercase, SDK-compatible)");
+    assert_eq!(
+        json["action"], "block",
+        "action should be 'block' (lowercase, SDK-compatible)"
+    );
 
     // The triggered_ring field tells us which ring triggered the deny.
     // For "ignore previous instructions", this is typically the Shield
@@ -171,7 +209,18 @@ async fn test_prompt_injection_returns_deny() {
     );
     let ring = json["triggered_ring"].as_str().unwrap();
     assert!(
-        matches!(ring, "shield" | "threat" | "identity" | "memory" | "agent" | "execution" | "reasoning" | "governance" | "keshav"),
+        matches!(
+            ring,
+            "shield"
+                | "threat"
+                | "identity"
+                | "memory"
+                | "agent"
+                | "execution"
+                | "reasoning"
+                | "governance"
+                | "keshav"
+        ),
         "triggered_ring should be a known ring name (lowercase), got: {}",
         ring
     );
@@ -193,9 +242,18 @@ async fn test_prompt_injection_returns_deny() {
     }
 
     // SDK-required fields must be present.
-    assert!(json["policy_id"].is_string(), "policy_id must be present (SDK requires it)");
-    assert!(json["evidence_id"].is_string(), "evidence_id must be present");
-    assert!(json["ring_scores"].is_object(), "ring_scores must be present (SDK requires it)");
+    assert!(
+        json["policy_id"].is_string(),
+        "policy_id must be present (SDK requires it)"
+    );
+    assert!(
+        json["evidence_id"].is_string(),
+        "evidence_id must be present"
+    );
+    assert!(
+        json["ring_scores"].is_object(),
+        "ring_scores must be present (SDK requires it)"
+    );
 
     // NOTE: risk_score may be 0.0 even on a deny. This happens when the
     // attack is caught by the Shield Ring's WAF (pattern matching) rather
@@ -223,7 +281,11 @@ async fn test_dan_jailbreak_returns_deny() {
 
     let (status, json) = post_json("/v1/protect", &body).await;
 
-    assert_eq!(status, StatusCode::FORBIDDEN, "DAN jailbreak should return 403");
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "DAN jailbreak should return 403"
+    );
     assert_eq!(json["allowed"], false, "allowed should be false");
     assert_eq!(json["action"], "block", "action should be 'block'");
 }
@@ -239,7 +301,11 @@ async fn test_sql_injection_returns_deny() {
 
     let (status, json) = post_json("/v1/protect", &body).await;
 
-    assert_eq!(status, StatusCode::FORBIDDEN, "SQL injection should return 403");
+    assert_eq!(
+        status,
+        StatusCode::FORBIDDEN,
+        "SQL injection should return 403"
+    );
     assert_eq!(json["allowed"], false, "allowed should be false");
     assert_eq!(json["action"], "block", "action should be 'block'");
 }
@@ -255,13 +321,14 @@ async fn test_empty_input_returns_400() {
 
     let (status, json) = post_json("/v1/protect", &body).await;
 
-    assert_eq!(status, StatusCode::BAD_REQUEST, "empty input should return 400");
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "empty input should return 400"
+    );
     assert_eq!(json["error"]["code"], "invalid_request");
     assert!(
-        json["error"]["message"]
-            .as_str()
-            .unwrap()
-            .contains("input"),
+        json["error"]["message"].as_str().unwrap().contains("input"),
         "error message should mention input"
     );
 }
@@ -271,7 +338,11 @@ async fn test_empty_input_returns_400() {
 #[tokio::test]
 async fn test_invalid_json_returns_400() {
     let (status, _json) = post_raw("/v1/protect", "{not valid json}").await;
-    assert_eq!(status, StatusCode::BAD_REQUEST, "invalid JSON should return 400");
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "invalid JSON should return 400"
+    );
 }
 
 // ── Acceptance Test: whitespace-only input → 400 ────────────────────────
@@ -285,7 +356,11 @@ async fn test_whitespace_only_input_returns_400() {
 
     let (status, json) = post_json("/v1/protect", &body).await;
 
-    assert_eq!(status, StatusCode::BAD_REQUEST, "whitespace input should return 400");
+    assert_eq!(
+        status,
+        StatusCode::BAD_REQUEST,
+        "whitespace input should return 400"
+    );
     assert_eq!(json["error"]["code"], "invalid_request");
 }
 
@@ -300,11 +375,20 @@ async fn test_v1_health_returns_ananta_fields() {
     assert_eq!(json["status"], "operational");
     assert_eq!(json["version"], env!("CARGO_PKG_VERSION"));
     // SDK-compatible: uptime_seconds (not uptime_secs)
-    assert!(json["uptime_seconds"].is_number(), "uptime_seconds must be present");
+    assert!(
+        json["uptime_seconds"].is_number(),
+        "uptime_seconds must be present"
+    );
     // SDK-compatible: active_rings, build, components
-    assert!(json["active_rings"].is_number(), "active_rings must be present");
+    assert!(
+        json["active_rings"].is_number(),
+        "active_rings must be present"
+    );
     assert!(json["build"].is_object(), "build must be an object");
-    assert!(json["components"].is_object(), "components must be an object");
+    assert!(
+        json["components"].is_object(),
+        "components must be an object"
+    );
     assert!(
         json["ananta_active"].is_boolean(),
         "ananta_active must be a boolean"
@@ -345,7 +429,9 @@ async fn test_protect_generates_request_id_when_absent() {
     let (status, json) = post_json("/v1/protect", &body).await;
 
     assert_eq!(status, StatusCode::OK);
-    let request_id = json["request_id"].as_str().expect("request_id must be present");
+    let request_id = json["request_id"]
+        .as_str()
+        .expect("request_id must be present");
     assert!(
         request_id.starts_with("req_"),
         "generated request_id should start with req_, got: {}",
@@ -405,9 +491,18 @@ async fn test_protect_response_shape_matches_contract() {
     assert!(json["confidence"].is_number(), "confidence must be number");
     assert!(json["latency_ms"].is_number(), "latency_ms must be number");
     assert!(json["request_id"].is_string(), "request_id must be string");
-    assert!(json["policy_id"].is_string(), "policy_id must be string (SDK requires)");
-    assert!(json["evidence_id"].is_string(), "evidence_id must be string");
-    assert!(json["ring_scores"].is_object(), "ring_scores must be object (SDK requires)");
+    assert!(
+        json["policy_id"].is_string(),
+        "policy_id must be string (SDK requires)"
+    );
+    assert!(
+        json["evidence_id"].is_string(),
+        "evidence_id must be string"
+    );
+    assert!(
+        json["ring_scores"].is_object(),
+        "ring_scores must be object (SDK requires)"
+    );
 
     // On block, additional fields should be present:
     if json["allowed"] == false {

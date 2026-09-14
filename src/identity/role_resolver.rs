@@ -113,7 +113,9 @@ pub struct RoleResolverConfig {
     pub role_permissions: std::collections::HashMap<String, Vec<String>>,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 impl Default for RoleResolverConfig {
     fn default() -> Self {
@@ -167,32 +169,65 @@ pub struct RoleResolver {
 impl RoleResolver {
     pub fn new(config: &RoleResolverConfig) -> Self {
         let mut default_permissions = std::collections::HashMap::new();
-        default_permissions.insert(Role::Admin, vec![
-            Permission::Read, Permission::Write, Permission::Delete,
-            Permission::Execute, Permission::Configure, Permission::Audit,
-            Permission::Health, Permission::Chat, Permission::Evaluate,
-            Permission::Proxy, Permission::AdminOps,
-        ]);
-        default_permissions.insert(Role::Operator, vec![
-            Permission::Read, Permission::Write, Permission::Execute,
-            Permission::Audit, Permission::Health, Permission::Chat,
-            Permission::Evaluate, Permission::Proxy,
-        ]);
-        default_permissions.insert(Role::Auditor, vec![
-            Permission::Read, Permission::Audit, Permission::Health,
-            Permission::Evaluate,
-        ]);
-        default_permissions.insert(Role::User, vec![
-            Permission::Read, Permission::Execute, Permission::Health,
-            Permission::Chat, Permission::Evaluate, Permission::Proxy,
-        ]);
-        default_permissions.insert(Role::Service, vec![
-            Permission::Read, Permission::Execute, Permission::Health,
-            Permission::Chat,
-        ]);
-        default_permissions.insert(Role::Anonymous, vec![
-            Permission::Health,
-        ]);
+        default_permissions.insert(
+            Role::Admin,
+            vec![
+                Permission::Read,
+                Permission::Write,
+                Permission::Delete,
+                Permission::Execute,
+                Permission::Configure,
+                Permission::Audit,
+                Permission::Health,
+                Permission::Chat,
+                Permission::Evaluate,
+                Permission::Proxy,
+                Permission::AdminOps,
+            ],
+        );
+        default_permissions.insert(
+            Role::Operator,
+            vec![
+                Permission::Read,
+                Permission::Write,
+                Permission::Execute,
+                Permission::Audit,
+                Permission::Health,
+                Permission::Chat,
+                Permission::Evaluate,
+                Permission::Proxy,
+            ],
+        );
+        default_permissions.insert(
+            Role::Auditor,
+            vec![
+                Permission::Read,
+                Permission::Audit,
+                Permission::Health,
+                Permission::Evaluate,
+            ],
+        );
+        default_permissions.insert(
+            Role::User,
+            vec![
+                Permission::Read,
+                Permission::Execute,
+                Permission::Health,
+                Permission::Chat,
+                Permission::Evaluate,
+                Permission::Proxy,
+            ],
+        );
+        default_permissions.insert(
+            Role::Service,
+            vec![
+                Permission::Read,
+                Permission::Execute,
+                Permission::Health,
+                Permission::Chat,
+            ],
+        );
+        default_permissions.insert(Role::Anonymous, vec![Permission::Health]);
 
         Self {
             config: config.clone(),
@@ -239,7 +274,10 @@ impl RoleResolver {
                             permissions: self.permissions_for(&r),
                             resolution_method: format!("api_key_prefix:{}", prefix),
                             valid: true,
-                            reason: format!("role '{}' from API key prefix '{}'", role_name, prefix),
+                            reason: format!(
+                                "role '{}' from API key prefix '{}'",
+                                role_name, prefix
+                            ),
                         };
                     }
                 }
@@ -261,7 +299,10 @@ impl RoleResolver {
             permissions: self.permissions_for(&role),
             resolution_method: format!("identity_type_default:{}", profile.identity_type),
             valid: true,
-            reason: format!("role '{}' from identity type '{}'", role, profile.identity_type),
+            reason: format!(
+                "role '{}' from identity type '{}'",
+                role, profile.identity_type
+            ),
         }
     }
 
@@ -443,7 +484,10 @@ mod tests {
 
     #[test]
     fn disabled_engine_returns_anonymous() {
-        let engine = RoleResolver::new(&RoleResolverConfig { enabled: false, ..Default::default() });
+        let engine = RoleResolver::new(&RoleResolverConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let profile = api_key_profile("sk-admin-key12345678901234");
         let result = engine.evaluate(&profile);
         assert_eq!(result.role, Role::Anonymous);

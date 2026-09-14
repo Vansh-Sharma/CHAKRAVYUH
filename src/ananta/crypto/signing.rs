@@ -6,8 +6,8 @@
 //   - Audit: chaining audit entries with HMAC
 //   - Distributed: node-to-node signature verification
 
-use serde::{Deserialize, Serialize};
 use rand::Rng;
+use serde::{Deserialize, Serialize};
 
 /// A digital signature.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -71,21 +71,37 @@ impl KeyPair {
         secret_key: Vec<u8>,
         public_key: Vec<u8>,
     ) -> Self {
-        Self { key_id: key_id.into(), algorithm, secret_key, public_key }
+        Self {
+            key_id: key_id.into(),
+            algorithm,
+            secret_key,
+            public_key,
+        }
     }
 
-    pub fn public_key(&self) -> &[u8] { &self.public_key }
-    pub fn secret_key(&self) -> &[u8] { &self.secret_key }
-    pub fn key_id(&self) -> &str { &self.key_id }
-    pub fn algorithm(&self) -> &SignAlgorithm { &self.algorithm }
+    pub fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+    pub fn secret_key(&self) -> &[u8] {
+        &self.secret_key
+    }
+    pub fn key_id(&self) -> &str {
+        &self.key_id
+    }
+    pub fn algorithm(&self) -> &SignAlgorithm {
+        &self.algorithm
+    }
 }
 
 /// Sign data with a key pair.
 pub fn sign(key_pair: &KeyPair, data: &[u8]) -> Signature {
     match key_pair.algorithm {
         SignAlgorithm::Ed25519 => {
-            use ed25519_dalek::{SigningKey, Signer};
-            let secret: ed25519_dalek::SecretKey = key_pair.secret_key.clone().try_into()
+            use ed25519_dalek::{Signer, SigningKey};
+            let secret: ed25519_dalek::SecretKey = key_pair
+                .secret_key
+                .clone()
+                .try_into()
                 .expect("ed25519 secret key must be 32 bytes");
             let signing_key = SigningKey::from_bytes(&secret);
             let signature = signing_key.sign(data);
@@ -98,8 +114,7 @@ pub fn sign(key_pair: &KeyPair, data: &[u8]) -> Signature {
         SignAlgorithm::HmacSha256 => {
             use hmac::{Hmac, Mac};
             type HmacSha256 = Hmac<sha2::Sha256>;
-            let mut mac = HmacSha256::new_from_slice(&key_pair.secret_key)
-                .expect("HMAC key error");
+            let mut mac = HmacSha256::new_from_slice(&key_pair.secret_key).expect("HMAC key error");
             mac.update(data);
             let result = mac.finalize();
             Signature {
@@ -120,7 +135,7 @@ pub fn verify(
 ) -> bool {
     match algorithm {
         SignAlgorithm::Ed25519 => {
-            use ed25519_dalek::{VerifyingKey, Verifier, Signature as DalekSig};
+            use ed25519_dalek::{Signature as DalekSig, Verifier, VerifyingKey};
             let vk_bytes: [u8; 32] = match public_key.try_into() {
                 Ok(b) => b,
                 Err(_) => return false,
@@ -166,7 +181,12 @@ mod tests {
         let kp = KeyPair::generate_ed25519("test-key");
         let data = b"original data";
         let sig = sign(&kp, data);
-        assert!(!verify(kp.public_key(), &kp.algorithm, &sig, b"tampered data"));
+        assert!(!verify(
+            kp.public_key(),
+            &kp.algorithm,
+            &sig,
+            b"tampered data"
+        ));
     }
 
     #[test]

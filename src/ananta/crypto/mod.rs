@@ -7,14 +7,14 @@
 // DESIGN: All crypto operations are pure functions (no state).
 // Stateful key management lives in anchor/key_manager.rs.
 
+pub mod encryption;
 pub mod hashing;
-pub mod threshold;
 pub mod merkle;
 pub mod signing;
-pub mod encryption;
+pub mod threshold;
 
+pub use encryption::{Decryptor, EncryptedPayload, Encryptor};
 pub use hashing::{hash, hash_bytes, HashDigest};
-pub use threshold::*;
 pub use merkle::MerkleTree;
-pub use signing::{Signature, KeyPair};
-pub use encryption::{Encryptor, Decryptor, EncryptedPayload};
+pub use signing::{KeyPair, Signature};
+pub use threshold::*;

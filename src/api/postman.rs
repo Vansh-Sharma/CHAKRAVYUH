@@ -213,10 +213,12 @@ mod tests {
         let c = collection_json();
         let items = c["item"].as_array().unwrap();
         // 13 items covering the full workflow
-        assert!(items.len() >= 10, "expected at least 10 items, got {}", items.len());
-        let names: Vec<&str> = items.iter()
-            .filter_map(|i| i["name"].as_str())
-            .collect();
+        assert!(
+            items.len() >= 10,
+            "expected at least 10 items, got {}",
+            items.len()
+        );
+        let names: Vec<&str> = items.iter().filter_map(|i| i["name"].as_str()).collect();
         assert!(names.iter().any(|n| n.contains("Signup")));
         assert!(names.iter().any(|n| n.contains("Login")));
         assert!(names.iter().any(|n| n.contains("Create API key")));

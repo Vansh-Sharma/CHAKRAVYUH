@@ -11,36 +11,63 @@ pub struct Color;
 
 impl Color {
     fn enabled() -> bool {
-        std::env::var("NO_COLOR").is_err()
-            && std::env::var("CHAKRAVYUH_NO_COLOR").is_err()
+        std::env::var("NO_COLOR").is_err() && std::env::var("CHAKRAVYUH_NO_COLOR").is_err()
     }
 
     pub fn green(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[32m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[32m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn red(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[31m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[31m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn yellow(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[33m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[33m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn blue(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[34m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[34m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn cyan(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[36m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[36m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn dim(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[2m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[2m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 
     pub fn bold(s: &str) -> String {
-        if Self::enabled() { format!("\x1b[1m{}\x1b[0m", s) } else { s.to_string() }
+        if Self::enabled() {
+            format!("\x1b[1m{}\x1b[0m", s)
+        } else {
+            s.to_string()
+        }
     }
 }
 

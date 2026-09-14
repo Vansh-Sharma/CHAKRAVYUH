@@ -39,29 +39,29 @@
 //
 // ═══════════════════════════════════════════════════════════════
 
+pub mod adapter;
+pub mod anchor;
+pub mod audit;
+#[cfg(test)]
+pub mod benchmarks;
 pub mod config;
 pub mod config_validator;
 pub mod crypto;
-pub mod anchor;
-pub mod trust;
-pub mod sentinel;
-pub mod phoenix;
-pub mod adapter;
-pub mod health;
-pub mod audit;
-pub mod simulation;
 pub mod distributed;
-pub mod runtime;
-pub mod scheduler;
-pub mod state;
-pub mod ovaph_loop;
+pub mod health;
 #[cfg(test)]
 pub mod integration_tests;
-#[cfg(test)]
-pub mod benchmarks;
+pub mod ovaph_loop;
+pub mod phoenix;
+pub mod runtime;
+pub mod scheduler;
+pub mod sentinel;
+pub mod simulation;
+pub mod state;
+pub mod trust;
 
 use std::sync::Arc;
-use tokio::sync::{RwLock, Mutex};
+use tokio::sync::{Mutex, RwLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -82,26 +82,25 @@ pub enum TrendDirection {
     Unknown,
 }
 
+use adapter::Adapter;
 use anchor::{IntegrityChecker, KeyManager, Manifest, SecureStore, TrustChain};
-use sentinel::drift::{DriftDetector, DriftObservation};
-use sentinel::TrustStateUpdater;
+use audit::{AuditCategory, AuditLog, AuditSeverity};
+use health::HealthGraph;
 use phoenix::planner::RecoveryPlanner;
 use phoenix::RecoveryHistory;
-use health::HealthGraph;
-use audit::{AuditLog, AuditCategory, AuditSeverity};
-use adapter::Adapter;
+use sentinel::drift::{DriftDetector, DriftObservation};
+use sentinel::TrustStateUpdater;
 use trust::trust_proof::TrustProof;
 
-
 // Re-export key types for external use.
-pub use config::AnantaConfig;
 pub use anchor::AttestationReport;
-pub use trust::TrustState;
-pub use sentinel::drift::{DriftType, DriftAlert};
-pub use phoenix::strategies::{RecoveryAction, RecoveryStrategy, RecoveryResult};
-pub use health::{HealthGraph as AnantaHealthGraph, HealthStatus, AnomalyPrediction};
 pub use audit::AuditLog as AnantaAuditLog;
-pub use ovaph_loop::{OvaphLoop, OvaphConfig, OvaphCycleReport};
+pub use config::AnantaConfig;
+pub use health::{AnomalyPrediction, HealthGraph as AnantaHealthGraph, HealthStatus};
+pub use ovaph_loop::{OvaphConfig, OvaphCycleReport, OvaphLoop};
+pub use phoenix::strategies::{RecoveryAction, RecoveryResult, RecoveryStrategy};
+pub use sentinel::drift::{DriftAlert, DriftType};
+pub use trust::TrustState;
 
 /// The ANANTA Autonomous Trust Plane.
 ///
@@ -183,25 +182,28 @@ impl AnantaPlane {
         }
 
         // ── Initialize Anchor subsystem ──
-        let manifest = Arc::new(RwLock::new(Manifest::new(config.crypto.hash_algorithm.clone())));
+        let manifest = Arc::new(RwLock::new(Manifest::new(
+            config.crypto.hash_algorithm.clone(),
+        )));
         let key_manager = Arc::new(RwLock::new(KeyManager::new("ananta-boot-key")));
-        let integrity_checker = Arc::new(RwLock::new(
-            IntegrityChecker::new(config.crypto.hash_algorithm.clone()),
-        ));
-        let secure_store = Arc::new(RwLock::new(
-            SecureStore::new("ananta-secure", &config.state_path)?,
-        ));
+        let integrity_checker = Arc::new(RwLock::new(IntegrityChecker::new(
+            config.crypto.hash_algorithm.clone(),
+        )));
+        let secure_store = Arc::new(RwLock::new(SecureStore::new(
+            "ananta-secure",
+            &config.state_path,
+        )?));
 
         // ── Initialize Trust subsystem ──
         let trust_state = Arc::new(RwLock::new(TrustState::new()));
 
         // ── Initialize Trust Chains ──
-        let attestation_chain = Arc::new(RwLock::new(
-            TrustChain::new(config.crypto.hash_algorithm.clone()),
-        ));
-        let recovery_chain = Arc::new(RwLock::new(
-            TrustChain::new(config.crypto.hash_algorithm.clone()),
-        ));
+        let attestation_chain = Arc::new(RwLock::new(TrustChain::new(
+            config.crypto.hash_algorithm.clone(),
+        )));
+        let recovery_chain = Arc::new(RwLock::new(TrustChain::new(
+            config.crypto.hash_algorithm.clone(),
+        )));
 
         // ── Initialize Sentinel ──
         let drift_detector = Arc::new(Mutex::new(DriftDetector::new(
@@ -212,9 +214,9 @@ impl AnantaPlane {
 
         // ── Initialize Phoenix ──
         let recovery_planner = Arc::new(Mutex::new(RecoveryPlanner::new(config.phoenix.clone())));
-        let recovery_history = Arc::new(Mutex::new(
-            RecoveryHistory::new(config.crypto.hash_algorithm.clone()),
-        ));
+        let recovery_history = Arc::new(Mutex::new(RecoveryHistory::new(
+            config.crypto.hash_algorithm.clone(),
+        )));
 
         // ── Initialize Health ──
         let health_graph = Arc::new(Mutex::new(HealthGraph::new(config.health.clone())));
@@ -294,12 +296,14 @@ impl AnantaPlane {
 
     /// Get consecutive attestation pass count.
     pub fn consecutive_passes(&self) -> u64 {
-        self.consecutive_passes.load(std::sync::atomic::Ordering::Relaxed)
+        self.consecutive_passes
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get consecutive attestation failure count.
     pub fn consecutive_failures(&self) -> u64 {
-        self.consecutive_failures.load(std::sync::atomic::Ordering::Relaxed)
+        self.consecutive_failures
+            .load(std::sync::atomic::Ordering::Relaxed)
     }
 
     /// Get the latest OVAPH cycle report.
@@ -310,7 +314,10 @@ impl AnantaPlane {
     /// Get OVAPH loop metrics.
     pub async fn ovaph_metrics(&self) -> ovaph_loop::OvaphMetrics {
         let loop_ = self.ovaph_loop.lock().await;
-        loop_.metrics().clone().expect("ovaph metrics should be available")
+        loop_
+            .metrics()
+            .clone()
+            .expect("ovaph metrics should be available")
     }
 
     /// Run a single OVAPH cycle (Observe → Verify → Attest → Heal → Prove).
@@ -372,7 +379,12 @@ impl AnantaPlane {
             Ok(report) => ovaph_loop::OvaphAttestationResult {
                 attestation_passed: report.integrity.passed,
                 trust_level: report.trust_level,
-                failed_components: report.integrity.failed_components().into_iter().map(|s| s.to_string()).collect(),
+                failed_components: report
+                    .integrity
+                    .failed_components()
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect(),
                 attestation_id: uuid::Uuid::new_v4().to_string(),
                 chain_length_after: self.attestation_chain.read().await.len() as u64,
             },
@@ -426,7 +438,11 @@ impl AnantaPlane {
         let attest_stage = ovaph_loop::StageResult::completed(
             ovaph_loop::OvaphStage::Attest,
             0,
-            if attestation_result.attestation_passed { 1 } else { 0 },
+            if attestation_result.attestation_passed {
+                1
+            } else {
+                0
+            },
         );
         let heal_stage = ovaph_loop::StageResult::completed(
             ovaph_loop::OvaphStage::Heal,
@@ -438,7 +454,13 @@ impl AnantaPlane {
             0,
             if proof_result.proof_generated { 1 } else { 0 },
         );
-        let stages = vec![observation_stage, verify_stage, attest_stage, heal_stage, prove_stage];
+        let stages = vec![
+            observation_stage,
+            verify_stage,
+            attest_stage,
+            heal_stage,
+            prove_stage,
+        ];
         let total_duration_ms = std::cmp::max(1, cycle_start.elapsed().as_millis() as u64);
 
         let report = OvaphCycleReport {
@@ -478,10 +500,15 @@ impl AnantaPlane {
             let mut log = self.audit_log.lock().await;
             log.append(
                 AuditCategory::Lifecycle,
-                if attestation_result.attestation_passed { AuditSeverity::Info } else { AuditSeverity::Warning },
+                if attestation_result.attestation_passed {
+                    AuditSeverity::Info
+                } else {
+                    AuditSeverity::Warning
+                },
                 &format!(
                     "OVAPH cycle complete: trust={:.3}→{:.3} attest={} heal_actions={} proof={}",
-                    trust_before, trust_after,
+                    trust_before,
+                    trust_after,
                     attestation_result.attestation_passed,
                     healing_result.actions_executed,
                     proof_result.proof_generated,
@@ -573,8 +600,12 @@ impl AnantaPlane {
         drop(manifest);
         drop(checker);
 
-        let passes = self.consecutive_passes.load(std::sync::atomic::Ordering::Relaxed);
-        let failures = self.consecutive_failures.load(std::sync::atomic::Ordering::Relaxed);
+        let passes = self
+            .consecutive_passes
+            .load(std::sync::atomic::Ordering::Relaxed);
+        let failures = self
+            .consecutive_failures
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         // 2. Build attestation report.
         let mut report = AttestationReport::from_snapshot(snapshot, passes, failures);
@@ -589,11 +620,15 @@ impl AnantaPlane {
 
         // 4. Update consecutive counters.
         if report.integrity.passed {
-            self.consecutive_passes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            self.consecutive_failures.store(0, std::sync::atomic::Ordering::Relaxed);
+            self.consecutive_passes
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.consecutive_failures
+                .store(0, std::sync::atomic::Ordering::Relaxed);
         } else {
-            self.consecutive_failures.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            self.consecutive_passes.store(0, std::sync::atomic::Ordering::Relaxed);
+            self.consecutive_failures
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            self.consecutive_passes
+                .store(0, std::sync::atomic::Ordering::Relaxed);
         }
 
         // 5. Store latest report.
@@ -633,7 +668,11 @@ impl AnantaPlane {
                         message: format!(
                             "integrity check failed: {} (expected={}, actual={})",
                             result.component,
-                            result.expected.as_ref().map(|e| &e.hex[..12]).unwrap_or("none"),
+                            result
+                                .expected
+                                .as_ref()
+                                .map(|e| &e.hex[..12])
+                                .unwrap_or("none"),
                             &result.actual.hex[..12],
                         ),
                         severity: trust::trust_state::AlertSeverity::Critical,
@@ -658,9 +697,7 @@ impl AnantaPlane {
                 severity,
                 &format!(
                     "attestation cycle: trust={:.3} passed={} failed={}",
-                    report.trust_level,
-                    report.integrity.passed,
-                    report.integrity.failed_count,
+                    report.trust_level, report.integrity.passed, report.integrity.failed_count,
                 ),
             );
         }
@@ -713,16 +750,12 @@ impl AnantaPlane {
             }
         };
 
-        let chain_head = attestation_chain.latest()
+        let chain_head = attestation_chain
+            .latest()
             .map(|l| l.hash.clone())
             .unwrap_or_default();
 
-        let proof = TrustProof::generate(
-            attestation,
-            &state,
-            &chain_head,
-            &key_pair,
-        );
+        let proof = TrustProof::generate(attestation, &state, &chain_head, &key_pair);
 
         // Store.
         {
@@ -738,9 +771,7 @@ impl AnantaPlane {
                 AuditSeverity::Info,
                 &format!(
                     "trust proof generated: score={:.3} all_passed={} proof_id={}",
-                    proof.trust_score,
-                    proof.all_passed,
-                    proof.proof_id,
+                    proof.trust_score, proof.all_passed, proof.proof_id,
                 ),
             );
         }
@@ -788,7 +819,10 @@ impl AnantaPlane {
             let mut log = self.audit_log.lock().await;
             let mut data = std::collections::HashMap::new();
             data.insert("z_score".into(), serde_json::json!(alert.z_score));
-            data.insert("drift_type".into(), serde_json::json!(format!("{}", alert.drift_type)));
+            data.insert(
+                "drift_type".into(),
+                serde_json::json!(format!("{}", alert.drift_type)),
+            );
             data.insert("observed".into(), serde_json::json!(alert.observed_value));
             data.insert("mean".into(), serde_json::json!(alert.current_mean));
 
@@ -798,12 +832,7 @@ impl AnantaPlane {
                 sentinel::drift::AlertSeverity::Critical => AuditSeverity::Critical,
             };
 
-            log.append_with_data(
-                AuditCategory::Drift,
-                severity,
-                &alert.summary(),
-                data,
-            );
+            log.append_with_data(AuditCategory::Drift, severity, &alert.summary(), data);
         }
 
         // 3. Update health graph from drift.
@@ -814,10 +843,8 @@ impl AnantaPlane {
                 sentinel::drift::AlertSeverity::Warning => health::HealthStatus::Unhealthy,
                 sentinel::drift::AlertSeverity::Critical => health::HealthStatus::Failed,
             };
-            let mut obs = health::HealthObservation::new(
-                &format!("drift:{}", alert.drift_type),
-                status,
-            );
+            let mut obs =
+                health::HealthObservation::new(&format!("drift:{}", alert.drift_type), status);
             obs.score = (1.0 - (alert.z_score.abs() / 20.0)).max(0.0);
             graph.observe(obs);
         }
@@ -835,7 +862,9 @@ impl AnantaPlane {
             let state = self.trust_state.read().await;
             state.domain_level(domain)
         };
-        let failures = self.consecutive_failures.load(std::sync::atomic::Ordering::Relaxed);
+        let failures = self
+            .consecutive_failures
+            .load(std::sync::atomic::Ordering::Relaxed);
 
         let plan = {
             let mut planner = self.recovery_planner.lock().await;
@@ -913,9 +942,7 @@ impl AnantaPlane {
                     sev,
                     &format!(
                         "recovery executed: strategy={:?} target={} outcome={}",
-                        result.action.strategy,
-                        result.action.target,
-                        result.outcome,
+                        result.action.strategy, result.action.target, result.outcome,
                     ),
                 );
             }
@@ -946,20 +973,16 @@ impl AnantaPlane {
         //   - ReloadPolicy: re-read policy file
         //   - ResetThresholds: reset KeshavLearn state
         match action.strategy {
-            RecoveryStrategy::Escalate => {
-                RecoveryResult::failed(
-                    action.clone(),
-                    "escalated to human operator — awaiting response",
-                    start.elapsed().as_secs_f64() * 1000.0,
-                )
-            }
-            RecoveryStrategy::Observe => {
-                RecoveryResult::success(
-                    action.clone(),
-                    "observation mode — monitoring frequency increased",
-                    start.elapsed().as_secs_f64() * 1000.0,
-                )
-            }
+            RecoveryStrategy::Escalate => RecoveryResult::failed(
+                action.clone(),
+                "escalated to human operator — awaiting response",
+                start.elapsed().as_secs_f64() * 1000.0,
+            ),
+            RecoveryStrategy::Observe => RecoveryResult::success(
+                action.clone(),
+                "observation mode — monitoring frequency increased",
+                start.elapsed().as_secs_f64() * 1000.0,
+            ),
             _ => {
                 // Simulate success with probability based on confidence.
                 if rand::random::<f64>() < action.confidence {
@@ -1071,7 +1094,10 @@ impl AnantaPlane {
     /// Returns a JoinHandle for the supervisor task.
     /// Call `shutdown()` to stop all loops.
     pub fn start(self: &Arc<Self>) -> tokio::task::JoinHandle<()> {
-        if self.started.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        if self
+            .started
+            .swap(true, std::sync::atomic::Ordering::Relaxed)
+        {
             tracing::warn!("ANANTA start() called twice — ignoring");
             return tokio::spawn(async {});
         }
@@ -1119,9 +1145,8 @@ impl AnantaPlane {
             let attestation_interval = config.sentinel.check_interval_ms;
             let attestation_shutdown = plane.shutdown.clone();
             tokio::spawn(async move {
-                let mut interval = tokio::time::interval(
-                    std::time::Duration::from_millis(attestation_interval),
-                );
+                let mut interval =
+                    tokio::time::interval(std::time::Duration::from_millis(attestation_interval));
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                 loop {
                     tokio::select! {
@@ -1146,13 +1171,11 @@ impl AnantaPlane {
                 let proof_shutdown = plane.shutdown.clone();
                 tokio::spawn(async move {
                     // Wait for first attestation to complete.
-                    tokio::time::sleep(std::time::Duration::from_millis(
-                        attestation_interval,
-                    )).await;
+                    tokio::time::sleep(std::time::Duration::from_millis(attestation_interval))
+                        .await;
 
-                    let mut interval = tokio::time::interval(
-                        std::time::Duration::from_millis(proof_interval),
-                    );
+                    let mut interval =
+                        tokio::time::interval(std::time::Duration::from_millis(proof_interval));
                     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                     loop {
                         tokio::select! {
@@ -1176,9 +1199,8 @@ impl AnantaPlane {
             let drift_interval = config.sentinel.trust_state_interval_ms;
             let drift_shutdown = plane.shutdown.clone();
             tokio::spawn(async move {
-                let mut interval = tokio::time::interval(
-                    std::time::Duration::from_millis(drift_interval),
-                );
+                let mut interval =
+                    tokio::time::interval(std::time::Duration::from_millis(drift_interval));
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                 loop {
                     tokio::select! {
@@ -1206,9 +1228,8 @@ impl AnantaPlane {
                 let health_interval = config.health.computation_interval_ms;
                 let health_shutdown = plane.shutdown.clone();
                 tokio::spawn(async move {
-                    let mut interval = tokio::time::interval(
-                        std::time::Duration::from_millis(health_interval),
-                    );
+                    let mut interval =
+                        tokio::time::interval(std::time::Duration::from_millis(health_interval));
                     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                     loop {
                         tokio::select! {
@@ -1229,9 +1250,7 @@ impl AnantaPlane {
                 let adapter_plane = Arc::clone(&plane);
                 let adapter_shutdown = plane.shutdown.clone();
                 tokio::spawn(async move {
-                    let mut interval = tokio::time::interval(
-                        std::time::Duration::from_secs(10),
-                    );
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(10));
                     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                     loop {
                         tokio::select! {
@@ -1254,11 +1273,10 @@ impl AnantaPlane {
                 // Wait for initial attestation to complete first.
                 tokio::time::sleep(std::time::Duration::from_millis(
                     config.sentinel.check_interval_ms,
-                )).await;
+                ))
+                .await;
 
-                let mut interval = tokio::time::interval(
-                    std::time::Duration::from_secs(30),
-                );
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
                 loop {
                     tokio::select! {
@@ -1427,26 +1445,35 @@ mod tests {
 
         // Feed stable data to establish baseline.
         for _ in 0..50 {
-            plane.observe_drift(DriftObservation {
-                drift_type: DriftType::Decision,
-                value: 0.85,
-                context: "test".into(),
-                timestamp: chrono::Utc::now().to_rfc3339(),
-            }).await;
+            plane
+                .observe_drift(DriftObservation {
+                    drift_type: DriftType::Decision,
+                    value: 0.85,
+                    context: "test".into(),
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                })
+                .await;
         }
 
         let before = plane.trust_state().await.domain_level("decision");
 
         // Feed anomalous value.
-        plane.observe_drift(DriftObservation {
-            drift_type: DriftType::Decision,
-            value: 0.10,
-            context: "test".into(),
-            timestamp: chrono::Utc::now().to_rfc3339(),
-        }).await;
+        plane
+            .observe_drift(DriftObservation {
+                drift_type: DriftType::Decision,
+                value: 0.10,
+                context: "test".into(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+            })
+            .await;
 
         let after = plane.trust_state().await.domain_level("decision");
-        assert!(after < before, "drift should reduce trust: before={} after={}", before, after);
+        assert!(
+            after < before,
+            "drift should reduce trust: before={} after={}",
+            before,
+            after
+        );
     }
 
     #[tokio::test]
@@ -1464,16 +1491,22 @@ mod tests {
         let plane = AnantaPlane::new(config).unwrap();
 
         // Register a provider and a manifest entry.
-        plane.register_integrity_provider(
-            anchor::integrity::IntegrityDomain::Config,
-            || b"known_good_config".to_vec(),
-        ).await;
+        plane
+            .register_integrity_provider(anchor::integrity::IntegrityDomain::Config, || {
+                b"known_good_config".to_vec()
+            })
+            .await;
 
-        plane.add_manifest_entry("config", b"known_good_config").await;
+        plane
+            .add_manifest_entry("config", b"known_good_config")
+            .await;
 
         // Run attestation — should pass.
         let report = plane.run_attestation_cycle().await.unwrap();
-        let config_result = report.integrity.results.iter()
+        let config_result = report
+            .integrity
+            .results
+            .iter()
             .find(|r| r.component == "config");
         assert!(config_result.is_some());
         assert!(config_result.unwrap().passed);
@@ -1484,13 +1517,16 @@ mod tests {
         let config = test_config();
         let plane = AnantaPlane::new(config).unwrap();
 
-        plane.register_integrity_provider(
-            anchor::integrity::IntegrityDomain::Config,
-            || b"tampered_config".to_vec(),
-        ).await;
+        plane
+            .register_integrity_provider(anchor::integrity::IntegrityDomain::Config, || {
+                b"tampered_config".to_vec()
+            })
+            .await;
 
         // Manifest says "known_good" but provider returns "tampered".
-        plane.add_manifest_entry("config", b"known_good_config").await;
+        plane
+            .add_manifest_entry("config", b"known_good_config")
+            .await;
 
         let report = plane.run_attestation_cycle().await.unwrap();
         assert!(!report.integrity.passed);
@@ -1557,7 +1593,11 @@ mod tests {
         let config = test_config();
         let plane = AnantaPlane::new(config).unwrap();
         let report = plane.run_ovaph_cycle().await;
-        assert!(report.is_ok(), "OVAPH cycle should succeed: {:?}", report.err());
+        assert!(
+            report.is_ok(),
+            "OVAPH cycle should succeed: {:?}",
+            report.err()
+        );
         let report = report.unwrap();
         assert!(!report.cycle_id.cycle_id.is_empty());
         assert!(report.trust_before >= 0.0);
@@ -1590,10 +1630,11 @@ mod tests {
         let plane = AnantaPlane::new(config).unwrap();
 
         // Register a provider that returns tampered data.
-        plane.register_integrity_provider(
-            anchor::integrity::IntegrityDomain::Config,
-            || b"tampered".to_vec(),
-        ).await;
+        plane
+            .register_integrity_provider(anchor::integrity::IntegrityDomain::Config, || {
+                b"tampered".to_vec()
+            })
+            .await;
         plane.add_manifest_entry("config", b"known_good").await;
 
         let report = plane.run_ovaph_cycle().await.unwrap();

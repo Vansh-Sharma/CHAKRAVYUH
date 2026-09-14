@@ -3,7 +3,7 @@
 // Per-ring health tracking and system-level health checks for
 // Kubernetes-style readiness/liveness probes.
 
-use std::sync::atomic::{AtomicU64, AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Instant;
 
 use serde::Serialize;
@@ -77,8 +77,12 @@ impl RingHealthTracker {
     pub fn record_success(&self, latency_ms: f64) {
         self.evaluations.fetch_add(1, Ordering::Relaxed);
         self.consecutive_errors.store(0, Ordering::Relaxed);
-        if let Ok(mut last) = self.last_latency.write() { *last = latency_ms; }
-        if let Ok(mut check) = self.last_check.write() { *check = Instant::now(); }
+        if let Ok(mut last) = self.last_latency.write() {
+            *last = latency_ms;
+        }
+        if let Ok(mut check) = self.last_check.write() {
+            *check = Instant::now();
+        }
     }
 
     /// Record a failed evaluation.
@@ -86,13 +90,19 @@ impl RingHealthTracker {
         self.evaluations.fetch_add(1, Ordering::Relaxed);
         self.errors.fetch_add(1, Ordering::Relaxed);
         self.consecutive_errors.fetch_add(1, Ordering::Relaxed);
-        if let Ok(mut last) = self.last_latency.write() { *last = latency_ms; }
-        if let Ok(mut check) = self.last_check.write() { *check = Instant::now(); }
+        if let Ok(mut last) = self.last_latency.write() {
+            *last = latency_ms;
+        }
+        if let Ok(mut check) = self.last_check.write() {
+            *check = Instant::now();
+        }
     }
 
     /// Check if the ring is healthy.
     pub fn is_healthy(&self) -> bool {
-        if !self.enabled.load(Ordering::Relaxed) { return true; }
+        if !self.enabled.load(Ordering::Relaxed) {
+            return true;
+        }
         self.consecutive_errors.load(Ordering::Relaxed) < self.unhealthy_threshold
     }
 
@@ -100,10 +110,16 @@ impl RingHealthTracker {
     pub fn health(&self) -> RingHealth {
         let evals = self.evaluations.load(Ordering::Relaxed);
         let errs = self.errors.load(Ordering::Relaxed);
-        let error_rate = if evals > 0 { errs as f64 / evals as f64 } else { 0.0 };
+        let error_rate = if evals > 0 {
+            errs as f64 / evals as f64
+        } else {
+            0.0
+        };
         let last_check_ago = if let Ok(check) = self.last_check.read() {
             check.elapsed().as_secs_f64() * 1000.0
-        } else { 0.0 };
+        } else {
+            0.0
+        };
         RingHealth {
             name: self.name.clone(),
             enabled: self.enabled.load(Ordering::Relaxed),
@@ -199,18 +215,48 @@ mod tests {
     #[test]
     fn readiness_check() {
         let rings = vec![
-            RingHealth { name: "shield".into(), enabled: true, healthy: true, last_check_ms: 0.0, total_evaluations: 10, total_errors: 0, error_rate: 0.0 },
-            RingHealth { name: "threat".into(), enabled: true, healthy: true, last_check_ms: 0.0, total_evaluations: 5, total_errors: 1, error_rate: 0.2 },
-            RingHealth { name: "agent".into(), enabled: false, healthy: false, last_check_ms: 0.0, total_evaluations: 0, total_errors: 0, error_rate: 0.0 },
+            RingHealth {
+                name: "shield".into(),
+                enabled: true,
+                healthy: true,
+                last_check_ms: 0.0,
+                total_evaluations: 10,
+                total_errors: 0,
+                error_rate: 0.0,
+            },
+            RingHealth {
+                name: "threat".into(),
+                enabled: true,
+                healthy: true,
+                last_check_ms: 0.0,
+                total_evaluations: 5,
+                total_errors: 1,
+                error_rate: 0.2,
+            },
+            RingHealth {
+                name: "agent".into(),
+                enabled: false,
+                healthy: false,
+                last_check_ms: 0.0,
+                total_evaluations: 0,
+                total_errors: 0,
+                error_rate: 0.0,
+            },
         ];
         assert!(is_ready(&rings));
     }
 
     #[test]
     fn readiness_unhealthy_ring() {
-        let rings = vec![
-            RingHealth { name: "shield".into(), enabled: true, healthy: false, last_check_ms: 0.0, total_evaluations: 10, total_errors: 10, error_rate: 1.0 },
-        ];
+        let rings = vec![RingHealth {
+            name: "shield".into(),
+            enabled: true,
+            healthy: false,
+            last_check_ms: 0.0,
+            total_evaluations: 10,
+            total_errors: 10,
+            error_rate: 1.0,
+        }];
         assert!(!is_ready(&rings));
     }
 

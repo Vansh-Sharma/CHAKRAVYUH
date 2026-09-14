@@ -19,7 +19,7 @@
 //   4. Event-driven — decay triggered by named events
 //   5. Cron-like    — minute/hour/day/month patterns
 
-use chrono::{Datelike, DateTime, Timelike, Utc};
+use chrono::{DateTime, Datelike, Timelike, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::{BinaryHeap, HashMap, HashSet, VecDeque};
 
@@ -135,9 +135,7 @@ impl StepFunctionParams {
     pub fn new(boundaries: Vec<StepBoundary>) -> Self {
         let mut sorted = boundaries;
         sorted.sort_by(|a, b| a.at_seconds.partial_cmp(&b.at_seconds).unwrap());
-        Self {
-            boundaries: sorted,
-        }
+        Self { boundaries: sorted }
     }
 
     /// Compute cumulative decay factor at elapsed seconds `t`.
@@ -231,12 +229,7 @@ pub struct LinearSegment {
 }
 
 impl LinearSegment {
-    pub fn new(
-        start_seconds: f64,
-        end_seconds: f64,
-        start_factor: f64,
-        end_factor: f64,
-    ) -> Self {
+    pub fn new(start_seconds: f64, end_seconds: f64, start_factor: f64, end_factor: f64) -> Self {
         Self {
             start_seconds: start_seconds.max(0.0),
             end_seconds: end_seconds.max(start_seconds.max(0.0) + 0.001),
@@ -456,7 +449,9 @@ impl PeriodicParams {
 
 impl Default for PeriodicParams {
     fn default() -> Self {
-        Self { interval_secs: 3600.0 }
+        Self {
+            interval_secs: 3600.0,
+        }
     }
 }
 
@@ -523,12 +518,7 @@ pub struct CronParams {
 }
 
 impl CronParams {
-    pub fn new(
-        minute: Option<u8>,
-        hour: Option<u8>,
-        day: Option<u8>,
-        month: Option<u8>,
-    ) -> Self {
+    pub fn new(minute: Option<u8>, hour: Option<u8>, day: Option<u8>, month: Option<u8>) -> Self {
         Self {
             minute: minute.map(|m| m.min(59)),
             hour: hour.map(|h| h.min(23)),
@@ -930,11 +920,7 @@ impl DecayPolicy {
     /// Apply decay to a trust value, respecting floor and rate cap.
     ///
     /// Returns (new_trust, actual_decay_amount).
-    pub fn apply_decay(
-        &self,
-        current_trust: f64,
-        elapsed_secs: f64,
-    ) -> (f64, f64) {
+    pub fn apply_decay(&self, current_trust: f64, elapsed_secs: f64) -> (f64, f64) {
         let effective_elapsed = self.schedule.effective_elapsed(elapsed_secs);
         let new_trust = self.model.apply(current_trust, effective_elapsed);
         let decay_amount = current_trust - new_trust;
@@ -1091,8 +1077,7 @@ impl DecayAuditEntry {
         effective_elapsed_secs: f64,
         reason: &str,
     ) -> Self {
-        let model_params_json =
-            serde_json::to_string(model).unwrap_or_else(|_| "{}".into());
+        let model_params_json = serde_json::to_string(model).unwrap_or_else(|_| "{}".into());
         Self {
             entry_id: uuid::Uuid::new_v4().to_string(),
             computed_at: Utc::now(),
@@ -1387,14 +1372,8 @@ impl TrustDecayEngine {
 
     /// Register a new entity for decay tracking.
     pub fn register_entity(&mut self, entity_id: &str, policy_id: Option<&str>) {
-        let pid = policy_id
-            .unwrap_or(&self.default_policy_id)
-            .to_string();
-        let state = EntityDecayState::new(
-            entity_id,
-            &pid,
-            self.default_window_config.clone(),
-        );
+        let pid = policy_id.unwrap_or(&self.default_policy_id).to_string();
+        let state = EntityDecayState::new(entity_id, &pid, self.default_window_config.clone());
         self.entities.insert(entity_id.into(), state);
     }
 
@@ -1429,9 +1408,11 @@ impl TrustDecayEngine {
                         let effective_elapsed = params.decay_secs_per_trigger;
                         // Apply model directly, bypassing apply_decay which would
                         // re-zero effective_elapsed for EventDriven schedules.
-                        let new_trust_raw = policy.model.apply(state.current_trust, effective_elapsed);
+                        let new_trust_raw =
+                            policy.model.apply(state.current_trust, effective_elapsed);
                         let decay_amount = state.current_trust - new_trust_raw;
-                        let capped_decay = decay_amount.min(state.current_trust * policy.max_decay_rate);
+                        let capped_decay =
+                            decay_amount.min(state.current_trust * policy.max_decay_rate);
                         let after_cap = state.current_trust - capped_decay;
                         let new_trust = after_cap.max(policy.trust_floor);
                         let old_trust = state.current_trust;
@@ -1478,9 +1459,11 @@ impl TrustDecayEngine {
         let effective_elapsed = primary_policy.schedule.effective_elapsed(elapsed);
 
         // Recompute evidence weights
-        state
-            .evidence_store
-            .recompute_decayed_weights(&primary_policy.model, &primary_policy.schedule, &now);
+        state.evidence_store.recompute_decayed_weights(
+            &primary_policy.model,
+            &primary_policy.schedule,
+            &now,
+        );
 
         // Aggregate from evidence
         let evidence_trust = state.evidence_store.aggregate_trust(&now);
@@ -1593,11 +1576,7 @@ impl TrustDecayEngine {
                 result.max_single_decay = result.max_single_decay.max(decay);
 
                 // Check floor hit
-                if let Some(policy) = self
-                    .policy_registry
-                    .policies_for_entity(eid)
-                    .first()
-                {
+                if let Some(policy) = self.policy_registry.policies_for_entity(eid).first() {
                     if (new_trust - policy.trust_floor).abs() < 1e-9 {
                         result.floor_hits += 1;
                     }
@@ -1822,12 +1801,10 @@ mod tests {
 
     #[test]
     fn step_function_flat_between_boundaries() {
-        let params = StepFunctionParams::new(vec![
-            StepBoundary {
-                at_seconds: 100.0,
-                drop_factor: 0.9,
-            },
-        ]);
+        let params = StepFunctionParams::new(vec![StepBoundary {
+            at_seconds: 100.0,
+            drop_factor: 0.9,
+        }]);
         let f_50 = params.decay_factor(50.0);
         let f_99 = params.decay_factor(99.0);
         assert!((f_50 - f_99).abs() < 1e-12);

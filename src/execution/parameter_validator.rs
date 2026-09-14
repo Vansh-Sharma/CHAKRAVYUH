@@ -80,22 +80,28 @@ impl Default for ParameterValidatorConfig {
                         required_fields: vec!["query".into()],
                         properties: {
                             let mut m = std::collections::HashMap::new();
-                            m.insert("query".into(), PropertySpec {
-                                prop_type: PropertyType::String,
-                                max_length: Some(200),
-                                min_length: Some(1),
-                                minimum: None,
-                                maximum: None,
-                                enum_values: vec![],
-                            });
-                            m.insert("max_results".into(), PropertySpec {
-                                prop_type: PropertyType::Integer,
-                                max_length: None,
-                                min_length: None,
-                                minimum: Some(1),
-                                maximum: Some(20),
-                                enum_values: vec![],
-                            });
+                            m.insert(
+                                "query".into(),
+                                PropertySpec {
+                                    prop_type: PropertyType::String,
+                                    max_length: Some(200),
+                                    min_length: Some(1),
+                                    minimum: None,
+                                    maximum: None,
+                                    enum_values: vec![],
+                                },
+                            );
+                            m.insert(
+                                "max_results".into(),
+                                PropertySpec {
+                                    prop_type: PropertyType::Integer,
+                                    max_length: None,
+                                    min_length: None,
+                                    minimum: Some(1),
+                                    maximum: Some(20),
+                                    enum_values: vec![],
+                                },
+                            );
                             m
                         },
                     },
@@ -106,14 +112,17 @@ impl Default for ParameterValidatorConfig {
                         required_fields: vec!["expression".into()],
                         properties: {
                             let mut m = std::collections::HashMap::new();
-                            m.insert("expression".into(), PropertySpec {
-                                prop_type: PropertyType::String,
-                                max_length: Some(100),
-                                min_length: Some(1),
-                                minimum: None,
-                                maximum: None,
-                                enum_values: vec![],
-                            });
+                            m.insert(
+                                "expression".into(),
+                                PropertySpec {
+                                    prop_type: PropertyType::String,
+                                    max_length: Some(100),
+                                    min_length: Some(1),
+                                    minimum: None,
+                                    maximum: None,
+                                    enum_values: vec![],
+                                },
+                            );
                             m
                         },
                     },
@@ -124,14 +133,17 @@ impl Default for ParameterValidatorConfig {
                         required_fields: vec!["path".into()],
                         properties: {
                             let mut m = std::collections::HashMap::new();
-                            m.insert("path".into(), PropertySpec {
-                                prop_type: PropertyType::String,
-                                max_length: Some(500),
-                                min_length: Some(1),
-                                minimum: None,
-                                maximum: None,
-                                enum_values: vec![],
-                            });
+                            m.insert(
+                                "path".into(),
+                                PropertySpec {
+                                    prop_type: PropertyType::String,
+                                    max_length: Some(500),
+                                    min_length: Some(1),
+                                    minimum: None,
+                                    maximum: None,
+                                    enum_values: vec![],
+                                },
+                            );
                             m
                         },
                     },
@@ -186,7 +198,11 @@ impl ParameterValidator {
         }
 
         // Find schema for this tool.
-        let tool_schema = self.config.tool_schemas.iter().find(|s| s.tool_name == tool_name);
+        let tool_schema = self
+            .config
+            .tool_schemas
+            .iter()
+            .find(|s| s.tool_name == tool_name);
 
         let Some(tool_schema) = tool_schema else {
             // No schema configured for this tool — allow (open policy).

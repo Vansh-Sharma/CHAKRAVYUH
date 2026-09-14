@@ -281,18 +281,14 @@ fn regex_cache() -> &'static DecoderRegexCache {
         DecoderRegexCache {
             // Hex bytes: "69 67 6e 6f 72 65" or "0x69 0x67" or "69, 67, 6e"
             // Require at least 4 consecutive hex bytes to reduce false positives.
-            hex_bytes: Regex::new(
-                r"(?i)(?:0x)?[0-9a-f]{2}(?:[,\s]+(?:0x)?[0-9a-f]{2}){3,}",
-            )
-            .expect("hex_bytes regex compiles"),
+            hex_bytes: Regex::new(r"(?i)(?:0x)?[0-9a-f]{2}(?:[,\s]+(?:0x)?[0-9a-f]{2}){3,}")
+                .expect("hex_bytes regex compiles"),
 
             // Base64: 20+ chars from the base64 alphabet, optionally ending with =.
-            base64: Regex::new(r"\b[A-Za-z0-9+/]{20,}={0,2}\b")
-                .expect("base64 regex compiles"),
+            base64: Regex::new(r"\b[A-Za-z0-9+/]{20,}={0,2}\b").expect("base64 regex compiles"),
 
             // Base32: 16+ uppercase chars from [A-Z2-7], optionally ending with =.
-            base32: Regex::new(r"\b[A-Z2-7]{16,}={0,6}\b")
-                .expect("base32 regex compiles"),
+            base32: Regex::new(r"\b[A-Z2-7]{16,}={0,6}\b").expect("base32 regex compiles"),
 
             // Base85 / Ascii85: 20+ chars from the Base85 alphabet.
             // The Base85 alphabet uses chars 33-117 ('!' to 'u') in Ascii85,
@@ -319,10 +315,7 @@ const REVERSE_DETECTION_KEYWORDS: &[&str] = &[
 ];
 
 fn decode_hex_string(hex: &str) -> Option<String> {
-    let cleaned: String = hex
-        .chars()
-        .filter(|c| c.is_ascii_hexdigit())
-        .collect();
+    let cleaned: String = hex.chars().filter(|c| c.is_ascii_hexdigit()).collect();
     if cleaned.len() % 2 != 0 {
         return None;
     }
@@ -408,10 +401,7 @@ fn decode_base32(raw: &str) -> Option<String> {
 /// already stripped by the regex) and the btoa variant. We DON'T support
 /// the z85 variant (different alphabet).
 fn decode_base85(raw: &str) -> Option<String> {
-    let cleaned: String = raw
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect();
+    let cleaned: String = raw.chars().filter(|c| !c.is_whitespace()).collect();
     if cleaned.len() < 10 {
         return None;
     }
@@ -426,9 +416,7 @@ fn decode_base85(raw: &str) -> Option<String> {
         let mut value: u32 = 0;
         for j in 0..5 {
             let b = bytes[i + j];
-            value = value
-                .checked_mul(85)?
-                .checked_add((b - 33) as u32)?;
+            value = value.checked_mul(85)?.checked_add((b - 33) as u32)?;
         }
         out.push(((value >> 24) & 0xff) as u8);
         out.push(((value >> 16) & 0xff) as u8);
@@ -569,7 +557,10 @@ fn normalise_unicode_homoglyphs(s: &str) -> String {
         // Replace zero-width chars with a space (NOT strip — otherwise
         // "Ignore‌previous‌instructions" becomes "Ignorepreviousinstructions"
         // and no regex will match it).
-        if matches!(code, 0x200B | 0x200C | 0x200D | 0x2060 | 0xFEFF | 0x00AD | 0x180E) {
+        if matches!(
+            code,
+            0x200B | 0x200C | 0x200D | 0x2060 | 0xFEFF | 0x00AD | 0x180E
+        ) {
             result.push(' ');
             continue;
         }

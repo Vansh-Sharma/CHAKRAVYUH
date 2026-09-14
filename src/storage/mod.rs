@@ -73,9 +73,15 @@ pub struct StorageConfig {
     pub timeout_ms: u64,
 }
 
-fn default_backend() -> String { "memory".into() }
-fn default_prefix() -> String { "chakravyuh:".into() }
-fn default_timeout_ms() -> u64 { 1000 }
+fn default_backend() -> String {
+    "memory".into()
+}
+fn default_prefix() -> String {
+    "chakravyuh:".into()
+}
+fn default_timeout_ms() -> u64 {
+    1000
+}
 
 impl Default for StorageConfig {
     fn default() -> Self {

@@ -185,7 +185,10 @@ impl ThreatRing {
         let mut engine_results: Vec<ThreatEngineResult> = Vec::with_capacity(5);
 
         // Engine 0: Obfuscation Decoder (mutates prompt_lower)
-        engine_results.push(self.obfuscation_decoder.decode_into(&prompt, &mut prompt_lower));
+        engine_results.push(
+            self.obfuscation_decoder
+                .decode_into(&prompt, &mut prompt_lower),
+        );
 
         // Engine 1: Pattern Matcher (sees original + decoded)
         if self.config.pattern_matcher.enabled {

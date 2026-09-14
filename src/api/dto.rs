@@ -171,20 +171,14 @@ impl ProtectResponse {
         use crate::decision::Decision::*;
 
         let (allowed, action, details) = match decision {
-            Allow => (
-                true,
-                "allow".to_string(),
-                None,
-            ),
+            Allow => (true, "allow".to_string(), None),
             Deny { code, .. } => (
                 false,
                 "block".to_string(),
                 Some(ProtectDetails {
                     reason: code.clone(),
                     patterns: Vec::new(),
-                    recommendation: Some(
-                        "Review and sanitize input before processing".to_string(),
-                    ),
+                    recommendation: Some("Review and sanitize input before processing".to_string()),
                 }),
             ),
             Challenge { .. } => (false, "challenge".to_string(), None),

@@ -11,7 +11,7 @@
 // whose `ananta` field is `Some`, proving the trust plane initialized
 // using embedded defaults rather than entering degraded mode.
 
-use chakravyuh::{Config, Chakravyuh};
+use chakravyuh::{Chakravyuh, Config};
 
 #[test]
 fn evidence_ananta_starts_by_default() {

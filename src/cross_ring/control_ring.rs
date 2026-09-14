@@ -16,7 +16,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use super::message::{CrossRingMessage, MessagePriority};
-use super::transport::{InProcessTransport, TransportErrorKind, TransportMetrics, TransportMetricsCollector, RingTransport};
+use super::transport::{
+    InProcessTransport, RingTransport, TransportErrorKind, TransportMetrics,
+    TransportMetricsCollector,
+};
 
 // ─── Configuration ────────────────────────────────────────────────
 
@@ -46,12 +49,24 @@ pub struct ControlRingConfig {
     pub transport: String,
 }
 
-fn default_enabled() -> bool { true }
-fn default_buffer_size() -> usize { 500 }
-fn default_stale_timeout_secs() -> u64 { 60 }
-fn default_max_depth() -> u32 { 3 }
-fn default_true() -> bool { true }
-fn default_transport() -> String { "in_process".into() }
+fn default_enabled() -> bool {
+    true
+}
+fn default_buffer_size() -> usize {
+    500
+}
+fn default_stale_timeout_secs() -> u64 {
+    60
+}
+fn default_max_depth() -> u32 {
+    3
+}
+fn default_true() -> bool {
+    true
+}
+fn default_transport() -> String {
+    "in_process".into()
+}
 
 impl Default for ControlRingConfig {
     fn default() -> Self {
@@ -341,7 +356,10 @@ impl ControlRing {
                     EscalationStatus::Stale => stats.stale += 1,
                 }
                 *stats.by_source.entry(meta.source_ring.clone()).or_insert(0) += 1;
-                *stats.by_type.entry(meta.escalation_type.clone()).or_insert(0) += 1;
+                *stats
+                    .by_type
+                    .entry(meta.escalation_type.clone())
+                    .or_insert(0) += 1;
             }
         }
         stats
@@ -364,7 +382,8 @@ impl ControlRing {
 
     /// Get transport metrics snapshot.
     pub fn metrics(&self) -> TransportMetrics {
-        self.metrics.snapshot(self.escalation_transport.pending_count())
+        self.metrics
+            .snapshot(self.escalation_transport.pending_count())
     }
 
     /// Clear all escalation tracking (for testing).
@@ -442,7 +461,8 @@ mod tests {
         let ring = ControlRing::new(&ControlRingConfig {
             max_escalation_depth: 2,
             ..Default::default()
-        }).unwrap();
+        })
+        .unwrap();
 
         let mut msg = escalation_msg("threat", "loop");
         msg.payload["escalation_depth"] = serde_json::json!(3); // Exceeds max.
@@ -483,7 +503,8 @@ mod tests {
         let ring = ControlRing::new(&ControlRingConfig {
             stale_timeout_secs: 0, // Instant stale
             ..Default::default()
-        }).unwrap();
+        })
+        .unwrap();
 
         ring.escalate(escalation_msg("threat", "old")).unwrap();
         let stale_count = ring.sweep_stale();
@@ -497,7 +518,8 @@ mod tests {
     fn stats_by_type() {
         let ring = default_ring();
         ring.escalate(escalation_msg("threat", "conflict")).unwrap();
-        ring.escalate(escalation_msg("execution", "timeout")).unwrap();
+        ring.escalate(escalation_msg("execution", "timeout"))
+            .unwrap();
         ring.escalate(escalation_msg("threat", "conflict")).unwrap();
 
         let stats = ring.stats();
@@ -511,7 +533,8 @@ mod tests {
         let ring = ControlRing::new(&ControlRingConfig {
             buffer_size: 1,
             ..Default::default()
-        }).unwrap();
+        })
+        .unwrap();
 
         ring.escalate(escalation_msg("threat", "a")).unwrap();
         let result = ring.escalate(escalation_msg("threat", "b"));

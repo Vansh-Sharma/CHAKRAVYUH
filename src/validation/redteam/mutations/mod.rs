@@ -2,4 +2,4 @@
 
 pub mod strategies;
 
-pub use strategies::{MutationStrategy, all_strategies};
+pub use strategies::{all_strategies, MutationStrategy};

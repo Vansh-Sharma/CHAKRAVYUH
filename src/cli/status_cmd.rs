@@ -59,18 +59,14 @@ pub enum StatusCommand {
 /// Execute a status subcommand. Returns the exit code.
 pub async fn run(cmd: StatusCommand) -> ExitCode {
     match cmd {
-        StatusCommand::Health { endpoint, ready, timeout } => {
-            cmd_health(&endpoint, ready, timeout).await
-        }
-        StatusCommand::Rings { endpoint, format } => {
-            cmd_rings(&endpoint, &format).await
-        }
-        StatusCommand::Storage { endpoint } => {
-            cmd_storage(&endpoint).await
-        }
-        StatusCommand::Info { endpoint, format } => {
-            cmd_info(&endpoint, &format).await
-        }
+        StatusCommand::Health {
+            endpoint,
+            ready,
+            timeout,
+        } => cmd_health(&endpoint, ready, timeout).await,
+        StatusCommand::Rings { endpoint, format } => cmd_rings(&endpoint, &format).await,
+        StatusCommand::Storage { endpoint } => cmd_storage(&endpoint).await,
+        StatusCommand::Info { endpoint, format } => cmd_info(&endpoint, &format).await,
     }
 }
 
@@ -103,8 +99,14 @@ async fn cmd_health(endpoint: &str, ready: bool, timeout_secs: u64) -> ExitCode 
             utils::kv("Latency", &utils::format_duration(latency));
 
             if status.is_success() {
-                let version = body.get("version").and_then(|v| v.as_str()).unwrap_or("unknown");
-                let uptime = body.get("uptime_secs").and_then(|v| v.as_u64()).unwrap_or(0);
+                let version = body
+                    .get("version")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown");
+                let uptime = body
+                    .get("uptime_secs")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
 
                 utils::kv("Version", &Color::cyan(version));
                 utils::kv("Uptime", &format_human_uptime(uptime));
@@ -115,11 +117,21 @@ async fn cmd_health(endpoint: &str, ready: bool, timeout_secs: u64) -> ExitCode 
                         let mut all_healthy = true;
                         for ring in rings {
                             let name = ring.get("name").and_then(|n| n.as_str()).unwrap_or("?");
-                            let healthy = ring.get("healthy").and_then(|h| h.as_bool()).unwrap_or(false);
-                            let enabled = ring.get("enabled").and_then(|e| e.as_bool()).unwrap_or(false);
+                            let healthy = ring
+                                .get("healthy")
+                                .and_then(|h| h.as_bool())
+                                .unwrap_or(false);
+                            let enabled = ring
+                                .get("enabled")
+                                .and_then(|e| e.as_bool())
+                                .unwrap_or(false);
 
-                            if !enabled { continue; }
-                            if !healthy { all_healthy = false; }
+                            if !enabled {
+                                continue;
+                            }
+                            if !healthy {
+                                all_healthy = false;
+                            }
 
                             let status_str = if healthy {
                                 StatusIndicator::ok("")
@@ -138,14 +150,23 @@ async fn cmd_health(endpoint: &str, ready: bool, timeout_secs: u64) -> ExitCode 
                     }
                 }
 
-                println!("\n{} Instance is {}", StatusIndicator::ok(""),
-                    if ready { "ready" } else { "alive" });
+                println!(
+                    "\n{} Instance is {}",
+                    StatusIndicator::ok(""),
+                    if ready { "ready" } else { "alive" }
+                );
                 ExitCode::Ok
             } else {
-                eprintln!("\n{} Instance returned {}", StatusIndicator::fail(""), status);
+                eprintln!(
+                    "\n{} Instance returned {}",
+                    StatusIndicator::fail(""),
+                    status
+                );
                 if ready && status.as_u16() == 503 {
-                    eprintln!("  {} System is not ready (rings may be initializing or unhealthy)",
-                        StatusIndicator::warn(""));
+                    eprintln!(
+                        "  {} System is not ready (rings may be initializing or unhealthy)",
+                        StatusIndicator::warn("")
+                    );
                 }
                 ExitCode::ConnectionError
             }
@@ -153,9 +174,17 @@ async fn cmd_health(endpoint: &str, ready: bool, timeout_secs: u64) -> ExitCode 
         Err(e) => {
             eprintln!("{} Connection failed: {}", StatusIndicator::fail(""), e);
             if e.is_timeout() {
-                eprintln!("  {} Timed out after {}s", StatusIndicator::warn(""), timeout_secs);
+                eprintln!(
+                    "  {} Timed out after {}s",
+                    StatusIndicator::warn(""),
+                    timeout_secs
+                );
             } else if e.is_connect() {
-                eprintln!("  {} Is CHAKRAVYUH running at {}?", StatusIndicator::warn(""), endpoint);
+                eprintln!(
+                    "  {} Is CHAKRAVYUH running at {}?",
+                    StatusIndicator::warn(""),
+                    endpoint
+                );
             }
             ExitCode::ConnectionError
         }
@@ -174,7 +203,11 @@ async fn cmd_rings(endpoint: &str, format: &str) -> ExitCode {
     match client.get(&url).send().await {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(body) = resp.json::<Value>().await {
-                let rings = body.get("rings").and_then(|r| r.as_array()).cloned().unwrap_or_default();
+                let rings = body
+                    .get("rings")
+                    .and_then(|r| r.as_array())
+                    .cloned()
+                    .unwrap_or_default();
 
                 if rings.is_empty() {
                     println!("  {} No ring health data available", Color::dim("(empty)"));
@@ -186,12 +219,31 @@ async fn cmd_rings(endpoint: &str, format: &str) -> ExitCode {
                 } else {
                     let mut rows: Vec<Vec<String>> = Vec::new();
                     for ring in &rings {
-                        let name = ring.get("name").and_then(|n| n.as_str()).unwrap_or("?").to_string();
-                        let enabled = ring.get("enabled").and_then(|e| e.as_bool()).unwrap_or(false);
-                        let healthy = ring.get("healthy").and_then(|h| h.as_bool()).unwrap_or(false);
-                        let evals = ring.get("total_evaluations").and_then(|e| e.as_u64()).unwrap_or(0);
-                        let errors = ring.get("total_errors").and_then(|e| e.as_u64()).unwrap_or(0);
-                        let error_rate = ring.get("error_rate").and_then(|e| e.as_f64()).unwrap_or(0.0);
+                        let name = ring
+                            .get("name")
+                            .and_then(|n| n.as_str())
+                            .unwrap_or("?")
+                            .to_string();
+                        let enabled = ring
+                            .get("enabled")
+                            .and_then(|e| e.as_bool())
+                            .unwrap_or(false);
+                        let healthy = ring
+                            .get("healthy")
+                            .and_then(|h| h.as_bool())
+                            .unwrap_or(false);
+                        let evals = ring
+                            .get("total_evaluations")
+                            .and_then(|e| e.as_u64())
+                            .unwrap_or(0);
+                        let errors = ring
+                            .get("total_errors")
+                            .and_then(|e| e.as_u64())
+                            .unwrap_or(0);
+                        let error_rate = ring
+                            .get("error_rate")
+                            .and_then(|e| e.as_f64())
+                            .unwrap_or(0.0);
 
                         let status = if !enabled {
                             Color::dim("disabled").to_string()
@@ -203,7 +255,11 @@ async fn cmd_rings(endpoint: &str, format: &str) -> ExitCode {
 
                         rows.push(vec![
                             name,
-                            if enabled { "yes".to_string() } else { "no".to_string() },
+                            if enabled {
+                                "yes".to_string()
+                            } else {
+                                "no".to_string()
+                            },
                             status,
                             evals.to_string(),
                             errors.to_string(),
@@ -212,7 +268,14 @@ async fn cmd_rings(endpoint: &str, format: &str) -> ExitCode {
                     }
 
                     utils::print_table(
-                        &["Ring", "Enabled", "Status", "Evaluations", "Errors", "Error Rate"],
+                        &[
+                            "Ring",
+                            "Enabled",
+                            "Status",
+                            "Evaluations",
+                            "Errors",
+                            "Error Rate",
+                        ],
                         &rows,
                     );
                 }
@@ -235,7 +298,10 @@ async fn cmd_rings(endpoint: &str, format: &str) -> ExitCode {
         _ => {}
     }
 
-    eprintln!("{} Could not retrieve ring health", StatusIndicator::fail(""));
+    eprintln!(
+        "{} Could not retrieve ring health",
+        StatusIndicator::fail("")
+    );
     ExitCode::ConnectionError
 }
 
@@ -251,12 +317,22 @@ async fn cmd_storage(endpoint: &str) -> ExitCode {
         Ok(resp) if resp.status().is_success() => {
             if let Ok(body) = resp.json::<Value>().await {
                 let backend = body.get("backend").and_then(|b| b.as_str()).unwrap_or("?");
-                let reachable = body.get("reachable").and_then(|r| r.as_bool()).unwrap_or(false);
-                let latency = body.get("latency_ms").and_then(|l| l.as_f64()).unwrap_or(0.0);
+                let reachable = body
+                    .get("reachable")
+                    .and_then(|r| r.as_bool())
+                    .unwrap_or(false);
+                let latency = body
+                    .get("latency_ms")
+                    .and_then(|l| l.as_f64())
+                    .unwrap_or(0.0);
                 let detail = body.get("detail").and_then(|d| d.as_str()).unwrap_or("");
 
                 utils::kv("Backend", &Color::cyan(backend));
-                let reachable_str = if reachable { Color::green("yes") } else { Color::red("no") };
+                let reachable_str = if reachable {
+                    Color::green("yes")
+                } else {
+                    Color::red("no")
+                };
                 utils::kv("Reachable", &reachable_str);
                 utils::kv("Latency", &format!("{:.3} ms", latency));
                 if !detail.is_empty() {
@@ -276,7 +352,11 @@ async fn cmd_storage(endpoint: &str) -> ExitCode {
             }
         }
         Ok(resp) => {
-            eprintln!("{} Server returned {}", StatusIndicator::fail(""), resp.status());
+            eprintln!(
+                "{} Server returned {}",
+                StatusIndicator::fail(""),
+                resp.status()
+            );
             ExitCode::ConnectionError
         }
         Err(e) => {
@@ -313,7 +393,11 @@ async fn cmd_info(endpoint: &str, format: &str) -> ExitCode {
     }
 
     // Storage health.
-    if let Ok(resp) = client.get(format!("{}/v1/storage/health", endpoint)).send().await {
+    if let Ok(resp) = client
+        .get(format!("{}/v1/storage/health", endpoint))
+        .send()
+        .await
+    {
         if resp.status().is_success() {
             if let Ok(body) = resp.json::<Value>().await {
                 all_info.insert("storage".to_string(), body);
@@ -362,7 +446,10 @@ async fn cmd_info(endpoint: &str, format: &str) -> ExitCode {
                 utils::kv("Storage", backend);
             }
             if let Some(reachable) = storage.get("reachable").and_then(|r| r.as_bool()) {
-                utils::kv("Storage Status", if reachable { "healthy" } else { "unreachable" });
+                utils::kv(
+                    "Storage Status",
+                    if reachable { "healthy" } else { "unreachable" },
+                );
             }
         }
 
@@ -409,7 +496,8 @@ mod tests {
             endpoint: "http://127.0.0.1:1".to_string(),
             ready: false,
             timeout: 2,
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::ConnectionError);
     }
 
@@ -417,7 +505,8 @@ mod tests {
     async fn test_storage_connection_error() {
         let code = run(StatusCommand::Storage {
             endpoint: "http://127.0.0.1:1".to_string(),
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::ConnectionError);
     }
 
@@ -426,7 +515,8 @@ mod tests {
         let code = run(StatusCommand::Info {
             endpoint: "http://127.0.0.1:1".to_string(),
             format: "text".to_string(),
-        }).await;
+        })
+        .await;
         assert_eq!(code, ExitCode::ConnectionError);
     }
 }

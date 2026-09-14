@@ -2,4 +2,4 @@
 
 pub mod runner;
 
-pub use runner::{RedTeamRunner, RunnerConfig, RunResult, ScenarioOutcome};
+pub use runner::{RedTeamRunner, RunResult, RunnerConfig, ScenarioOutcome};

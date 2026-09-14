@@ -27,9 +27,9 @@
 
 use std::sync::Arc;
 
+use crate::agent::AgentVerdict;
 #[cfg(test)]
 use crate::decision::Decision;
-use crate::agent::AgentVerdict;
 use crate::decision::{DecisionRecord, RiskScore};
 use crate::execution::ExecutionVerdict;
 use crate::governance::GovernanceVerdict;
@@ -144,29 +144,37 @@ impl KeshavDecide {
         };
 
         // 1. Try the Policy Engine.
-        let (decision, policy_name, reasoning) =
-            match self
-                .policy_engine
-                .evaluate_all(&all_verdicts, &self.static_risk)
-            {
-                Some(result) => result,
-                None => {
-                    // 2. Policy Engine failed — fall back.
-                    let (decision, reasoning) =
-                        self.fallback_rules.evaluate_all(&all_verdicts);
-                    (decision, Some("fallback".to_string()), reasoning)
-                }
-            };
+        let (decision, policy_name, reasoning) = match self
+            .policy_engine
+            .evaluate_all(&all_verdicts, &self.static_risk)
+        {
+            Some(result) => result,
+            None => {
+                // 2. Policy Engine failed — fall back.
+                let (decision, reasoning) = self.fallback_rules.evaluate_all(&all_verdicts);
+                (decision, Some("fallback".to_string()), reasoning)
+            }
+        };
 
         let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
 
         let rings_evaluated: Vec<u8> = {
             let mut v = vec![1]; // Shield is always evaluated
-            if threat_verdict.is_some() { v.push(3); }
-            if identity_verdict.is_some() { v.push(2); }
-            if memory_verdict.is_some() { v.push(5); }
-            if agent_verdict.is_some() { v.push(4); }
-            if execution_verdict.is_some() { v.push(6); }
+            if threat_verdict.is_some() {
+                v.push(3);
+            }
+            if identity_verdict.is_some() {
+                v.push(2);
+            }
+            if memory_verdict.is_some() {
+                v.push(5);
+            }
+            if agent_verdict.is_some() {
+                v.push(4);
+            }
+            if execution_verdict.is_some() {
+                v.push(6);
+            }
             v
         };
 
@@ -207,9 +215,8 @@ impl KeshavDecide {
             timestamp: chrono::Utc::now().to_rfc3339(),
             source: crate::decision::DecisionSource {
                 ip: source_ip.to_string(),
-                user_id: identity_verdict.and_then(|iv| {
-                    iv.identity_profile.as_ref().map(|p| p.principal_id.clone())
-                }),
+                user_id: identity_verdict
+                    .and_then(|iv| iv.identity_profile.as_ref().map(|p| p.principal_id.clone())),
                 agent_id: agent_verdict.map(|_| "agent".to_string()),
                 api_key: None,
             },

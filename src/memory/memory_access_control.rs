@@ -8,10 +8,16 @@ pub struct MemoryAccessControlConfig {
     pub enabled: bool,
 }
 
-fn default_enabled() -> bool { true }
+fn default_enabled() -> bool {
+    true
+}
 
 impl Default for MemoryAccessControlConfig {
-    fn default() -> Self { Self { enabled: default_enabled() } }
+    fn default() -> Self {
+        Self {
+            enabled: default_enabled(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -33,11 +39,16 @@ pub enum AccessControlAction {
 /// Permission sets per role.
 fn role_permissions(role: &str) -> Vec<AccessControlAction> {
     match role.to_lowercase().as_str() {
-        "admin" => vec![AccessControlAction::Read, AccessControlAction::Write, AccessControlAction::Delete, AccessControlAction::Admin],
+        "admin" => vec![
+            AccessControlAction::Read,
+            AccessControlAction::Write,
+            AccessControlAction::Delete,
+            AccessControlAction::Admin,
+        ],
         "operator" | "service" => vec![AccessControlAction::Read, AccessControlAction::Write],
         "auditor" => vec![AccessControlAction::Read],
         "user" => vec![AccessControlAction::Read],
-        _ => vec![],  // anonymous — no access
+        _ => vec![], // anonymous — no access
     }
 }
 
@@ -47,12 +58,24 @@ pub struct MemoryAccessControl {
 
 impl MemoryAccessControl {
     pub fn new(config: &MemoryAccessControlConfig) -> Self {
-        Self { config: config.clone() }
+        Self {
+            config: config.clone(),
+        }
     }
 
     pub fn evaluate(&self, role: &str, entry_count: usize) -> AccessVerdict {
         if !self.config.enabled {
-            return AccessVerdict { role: role.into(), allowed_actions: vec![AccessControlAction::Read, AccessControlAction::Write, AccessControlAction::Delete, AccessControlAction::Admin], denied: false, reason: "memory access control disabled".into() };
+            return AccessVerdict {
+                role: role.into(),
+                allowed_actions: vec![
+                    AccessControlAction::Read,
+                    AccessControlAction::Write,
+                    AccessControlAction::Delete,
+                    AccessControlAction::Admin,
+                ],
+                denied: false,
+                reason: "memory access control disabled".into(),
+            };
         }
 
         let allowed = role_permissions(role);
@@ -61,10 +84,20 @@ impl MemoryAccessControl {
         let reason = if denied {
             format!("role '{}' has no memory access permissions", role)
         } else {
-            format!("role '{}' has {} permissions: {:?}", role, allowed.len(), allowed)
+            format!(
+                "role '{}' has {} permissions: {:?}",
+                role,
+                allowed.len(),
+                allowed
+            )
         };
 
-        AccessVerdict { role: role.into(), allowed_actions: allowed, denied, reason }
+        AccessVerdict {
+            role: role.into(),
+            allowed_actions: allowed,
+            denied,
+            reason,
+        }
     }
 }
 

@@ -269,7 +269,8 @@ impl PhaseMachine {
 
     /// Returns true if the machine is in a voting phase (PreVote or PreCommit).
     pub fn is_voting_phase(&self) -> bool {
-        self.current_phase == ConsensusPhase::PreVote || self.current_phase == ConsensusPhase::PreCommit
+        self.current_phase == ConsensusPhase::PreVote
+            || self.current_phase == ConsensusPhase::PreCommit
     }
 
     /// Returns true if the machine has reached the Commit phase.
@@ -390,7 +391,10 @@ impl PhaseVote {
     ) -> Self {
         let vote_id = uuid::Uuid::new_v4().to_string();
         // Simulate a signature: H(vote_id || voter_id || decision || round || height)
-        let sig_data = format!("{}:{}:{:?}:{}:{}", vote_id, voter_id, decision, round, height);
+        let sig_data = format!(
+            "{}:{}:{:?}:{}:{}",
+            vote_id, voter_id, decision, round, height
+        );
         let sig_digest = hash(&sig_data, &HashAlgorithm::Sha256);
         Self {
             vote_id,
@@ -418,7 +422,13 @@ impl PhaseVote {
     }
 
     /// Check if this vote matches a given (proposal, height, round, phase).
-    pub fn matches_context(&self, proposal_id: &str, height: u64, round: u32, phase: &ConsensusPhase) -> bool {
+    pub fn matches_context(
+        &self,
+        proposal_id: &str,
+        height: u64,
+        round: u32,
+        phase: &ConsensusPhase,
+    ) -> bool {
         self.proposal_id == proposal_id
             && self.height == height
             && self.round == round
@@ -605,17 +615,18 @@ impl NodeBehaviorProfile {
             0.0
         };
 
-        self.suspicion_level = if equivocation_count >= 3 || (equivocation_count >= 1 && outlier_ratio > 0.5) {
-            SuspicionLevel::Confirmed
-        } else if equivocation_count >= 2 || outlier_ratio > 0.4 || absence_rate > 0.6 {
-            SuspicionLevel::High
-        } else if equivocation_count >= 1 || outlier_ratio > 0.25 || absence_rate > 0.4 {
-            SuspicionLevel::Medium
-        } else if outlier_ratio > 0.1 || absence_rate > 0.2 {
-            SuspicionLevel::Low
-        } else {
-            SuspicionLevel::Clean
-        };
+        self.suspicion_level =
+            if equivocation_count >= 3 || (equivocation_count >= 1 && outlier_ratio > 0.5) {
+                SuspicionLevel::Confirmed
+            } else if equivocation_count >= 2 || outlier_ratio > 0.4 || absence_rate > 0.6 {
+                SuspicionLevel::High
+            } else if equivocation_count >= 1 || outlier_ratio > 0.25 || absence_rate > 0.4 {
+                SuspicionLevel::Medium
+            } else if outlier_ratio > 0.1 || absence_rate > 0.2 {
+                SuspicionLevel::Low
+            } else {
+                SuspicionLevel::Clean
+            };
         self.suspicion_level.clone()
     }
 }
@@ -829,7 +840,10 @@ impl ViewChangeJustification {
         to_round: u32,
         current_proposal_id: Option<&str>,
     ) -> Self {
-        let sig_data = format!("view_change:timeout:{}:{}:{}:{}", node_id, height, from_round, to_round);
+        let sig_data = format!(
+            "view_change:timeout:{}:{}:{}:{}",
+            node_id, height, from_round, to_round
+        );
         let sig = hash(&sig_data, &HashAlgorithm::Sha256);
         Self {
             node_id: node_id.to_string(),
@@ -853,7 +867,10 @@ impl ViewChangeJustification {
         conflicting_proposal_id: &str,
         votes: Vec<PhaseVote>,
     ) -> Self {
-        let sig_data = format!("view_change:conflict:{}:{}:{}:{}", node_id, height, from_round, to_round);
+        let sig_data = format!(
+            "view_change:conflict:{}:{}:{}:{}",
+            node_id, height, from_round, to_round
+        );
         let sig = hash(&sig_data, &HashAlgorithm::Sha256);
         Self {
             node_id: node_id.to_string(),
@@ -876,7 +893,10 @@ impl ViewChangeJustification {
             ViewChangeReason::RoundSkip => "view_change:skip",
             ViewChangeReason::SuspectProposer => "view_change:suspect",
         };
-        let sig_data = format!("{}:{}:{}:{}:{}", prefix, self.node_id, self.height, self.from_round, self.to_round);
+        let sig_data = format!(
+            "{}:{}:{}:{}:{}",
+            prefix, self.node_id, self.height, self.from_round, self.to_round
+        );
         let expected = hash(&sig_data, &HashAlgorithm::Sha256);
         self.signature == expected.hex
     }
@@ -1032,10 +1052,7 @@ impl ViewChangeManager {
                 (id.clone(), score)
             })
             .collect();
-        sorted.sort_by(|a, b| {
-            b.1.partial_cmp(&a.1)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Round-robin within the trust-sorted list.
         let index = (round as usize) % sorted.len();
@@ -1076,10 +1093,7 @@ impl ViewChangeManager {
         trust_scores: &HashMap<String, f64>,
     ) -> ViewChangeMessage {
         let key = format!("{}:{}", height, old_round);
-        let justifications = self
-            .pending_justifications
-            .remove(&key)
-            .unwrap_or_default();
+        let justifications = self.pending_justifications.remove(&key).unwrap_or_default();
 
         self.view_change_history
             .insert((height, old_round), justifications.clone());
@@ -1316,12 +1330,7 @@ impl ChainBlock {
     ) -> Self {
         let block_data = format!(
             "block:{}:{}:{}:{}:{}:{}",
-            height,
-            round,
-            proposal_id,
-            cumulative_weight,
-            parent_hash,
-            certificate_root,
+            height, round, proposal_id, cumulative_weight, parent_hash, certificate_root,
         );
         let block_hash = hash_bytes(block_data.as_bytes(), &HashAlgorithm::Sha256);
         Self {
@@ -1422,7 +1431,8 @@ impl GhostFinalityTracker {
                 tips.push(block.block_hash.clone());
             }
         } else {
-            self.known_fork_tips.insert(height, vec![block.block_hash.clone()]);
+            self.known_fork_tips
+                .insert(height, vec![block.block_hash.clone()]);
         }
 
         self.blocks.insert(height, block);
@@ -1491,7 +1501,10 @@ impl GhostFinalityTracker {
 
     /// Count total forks in the chain.
     pub fn fork_count(&self) -> usize {
-        self.known_fork_tips.values().filter(|tips| tips.len() > 1).count()
+        self.known_fork_tips
+            .values()
+            .filter(|tips| tips.len() > 1)
+            .count()
     }
 
     /// Get the block at a specific height.
@@ -1506,10 +1519,7 @@ impl GhostFinalityTracker {
 
     /// Get all blocks between two heights (inclusive).
     pub fn blocks_in_range(&self, from: u64, to: u64) -> Vec<&ChainBlock> {
-        self.blocks
-            .range(from..=to)
-            .map(|(_, b)| b)
-            .collect()
+        self.blocks.range(from..=to).map(|(_, b)| b).collect()
     }
 
     /// Get a summary of the finality tracker state.
@@ -1638,7 +1648,12 @@ impl RoundState {
     }
 
     /// Check if quorum is reached for a specific decision in a specific phase.
-    pub fn has_quorum(&self, phase: &ConsensusPhase, decision: &VoteDecision, quorum_size: usize) -> bool {
+    pub fn has_quorum(
+        &self,
+        phase: &ConsensusPhase,
+        decision: &VoteDecision,
+        quorum_size: usize,
+    ) -> bool {
         self.count_votes(phase, decision) >= quorum_size
     }
 
@@ -1781,7 +1796,9 @@ impl PbftConsensusEngine {
             ));
         }
 
-        let proposer = self.view_change_manager.select_proposer(round, &self.trust_scores);
+        let proposer = self
+            .view_change_manager
+            .select_proposer(round, &self.trust_scores);
         if proposer.is_empty() && !self.validators.is_empty() {
             return Err("no proposer available".to_string());
         }
@@ -1789,7 +1806,12 @@ impl PbftConsensusEngine {
         let round_state = RoundState::new(height, round, &proposer, self.validators.len());
         self.rounds.insert(height, round_state);
 
-        self.log_event("round_started", height, round, &format!("proposer={}", proposer));
+        self.log_event(
+            "round_started",
+            height,
+            round,
+            &format!("proposer={}", proposer),
+        );
 
         Ok(proposer)
     }
@@ -1849,11 +1871,9 @@ impl PbftConsensusEngine {
         };
 
         // Check for equivocation.
-        let equivocations = self.byzantine_detector.record_vote(
-            &vote.voter_id,
-            &vote,
-            &known_proposals,
-        );
+        let equivocations =
+            self.byzantine_detector
+                .record_vote(&vote.voter_id, &vote, &known_proposals);
         if !equivocations.is_empty() {
             self.log_event(
                 "equivocation_detected",
@@ -1916,21 +1936,28 @@ impl PbftConsensusEngine {
 
             match phase {
                 ConsensusPhase::PreVote => {
-                    let approve_count = round_state.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Approve);
-                    let reject_count = round_state.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Reject);
+                    let approve_count =
+                        round_state.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Approve);
+                    let reject_count =
+                        round_state.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Reject);
 
                     if approve_count >= self.quorum_size {
                         round_state.phase_machine.advance_phase();
-                        QuorumAction::AdvanceToPreCommit { log_round: round_state.round }
+                        QuorumAction::AdvanceToPreCommit {
+                            log_round: round_state.round,
+                        }
                     } else if reject_count >= self.quorum_size {
                         round_state.end_round("prevote_rejected");
-                        QuorumAction::EndRoundRejected { log_round: round_state.round }
+                        QuorumAction::EndRoundRejected {
+                            log_round: round_state.round,
+                        }
                     } else {
                         QuorumAction::None
                     }
                 }
                 ConsensusPhase::PreCommit => {
-                    let approve_count = round_state.count_votes(&ConsensusPhase::PreCommit, &VoteDecision::Approve);
+                    let approve_count =
+                        round_state.count_votes(&ConsensusPhase::PreCommit, &VoteDecision::Approve);
 
                     if approve_count >= self.quorum_size {
                         QuorumAction::Commit
@@ -1944,10 +1971,20 @@ impl PbftConsensusEngine {
 
         match action {
             QuorumAction::AdvanceToPreCommit { log_round } => {
-                self.log_event("prevote_quorum", height, log_round, "advancing to PreCommit");
+                self.log_event(
+                    "prevote_quorum",
+                    height,
+                    log_round,
+                    "advancing to PreCommit",
+                );
             }
             QuorumAction::EndRoundRejected { log_round } => {
-                self.log_event("prevote_rejected", height, log_round, "proposal rejected in PreVote");
+                self.log_event(
+                    "prevote_rejected",
+                    height,
+                    log_round,
+                    "proposal rejected in PreVote",
+                );
             }
             QuorumAction::Commit => {
                 self.commit_round(height);
@@ -1960,7 +1997,8 @@ impl PbftConsensusEngine {
     fn commit_round(&mut self, height: u64) {
         // Phase 1: compute cumulative weight before any mutable borrow of rounds.
         let cumulative_weight = self.compute_cumulative_weight(height);
-        let parent_hash = self.finality_tracker
+        let parent_hash = self
+            .finality_tracker
             .tip_block()
             .map(|b| b.block_hash.clone())
             .unwrap_or_else(|| "genesis".to_string());
@@ -1990,8 +2028,12 @@ impl PbftConsensusEngine {
                 })
                 .collect();
 
-            let approve_count = round_state.count_votes(&ConsensusPhase::PreCommit, &VoteDecision::Approve);
-            let voter_ids: Vec<String> = voter_signatures.iter().map(|v| v.voter_id.clone()).collect();
+            let approve_count =
+                round_state.count_votes(&ConsensusPhase::PreCommit, &VoteDecision::Approve);
+            let voter_ids: Vec<String> = voter_signatures
+                .iter()
+                .map(|v| v.voter_id.clone())
+                .collect();
 
             // Build the Merkle certificate.
             let certificate = ConsensusCertificate::build(
@@ -2008,7 +2050,9 @@ impl PbftConsensusEngine {
             let cert_root = certificate.merkle_root.clone();
 
             // Transition phase machine to Commit.
-            round_state.phase_machine.transition_to_commit(ConsensusDecision::Approved);
+            round_state
+                .phase_machine
+                .transition_to_commit(ConsensusDecision::Approved);
             round_state.certificate = Some(certificate.clone());
             round_state.end_round("committed");
 
@@ -2016,7 +2060,8 @@ impl PbftConsensusEngine {
         };
 
         // Phase 3: update engine state (no round_state borrow).
-        self.committed_decisions.insert(height, ConsensusDecision::Approved);
+        self.committed_decisions
+            .insert(height, ConsensusDecision::Approved);
         self.certificates.insert(height, certificate.clone());
 
         // Add to GHOST finality tracker.
@@ -2037,7 +2082,10 @@ impl PbftConsensusEngine {
             "round_committed",
             height,
             log_round,
-            &format!("certificate={}", certificate.certificate_id[..8].to_string()),
+            &format!(
+                "certificate={}",
+                certificate.certificate_id[..8].to_string()
+            ),
         );
 
         // Advance to next height.
@@ -2087,7 +2135,12 @@ impl PbftConsensusEngine {
             if let Some(round_state) = self.rounds.get_mut(&height) {
                 round_state.end_round("max_rounds_exceeded");
             }
-            self.log_event("max_rounds_exceeded", height, old_round, "abandoning height");
+            self.log_event(
+                "max_rounds_exceeded",
+                height,
+                old_round,
+                "abandoning height",
+            );
             return Err("max rounds exceeded".to_string());
         }
 
@@ -2148,7 +2201,11 @@ impl PbftConsensusEngine {
     }
 
     /// Generate a state sync snapshot for a lagging node.
-    pub fn generate_sync_snapshot(&self, target_height: u64, _requesting_node: &str) -> StateSyncSnapshot {
+    pub fn generate_sync_snapshot(
+        &self,
+        target_height: u64,
+        _requesting_node: &str,
+    ) -> StateSyncSnapshot {
         let decisions = self
             .committed_decisions
             .range(0..=target_height)
@@ -2235,7 +2292,8 @@ impl PbftConsensusEngine {
 
     /// Log a consensus event.
     fn log_event(&mut self, event_type: &str, height: u64, round: u32, message: &str) {
-        self.event_log.push(ConsensusEvent::new(event_type, height, round, message));
+        self.event_log
+            .push(ConsensusEvent::new(event_type, height, round, message));
     }
 }
 
@@ -2295,8 +2353,8 @@ pub fn is_split_vote(approve_count: usize, reject_count: usize, quorum: usize) -
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{NodeRole, NodeStatus};
+    use super::*;
 
     // ── Helper functions ──
 
@@ -2325,7 +2383,13 @@ mod tests {
     }
 
     /// Create a PreVote for the given voter.
-    fn make_prevote(voter_id: &str, proposal_id: &str, height: u64, round: u32, decision: VoteDecision) -> PhaseVote {
+    fn make_prevote(
+        voter_id: &str,
+        proposal_id: &str,
+        height: u64,
+        round: u32,
+        decision: VoteDecision,
+    ) -> PhaseVote {
         PhaseVote::new(
             voter_id,
             ConsensusPhase::PreVote,
@@ -2339,7 +2403,13 @@ mod tests {
     }
 
     /// Create a PreCommit vote for the given voter.
-    fn make_precommit(voter_id: &str, proposal_id: &str, height: u64, round: u32, decision: VoteDecision) -> PhaseVote {
+    fn make_precommit(
+        voter_id: &str,
+        proposal_id: &str,
+        height: u64,
+        round: u32,
+        decision: VoteDecision,
+    ) -> PhaseVote {
         PhaseVote::new(
             voter_id,
             ConsensusPhase::PreCommit,
@@ -2365,7 +2435,13 @@ mod tests {
         let proposal = make_proposal(&proposer, height, 0);
         engine.submit_proposal(proposal).unwrap();
 
-        let pid = engine.rounds.get(&height).unwrap().proposal_id().unwrap().to_string();
+        let pid = engine
+            .rounds
+            .get(&height)
+            .unwrap()
+            .proposal_id()
+            .unwrap()
+            .to_string();
 
         // Cast PreVotes (3 approvals = quorum).
         for voter in &["node-1", "node-2", "node-3"] {
@@ -2392,9 +2468,18 @@ mod tests {
 
     #[test]
     fn test_phase_next() {
-        assert_eq!(ConsensusPhase::Propose.next(), Some(ConsensusPhase::PreVote));
-        assert_eq!(ConsensusPhase::PreVote.next(), Some(ConsensusPhase::PreCommit));
-        assert_eq!(ConsensusPhase::PreCommit.next(), Some(ConsensusPhase::Commit));
+        assert_eq!(
+            ConsensusPhase::Propose.next(),
+            Some(ConsensusPhase::PreVote)
+        );
+        assert_eq!(
+            ConsensusPhase::PreVote.next(),
+            Some(ConsensusPhase::PreCommit)
+        );
+        assert_eq!(
+            ConsensusPhase::PreCommit.next(),
+            Some(ConsensusPhase::Commit)
+        );
         assert_eq!(ConsensusPhase::Commit.next(), None);
     }
 
@@ -2504,8 +2589,14 @@ mod tests {
     #[test]
     fn test_phase_vote_creation() {
         let vote = PhaseVote::new(
-            "node-1", ConsensusPhase::PreVote, "prop-123", 1, 0,
-            VoteDecision::Approve, 0.9, Some("looks good".to_string()),
+            "node-1",
+            ConsensusPhase::PreVote,
+            "prop-123",
+            1,
+            0,
+            VoteDecision::Approve,
+            0.9,
+            Some("looks good".to_string()),
         );
         assert!(!vote.vote_id.is_empty());
         assert_eq!(vote.voter_id, "node-1");
@@ -2584,8 +2675,14 @@ mod tests {
         detector.register_node("node-1", 0.9);
 
         let vote = PhaseVote::new(
-            "node-1", ConsensusPhase::PreVote, "conflicting-proposal",
-            1, 0, VoteDecision::Approve, 0.9, None,
+            "node-1",
+            ConsensusPhase::PreVote,
+            "conflicting-proposal",
+            1,
+            0,
+            VoteDecision::Approve,
+            0.9,
+            None,
         );
 
         let events = detector.record_vote("node-1", &vote, &["original-proposal".to_string()]);
@@ -2623,14 +2720,22 @@ mod tests {
         // Trigger 3 equivocations to reach Confirmed level.
         for i in 0..3 {
             let vote = PhaseVote::new(
-                "node-1", ConsensusPhase::PreVote,
+                "node-1",
+                ConsensusPhase::PreVote,
                 &format!("bad-proposal-{}", i),
-                1, i as u32, VoteDecision::Approve, 0.9, None,
+                1,
+                i as u32,
+                VoteDecision::Approve,
+                0.9,
+                None,
             );
             detector.record_vote("node-1", &vote, &["original".to_string()]);
         }
 
-        assert_eq!(detector.suspicion_level("node-1"), SuspicionLevel::Confirmed);
+        assert_eq!(
+            detector.suspicion_level("node-1"),
+            SuspicionLevel::Confirmed
+        );
         assert!(detector.is_blacklisted("node-1"));
     }
 
@@ -2664,7 +2769,13 @@ mod tests {
 
     #[test]
     fn test_view_change_justification_conflict() {
-        let votes = vec![make_prevote("node-1", "prop-B", 1, 0, VoteDecision::Approve)];
+        let votes = vec![make_prevote(
+            "node-1",
+            "prop-B",
+            1,
+            0,
+            VoteDecision::Approve,
+        )];
         let j = ViewChangeJustification::for_proposal_conflict("node-1", 1, 0, 1, "prop-A", votes);
         assert_eq!(j.justification_type, ViewChangeReason::ProposalConflict);
         assert!(j.verify_signature());
@@ -2720,9 +2831,14 @@ mod tests {
         ];
 
         let cert = ConsensusCertificate::build(
-            1, 0, ConsensusDecision::Approved, "prop-1", "hash-1",
+            1,
+            0,
+            ConsensusDecision::Approved,
+            "prop-1",
+            "hash-1",
             &["node-1".to_string(), "node-2".to_string()],
-            sigs, 2,
+            sigs,
+            2,
         );
 
         assert!(!cert.certificate_id.is_empty());
@@ -2754,9 +2870,18 @@ mod tests {
         ];
 
         let cert = ConsensusCertificate::build(
-            5, 2, ConsensusDecision::Approved, "prop-x", "decision-hash-x",
-            &["node-a".to_string(), "node-b".to_string(), "node-c".to_string()],
-            sigs, 3,
+            5,
+            2,
+            ConsensusDecision::Approved,
+            "prop-x",
+            "decision-hash-x",
+            &[
+                "node-a".to_string(),
+                "node-b".to_string(),
+                "node-c".to_string(),
+            ],
+            sigs,
+            3,
         );
 
         // Verify should pass for an untampered certificate.
@@ -2766,7 +2891,11 @@ mod tests {
     #[test]
     fn test_consensus_certificate_summary() {
         let cert = ConsensusCertificate::build(
-            1, 0, ConsensusDecision::Approved, "prop-1", "hash-1",
+            1,
+            0,
+            ConsensusDecision::Approved,
+            "prop-1",
+            "hash-1",
             &["node-1".to_string()],
             vec![VoterSignature {
                 voter_id: "node-1".to_string(),
@@ -2796,7 +2925,16 @@ mod tests {
 
         // Add blocks at heights 1, 2, 3, 4.
         for h in 1..=4 {
-            let block = ChainBlock::new(h, ConsensusDecision::Approved, 0, &format!("prop-{}", h), 1.0, "prev", "root", None);
+            let block = ChainBlock::new(
+                h,
+                ConsensusDecision::Approved,
+                0,
+                &format!("prop-{}", h),
+                1.0,
+                "prev",
+                "root",
+                None,
+            );
             tracker.add_block(block);
         }
 
@@ -2813,7 +2951,16 @@ mod tests {
         let mut tracker = GhostFinalityTracker::new(3);
 
         for h in 1..=5 {
-            let block = ChainBlock::new(h, ConsensusDecision::Approved, 0, &format!("p{}", h), 1.0, "prev", "root", None);
+            let block = ChainBlock::new(
+                h,
+                ConsensusDecision::Approved,
+                0,
+                &format!("p{}", h),
+                1.0,
+                "prev",
+                "root",
+                None,
+            );
             tracker.add_block(block);
         }
 
@@ -2830,8 +2977,26 @@ mod tests {
     fn test_ghost_tracker_fork_detection() {
         let mut tracker = GhostFinalityTracker::new(2);
 
-        let block_a = ChainBlock::new(1, ConsensusDecision::Approved, 0, "prop-a", 1.0, "genesis", "root-a", None);
-        let block_b = ChainBlock::new(1, ConsensusDecision::Approved, 0, "prop-b", 0.5, "genesis", "root-b", None);
+        let block_a = ChainBlock::new(
+            1,
+            ConsensusDecision::Approved,
+            0,
+            "prop-a",
+            1.0,
+            "genesis",
+            "root-a",
+            None,
+        );
+        let block_b = ChainBlock::new(
+            1,
+            ConsensusDecision::Approved,
+            0,
+            "prop-b",
+            0.5,
+            "genesis",
+            "root-b",
+            None,
+        );
 
         tracker.add_block(block_a);
         tracker.add_block(block_b);
@@ -2843,7 +3008,16 @@ mod tests {
     #[test]
     fn test_ghost_tracker_finality_status() {
         let mut tracker = GhostFinalityTracker::new(1);
-        let block = ChainBlock::new(1, ConsensusDecision::Approved, 0, "p1", 1.0, "genesis", "r1", None);
+        let block = ChainBlock::new(
+            1,
+            ConsensusDecision::Approved,
+            0,
+            "p1",
+            1.0,
+            "genesis",
+            "r1",
+            None,
+        );
         tracker.add_block(block);
 
         // tip=1, depth=1, so finalized_tip = 0.
@@ -2870,7 +3044,10 @@ mod tests {
         assert!(engine.committed_decisions.contains_key(&1));
         assert!(engine.certificates.contains_key(&1));
         assert_eq!(engine.current_height, 2);
-        assert!(engine.event_log.iter().any(|e| e.event_type == "round_committed"));
+        assert!(engine
+            .event_log
+            .iter()
+            .any(|e| e.event_type == "round_committed"));
     }
 
     #[test]
@@ -2889,13 +3066,22 @@ mod tests {
     fn test_engine_blacklisted_node_rejected() {
         let mut engine = make_engine();
         // Blacklist node-4.
-        engine.byzantine_detector.blacklisted.insert("node-4".to_string());
+        engine
+            .byzantine_detector
+            .blacklisted
+            .insert("node-4".to_string());
 
         let proposer = engine.start_round(1, 0).unwrap();
         let proposal = make_proposal(&proposer, 1, 0);
         engine.submit_proposal(proposal).unwrap();
 
-        let pid = engine.rounds.get(&1).unwrap().proposal_id().unwrap().to_string();
+        let pid = engine
+            .rounds
+            .get(&1)
+            .unwrap()
+            .proposal_id()
+            .unwrap()
+            .to_string();
         let vote = make_prevote("node-4", &pid, 1, 0, VoteDecision::Approve);
         let result = engine.cast_vote(vote);
         assert!(result.is_err());
@@ -2909,7 +3095,13 @@ mod tests {
         let proposal = make_proposal(&proposer, 1, 0);
         engine.submit_proposal(proposal).unwrap();
 
-        let pid = engine.rounds.get(&1).unwrap().proposal_id().unwrap().to_string();
+        let pid = engine
+            .rounds
+            .get(&1)
+            .unwrap()
+            .proposal_id()
+            .unwrap()
+            .to_string();
 
         // All 4 nodes reject.
         for voter in &["node-1", "node-2", "node-3", "node-4"] {
@@ -3012,7 +3204,13 @@ mod tests {
         let proposal = make_proposal(&proposer, 1, 0);
         engine.submit_proposal(proposal).unwrap();
 
-        let pid = engine.rounds.get(&1).unwrap().proposal_id().unwrap().to_string();
+        let pid = engine
+            .rounds
+            .get(&1)
+            .unwrap()
+            .proposal_id()
+            .unwrap()
+            .to_string();
 
         // All nodes abstain.
         for voter in &["node-1", "node-2", "node-3", "node-4"] {
@@ -3021,7 +3219,10 @@ mod tests {
         }
 
         let rs = engine.rounds.get(&1).unwrap();
-        assert_eq!(rs.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Abstain), 4);
+        assert_eq!(
+            rs.count_votes(&ConsensusPhase::PreVote, &VoteDecision::Abstain),
+            4
+        );
         // No quorum reached, round should not advance to PreCommit.
         assert_eq!(rs.phase_machine.current_phase, ConsensusPhase::PreVote);
     }
@@ -3088,7 +3289,13 @@ mod tests {
             let proposal = make_proposal(&proposer, height, 0);
             engine.submit_proposal(proposal).unwrap();
 
-            let pid = engine.rounds.get(&height).unwrap().proposal_id().unwrap().to_string();
+            let pid = engine
+                .rounds
+                .get(&height)
+                .unwrap()
+                .proposal_id()
+                .unwrap()
+                .to_string();
             for voter in &["node-1", "node-2", "node-3"] {
                 let v = make_prevote(voter, &pid, height, 0, VoteDecision::Approve);
                 engine.cast_vote(v).unwrap();

@@ -9,8 +9,8 @@
 //   - Phoenix: chaining recovery actions
 //   - Anchor: chaining attestation reports
 
-use crate::ananta::crypto::hashing::hash_combined;
 use crate::ananta::config::HashAlgorithm;
+use crate::ananta::crypto::hashing::hash_combined;
 use serde::{Deserialize, Serialize};
 
 /// A single link in the trust chain.
@@ -32,7 +32,13 @@ pub struct TrustChainLink {
 
 impl TrustChainLink {
     /// Compute the hash for this link.
-    fn compute_hash(algorithm: &HashAlgorithm, prev_hash: &str, event_type: &str, data: &serde_json::Value, timestamp: &str) -> String {
+    fn compute_hash(
+        algorithm: &HashAlgorithm,
+        prev_hash: &str,
+        event_type: &str,
+        data: &serde_json::Value,
+        timestamp: &str,
+    ) -> String {
         let data_json = serde_json::to_string(data).unwrap_or_default();
         let digest = hash_combined(
             &[
@@ -66,13 +72,19 @@ impl TrustChain {
     /// Append an event to the chain.
     pub fn append(&mut self, event_type: &str, data: serde_json::Value) -> &TrustChainLink {
         let sequence = self.chain.len() as u64;
-        let prev_hash = self.chain.last()
+        let prev_hash = self
+            .chain
+            .last()
             .map(|l| l.hash.clone())
             .unwrap_or_else(|| "0".repeat(64)); // Genesis.
         let timestamp = chrono::Utc::now().to_rfc3339();
 
         let hash = TrustChainLink::compute_hash(
-            &self.algorithm, &prev_hash, event_type, &data, &timestamp,
+            &self.algorithm,
+            &prev_hash,
+            event_type,
+            &data,
+            &timestamp,
         );
 
         let link = TrustChainLink {
@@ -100,7 +112,11 @@ impl TrustChain {
             };
 
             let expected = TrustChainLink::compute_hash(
-                &self.algorithm, &prev_hash, &link.event_type, &link.data, &link.timestamp,
+                &self.algorithm,
+                &prev_hash,
+                &link.event_type,
+                &link.data,
+                &link.timestamp,
             );
 
             if link.hash != expected {
@@ -136,8 +152,8 @@ impl TrustChain {
 
     /// Import from JSON.
     pub fn from_json(json: &str, _algorithm: HashAlgorithm) -> Result<Self, String> {
-        let chain: TrustChain = serde_json::from_str(json)
-            .map_err(|e| format!("trust_chain parse: {}", e))?;
+        let chain: TrustChain =
+            serde_json::from_str(json).map_err(|e| format!("trust_chain parse: {}", e))?;
         Ok(chain)
     }
 }

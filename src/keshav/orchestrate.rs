@@ -39,14 +39,31 @@ impl Default for OrchestrateConfig {
                 RoutingRule {
                     request_type: RequestType::SimplePrompt,
                     // Cognitive rings in parallel + Reasoning + Governance
-                    rings: vec![RingId::Shield, RingId::Threat, RingId::Identity, RingId::Memory, RingId::Reasoning, RingId::Governance],
+                    rings: vec![
+                        RingId::Shield,
+                        RingId::Threat,
+                        RingId::Identity,
+                        RingId::Memory,
+                        RingId::Reasoning,
+                        RingId::Governance,
+                    ],
                     parallel: true,
                     sequential_deps: vec![],
                 },
                 RoutingRule {
                     request_type: RequestType::ToolCall,
                     // All 9 rings: cognitive + tool rings + Reasoning + Governance + Recovery
-                    rings: vec![RingId::Shield, RingId::Threat, RingId::Identity, RingId::Memory, RingId::Agent, RingId::Execution, RingId::Reasoning, RingId::Governance, RingId::Recovery],
+                    rings: vec![
+                        RingId::Shield,
+                        RingId::Threat,
+                        RingId::Identity,
+                        RingId::Memory,
+                        RingId::Agent,
+                        RingId::Execution,
+                        RingId::Reasoning,
+                        RingId::Governance,
+                        RingId::Recovery,
+                    ],
                     parallel: true,
                     sequential_deps: vec![
                         SequentialDep {
@@ -65,30 +82,36 @@ impl Default for OrchestrateConfig {
                     request_type: RequestType::AuthRequest,
                     rings: vec![RingId::Shield, RingId::Identity],
                     parallel: false,
-                    sequential_deps: vec![
-                        SequentialDep {
-                            ring: RingId::Identity,
-                            depends_on: RingId::Shield,
-                            condition: DepCondition::AllowOnly,
-                        },
-                    ],
+                    sequential_deps: vec![SequentialDep {
+                        ring: RingId::Identity,
+                        depends_on: RingId::Shield,
+                        condition: DepCondition::AllowOnly,
+                    }],
                 },
                 RoutingRule {
                     request_type: RequestType::AdminOperation,
                     rings: vec![RingId::Shield, RingId::Identity],
                     parallel: false,
-                    sequential_deps: vec![
-                        SequentialDep {
-                            ring: RingId::Identity,
-                            depends_on: RingId::Shield,
-                            condition: DepCondition::AllowOnly,
-                        },
-                    ],
+                    sequential_deps: vec![SequentialDep {
+                        ring: RingId::Identity,
+                        depends_on: RingId::Shield,
+                        condition: DepCondition::AllowOnly,
+                    }],
                 },
                 RoutingRule {
                     request_type: RequestType::Unknown,
                     // Fail Secure: all 9 available rings
-                    rings: vec![RingId::Shield, RingId::Threat, RingId::Identity, RingId::Memory, RingId::Agent, RingId::Execution, RingId::Reasoning, RingId::Governance, RingId::Recovery],
+                    rings: vec![
+                        RingId::Shield,
+                        RingId::Threat,
+                        RingId::Identity,
+                        RingId::Memory,
+                        RingId::Agent,
+                        RingId::Execution,
+                        RingId::Reasoning,
+                        RingId::Governance,
+                        RingId::Recovery,
+                    ],
                     parallel: true,
                     sequential_deps: vec![
                         SequentialDep {
@@ -130,15 +153,15 @@ pub enum RequestType {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum RingId {
-    Shield,   // Ring 1
-    Identity, // Ring 2 (Phase 4)
-    Threat,   // Ring 3
-    Agent,    // Ring 4 (Phase 4)
-    Memory,   // Ring 5 (Phase 4)
-    Execution,// Ring 6
-    Reasoning,// Ring 7 (Phase 5)
-    Governance,// Ring 8 (Phase 5)
-    Recovery, // Ring 9 (Phase 5)
+    Shield,     // Ring 1
+    Identity,   // Ring 2 (Phase 4)
+    Threat,     // Ring 3
+    Agent,      // Ring 4 (Phase 4)
+    Memory,     // Ring 5 (Phase 4)
+    Execution,  // Ring 6
+    Reasoning,  // Ring 7 (Phase 5)
+    Governance, // Ring 8 (Phase 5)
+    Recovery,   // Ring 9 (Phase 5)
 }
 
 /// A static routing rule.
@@ -213,11 +236,7 @@ impl KeshavOrchestrate {
     }
 
     /// Classify a request and produce an orchestration plan.
-    pub fn plan(
-        &self,
-        request_type: RequestType,
-        has_tool_call: bool,
-    ) -> OrchestrationPlan {
+    pub fn plan(&self, request_type: RequestType, has_tool_call: bool) -> OrchestrationPlan {
         if !self.config.enabled {
             return OrchestrationPlan {
                 request_type,
@@ -318,11 +337,17 @@ mod tests {
         assert!(plan.parallel_batch.contains(&RingId::Threat));
         assert!(!plan.sequential_batch.is_empty());
         // Phase 4: Execution depends on Agent (not Threat directly).
-        let exec_dep = plan.sequential_batch.iter().find(|(r, _, _)| *r == RingId::Execution);
+        let exec_dep = plan
+            .sequential_batch
+            .iter()
+            .find(|(r, _, _)| *r == RingId::Execution);
         assert!(exec_dep.is_some());
         assert_eq!(exec_dep.unwrap().1, RingId::Agent);
         // Agent depends on Threat.
-        let agent_dep = plan.sequential_batch.iter().find(|(r, _, _)| *r == RingId::Agent);
+        let agent_dep = plan
+            .sequential_batch
+            .iter()
+            .find(|(r, _, _)| *r == RingId::Agent);
         assert!(agent_dep.is_some());
         assert_eq!(agent_dep.unwrap().1, RingId::Threat);
     }
@@ -339,7 +364,10 @@ mod tests {
 
     #[test]
     fn disabled_runs_all_rings() {
-        let orch = KeshavOrchestrate::new(OrchestrateConfig { enabled: false, ..Default::default() });
+        let orch = KeshavOrchestrate::new(OrchestrateConfig {
+            enabled: false,
+            ..Default::default()
+        });
         let plan = orch.plan(RequestType::HealthCheck, false);
         assert_eq!(plan.total_rings, 3); // All 3 rings despite health check
     }

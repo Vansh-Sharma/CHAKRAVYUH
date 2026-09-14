@@ -8,26 +8,25 @@
 //   5. Produces regression baselines for continuous security monitoring
 
 pub mod attack_types;
+pub mod encoders;
 pub mod generators;
 pub mod mutations;
-pub mod encoders;
-pub mod scenarios;
-pub mod runners;
-pub mod reports;
 pub mod regression;
+pub mod reports;
+pub mod runners;
+pub mod scenarios;
 
 // Re-export all public types.
 pub use attack_types::{AttackCategory, AttackPayload, AttackPayloadBuilder};
+pub use encoders::encoding::Encoder;
 pub use generators::Generator;
 pub use mutations::strategies::MutationStrategy;
-pub use encoders::encoding::Encoder;
-pub use scenarios::{Combinator, CombinatorConfig, Scenario, ScenarioBundle};
-pub use runners::{RedTeamRunner, RunnerConfig, RunResult, ScenarioOutcome};
-pub use reports::redteam_report::{
-    RedTeamReportSummary, RingDetectionMatrix, RingCell,
-    generate_report, detection_rate_per_ring, missed_attacks,
-};
 pub use regression::suite::{
-    RegressionSuite, RegressionBaseline, RegressionDiff,
-    DiffEntry, DiffKind,
+    DiffEntry, DiffKind, RegressionBaseline, RegressionDiff, RegressionSuite,
 };
+pub use reports::redteam_report::{
+    detection_rate_per_ring, generate_report, missed_attacks, RedTeamReportSummary, RingCell,
+    RingDetectionMatrix,
+};
+pub use runners::{RedTeamRunner, RunResult, RunnerConfig, ScenarioOutcome};
+pub use scenarios::{Combinator, CombinatorConfig, Scenario, ScenarioBundle};

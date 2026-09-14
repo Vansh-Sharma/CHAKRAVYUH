@@ -26,8 +26,13 @@ pub mod trace;
 
 pub use api_keys::{ApiKeyConfig, ApiKeyInfo, ApiKeyManager, ApiKeyMeta, AuthResult, Permission};
 pub use audit::{AuditConfig, AuditEntry, AuditTrail};
-pub use config_watcher::{ConfigWatcherConfig, ConfigWatcherHandle, spawn_config_watcher};
-pub use health::{is_alive, is_ready, record_request, request_counts, RingHealth, RingHealthTracker, SystemHealth, StoreHealthReport};
-pub use metrics::{metrics_text, record_decision, record_endpoint, record_latency, record_ring_eval};
+pub use config_watcher::{spawn_config_watcher, ConfigWatcherConfig, ConfigWatcherHandle};
+pub use health::{
+    is_alive, is_ready, record_request, request_counts, RingHealth, RingHealthTracker,
+    StoreHealthReport, SystemHealth,
+};
+pub use metrics::{
+    metrics_text, record_decision, record_endpoint, record_latency, record_ring_eval,
+};
 pub use shutdown::ShutdownState;
-pub use trace::{TraceContext, extract_trace_id, recent_traces, record_trace, trace_stats};
+pub use trace::{extract_trace_id, recent_traces, record_trace, trace_stats, TraceContext};

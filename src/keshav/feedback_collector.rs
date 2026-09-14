@@ -89,8 +89,12 @@ pub struct FeedbackCollectorConfig {
     pub auto_optimize_threshold: usize,
 }
 
-fn default_max_entries() -> usize { 10_000 }
-fn default_auto_optimize_threshold() -> usize { 50 }
+fn default_max_entries() -> usize {
+    10_000
+}
+fn default_auto_optimize_threshold() -> usize {
+    50
+}
 
 impl Default for FeedbackCollectorConfig {
     fn default() -> Self {
@@ -193,8 +197,12 @@ impl FeedbackCollector {
         let mut false_negatives = 0usize;
 
         for entry in entries.iter() {
-            *by_type.entry(format!("{:?}", entry.feedback_type)).or_insert(0) += 1;
-            *by_severity.entry(format!("{:?}", entry.severity)).or_insert(0) += 1;
+            *by_type
+                .entry(format!("{:?}", entry.feedback_type))
+                .or_insert(0) += 1;
+            *by_severity
+                .entry(format!("{:?}", entry.severity))
+                .or_insert(0) += 1;
             match entry.feedback_type {
                 FeedbackType::FalsePositive => false_positives += 1,
                 FeedbackType::FalseNegative => false_negatives += 1,

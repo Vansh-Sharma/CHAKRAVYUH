@@ -165,8 +165,7 @@ impl PlatformStore {
             created_at: Utc::now(),
         };
         let mut data = self.data.write().unwrap();
-        data.users_by_email
-            .insert(user.email.clone(), user.id);
+        data.users_by_email.insert(user.email.clone(), user.id);
         data.users.insert(user.id, user.clone());
         user
     }
@@ -250,7 +249,12 @@ impl PlatformStore {
             .collect()
     }
 
-    pub fn update_org(&self, id: Uuid, name: Option<&str>, plan: Option<Plan>) -> Option<Organization> {
+    pub fn update_org(
+        &self,
+        id: Uuid,
+        name: Option<&str>,
+        plan: Option<Plan>,
+    ) -> Option<Organization> {
         let mut data = self.data.write().unwrap();
         let org = data.organizations.get_mut(&id)?;
         if let Some(n) = name {
@@ -321,8 +325,7 @@ impl PlatformStore {
             revoked_at: None,
         };
         let mut data = self.data.write().unwrap();
-        data.api_keys_by_hash
-            .insert(key.key_hash.clone(), key.id);
+        data.api_keys_by_hash.insert(key.key_hash.clone(), key.id);
         data.api_keys.insert(key.id, key.clone());
         key
     }
@@ -577,8 +580,12 @@ mod tests {
         // Two organizations.
         let user_a = store.create_user("a@example.com", "h", None);
         let user_b = store.create_user("b@example.com", "h", None);
-        let org_a = store.create_org("OrgA", "orga", Plan::Free, user_a.id).unwrap();
-        let org_b = store.create_org("OrgB", "orgb", Plan::Free, user_b.id).unwrap();
+        let org_a = store
+            .create_org("OrgA", "orga", Plan::Free, user_a.id)
+            .unwrap();
+        let org_b = store
+            .create_org("OrgB", "orgb", Plan::Free, user_b.id)
+            .unwrap();
 
         // Insert audit logs for both orgs.
         store.append_audit_log(AuditLog {
@@ -624,8 +631,12 @@ mod tests {
         let store = PlatformStore::new();
         let user_a = store.create_user("a@example.com", "h", None);
         let user_b = store.create_user("b@example.com", "h", None);
-        let org_a = store.create_org("OrgA", "orga", Plan::Free, user_a.id).unwrap();
-        let org_b = store.create_org("OrgB", "orgb", Plan::Free, user_b.id).unwrap();
+        let org_a = store
+            .create_org("OrgA", "orga", Plan::Free, user_a.id)
+            .unwrap();
+        let org_b = store
+            .create_org("OrgB", "orgb", Plan::Free, user_b.id)
+            .unwrap();
 
         let plaintext = generate_api_key(true);
         let hash = hash_api_key(&plaintext);
