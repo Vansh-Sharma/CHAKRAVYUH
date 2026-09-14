@@ -1,0 +1,118 @@
+# ═══════════════════════════════════════════════════════════════
+# ANANTA — Autonomous Trust Plane Configuration
+#
+# CRITICAL: This file is loaded INDEPENDENTLY from the main
+# CHAKRAVYUH config. ANANTA never trusts Keshav's configuration.
+#
+# To enable ANANTA, set `ananta_config_path` in your main
+# config.yaml to point to this file.
+#
+# Example in config.yaml:
+#   ananta_config_path: "/etc/chakravyuh/ananta.yaml"
+# ═══════════════════════════════════════════════════════════════
+
+# Master enable switch. When false, ANANTA does not run.
+enabled: true
+
+# Path to ANANTA's own secure state directory.
+# Should be on a different mount point from Keshav's data.
+state_path: "/var/lib/chakravyuh/ananta"
+
+# ── Cryptographic Algorithm Suite ──
+crypto:
+  # Hash algorithm: "sha256", "sha384", "sha512", or "blake3"
+  hash_algorithm: "sha256"
+  # Key derivation iterations for SecureStore
+  key_derivation_iterations: 100000
+
+# ── Sentinel: Drift Detection ──
+sentinel:
+  # How often (ms) to run a full integrity attestation cycle.
+  check_interval_ms: 30000
+  # How often (ms) to update trust state from drift observations.
+  trust_state_interval_ms: 10000
+  # Z-score threshold for drift alerts.
+  # Higher = less sensitive. Recommended: 3.0 (99.7% confidence).
+  drift_sigma_threshold: 3.0
+  # Number of observations before drift detection activates.
+  drift_window_size: 50
+  # Rate limit: max drift alerts per minute per type.
+  alert_rate_limit_per_minute: 10
+
+# ── Phoenix: Autonomous Recovery ──
+phoenix:
+  # When true, Phoenix autonomously executes recovery actions.
+  # When false, it only logs recommendations.
+  autonomous: false
+  # Max concurrent recovery actions.
+  max_concurrent_actions: 3
+  # Cooldown (ms) between recovery actions for the same domain.
+  action_cooldown_ms: 60000
+  # Trust level below which recovery is triggered.
+  recovery_threshold: 0.5
+  # How many consecutive failures before escalating.
+  escalation_failure_count: 5
+
+# ── Anchor: Root of Trust ──
+anchor:
+  # Path to the initial trusted manifest (JSON).
+  # If not set, ANANTA builds a manifest from registered providers.
+  manifest_path: null
+  # Key rotation interval (ms). 0 = no rotation.
+  key_rotation_interval_ms: 86400000  # 24 hours
+  # Max trust chain length before compaction.
+  max_chain_length: 10000
+
+# ── Adapter: Adaptive Orchestration ──
+adapter:
+  # Master enable for adaptive pipeline reconfiguration.
+  # WARNING: This is the most dangerous ANANTA subsystem.
+  # Every adaptation is cryptographically signed, logged, rate-limited,
+  # and reversible. Start with false in production.
+  enabled: false
+  # Max adaptations per hour.
+  rate_limit_per_hour: 10
+  # Grace period (ms) after adaptation before allowing another.
+  grace_period_ms: 300000  # 5 minutes
+  # Require cryptographic signing for adaptations.
+  require_signing: true
+
+# ── Trust Proof Engine ──
+trust_proof:
+  # Enable trust proof generation.
+  enabled: true
+  # How often (ms) to generate a new trust proof.
+  generation_interval_ms: 60000
+  # Number of consecutive attestations required for "healthy" trust.
+  min_healthy_attestations: 3
+
+# ── Health Model ──
+health:
+  enabled: true
+  # How often (ms) to compute health scores and predict anomalies.
+  computation_interval_ms: 15000
+  # Number of observations before anomaly prediction activates.
+  prediction_window: 20
+  # Sensitivity threshold for anomaly predictions (0.0-1.0).
+  sensitivity: 0.7
+
+# ── Audit: Immutable Log ──
+audit:
+  # Max entries before rotation. 0 = unlimited.
+  max_entries: 100000
+  # Categories to audit: all, integrity, drift, recovery, adaptation, health, trust, lifecycle
+  categories: "all"
+  # Minimum severity to log: debug, info, warning, error, critical
+  min_severity: "info"
+
+# ── Distributed: Consensus & Federation ──
+distributed:
+  enabled: false
+  # Node ID for this instance (auto-generated if empty).
+  node_id: ""
+  # Peer addresses for cluster consensus.
+  peers: []
+  # Quorum: fraction of nodes that must agree.
+  quorum_fraction: 0.67
+  # Consensus timeout (ms).
+  consensus_timeout_ms: 5000

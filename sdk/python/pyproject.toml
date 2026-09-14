@@ -1,0 +1,62 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "chakravyuh"
+version = "1.0.0"
+description = "Official Python SDK for CHAKRAVYUH OS — production-grade AI security orchestration"
+readme = "README.md"
+license = { text = "Proprietary" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Vinomoid", email = "api@vinomoid.com" },
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: Other/Proprietary License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+keywords = ["security", "ai", "llm", "prompt-injection", "chakravyuh", "vinomoid"]
+
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.5",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "respx>=0.22",
+    "mypy>=1.8",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Homepage = "https://vinomoid.com/chakravyuh-os"
+Documentation = "https://docs.vinomoid.com/chakravyuh-os/sdk/python"
+Repository = "https://github.com/vinomoid/chakravyuh-os"
+
+[tool.hatch.build.targets.wheel]
+packages = ["chakravyuh"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

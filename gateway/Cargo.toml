@@ -1,0 +1,51 @@
+[package]
+name = "chakravyuh-gateway"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["VINOMOID <maintainers@chakravyuh.org>"]
+license = "Apache-2.0"
+description = "Production REST Security Gateway for CHAKRAVYUH OS"
+
+[dependencies]
+chakravyuh = { path = ".." }
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Web framework
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = [
+    "trace", "cors", "compression-gzip",
+    "timeout", "request-id",
+] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Tracing / logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Unique IDs
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# Cryptographic verification (for /verify endpoint)
+sha2 = "0.10"
+hex = "0.4"
+
+# HTTP headers
+http = "1.1"
+
+[dev-dependencies]
+tokio-test = "0.4"
+axum-test = "16"

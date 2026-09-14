@@ -1,0 +1,214 @@
+// CHAKRAVYUH gRPC API (Phase 8)
+//
+// High-performance programmatic interface for:
+//   - Request evaluation (evaluate, proxy, execute)
+//   - Health probes (live, ready)
+//   - Policy management (info, reload)
+//   - Learning system (feedback, optimize, thresholds, patterns)
+//   - Decision audit (list, export)
+
+syntax = "proto3";
+
+package chakravyuh.v1;
+
+option go_package = "github.com/vinomoid/chakravyuh/proto/v1";
+
+// ── Core Messages ──
+
+message EvaluateRequest {
+  string model = 1;
+  repeated Message messages = 2;
+  map<string, string> metadata = 3;
+}
+
+message Message {
+  string role = 1;
+  string content = 2;
+}
+
+message ExecuteRequest {
+  string tool_name = 1;
+  string parameters = 2;  // JSON string
+  string agent_id = 3;
+  string request_id = 4;
+}
+
+message DecisionResponse {
+  string decision = 1;       // "allow", "deny:CODE", "challenge", "escalate"
+  string reason = 2;
+  string request_id = 3;
+  string policy_applied = 4;
+  double latency_ms = 5;
+  map<string, RingDetail> rings = 6;
+  RiskScore risk_score = 7;
+}
+
+message RingDetail {
+  string decision = 1;
+  double latency_ms = 2;
+  repeated EngineResult engine_results = 3;
+}
+
+message EngineResult {
+  string engine = 1;
+  string decision = 2;
+  string reason = 3;
+  double latency_ms = 4;
+}
+
+message RiskScore {
+  double overall = 1;
+  double threat = 2;
+  double identity = 3;
+  double agent = 4;
+  double memory = 5;
+  double execution = 6;
+  double reasoning = 7;
+  double governance = 8;
+  double recovery = 9;
+  double context = 10;
+}
+
+message HealthResponse {
+  string status = 1;
+  string version = 2;
+  uint64 uptime_secs = 3;
+}
+
+message ReadyResponse {
+  string status = 1;
+  bool ready = 2;
+  uint64 total_requests = 3;
+  uint64 total_errors = 4;
+  repeated RingStatus rings = 5;
+}
+
+message RingStatus {
+  string name = 1;
+  bool healthy = 2;
+}
+
+// ── Policy Messages ──
+
+message PolicyInfo {
+  string version = 1;
+  uint32 rule_count = 2;
+  repeated string rules = 3;
+  string policy_path = 4;
+}
+
+message ReloadResponse {
+  string status = 1;
+  string version = 2;
+}
+
+// ── Learning Messages ──
+
+message FeedbackRequest {
+  string request_id = 1;
+  string feedback_type = 2;  // false_positive, false_negative, approve, reject
+  string ring = 3;
+  string original_decision = 4;
+  string explanation = 5;
+  string submitted_by = 6;
+  string severity = 7;
+}
+
+message LearnStatusResponse {
+  bool enabled = 1;
+  uint64 unprocessed_feedback = 2;
+  bool auto_optimize_pending = 3;
+  uint64 profiles_count = 4;
+  uint64 patterns_count = 5;
+  uint64 thresholds_count = 6;
+  string last_optimization = 7;
+}
+
+message OptimizeResponse {
+  uint32 optimizations_applied = 1;
+  repeated ThresholdAdjustment adjustments = 2;
+}
+
+message ThresholdAdjustment {
+  string ring = 1;
+  double old_deny = 2;
+  double new_deny = 3;
+  double old_challenge = 4;
+  double new_challenge = 5;
+  string direction = 6;
+  string reason = 7;
+  double confidence = 8;
+}
+
+// ── Decision Messages ──
+
+message DecisionLogResponse {
+  uint64 count = 1;
+  repeated DecisionRecord records = 2;
+}
+
+message DecisionRecord {
+  string request_id = 1;
+  string decision = 2;
+  string reasoning = 3;
+  string policy_applied = 4;
+  double latency_ms = 5;
+  uint64 timestamp = 6;
+}
+
+// ── Storage Messages ──
+
+message StorageHealthResponse {
+  string backend = 1;
+  bool reachable = 2;
+  double latency_ms = 3;
+  string detail = 4;
+}
+
+// ── Service Definition ──
+
+service ChakravyuhService {
+  // Evaluate a prompt through the full ring chain.
+  rpc Evaluate(EvaluateRequest) returns (DecisionResponse);
+
+  // Execute a tool call through the full ring chain.
+  rpc Execute(ExecuteRequest) returns (DecisionResponse);
+
+  // Health check — basic liveness.
+  rpc Health(Empty) returns (HealthResponse);
+
+  // Readiness probe — ring health + error rates.
+  rpc Ready(Empty) returns (ReadyResponse);
+
+  // Get current policy info.
+  rpc GetPolicyInfo(Empty) returns (PolicyInfo);
+
+  // Hot-reload policy from file.
+  rpc ReloadPolicy(Empty) returns (ReloadResponse);
+
+  // Submit decision feedback.
+  rpc SubmitFeedback(FeedbackRequest) returns (AckResponse);
+
+  // Get learning system status.
+  rpc GetLearnStatus(Empty) returns (LearnStatusResponse);
+
+  // Trigger threshold optimization.
+  rpc OptimizeThresholds(Empty) returns (OptimizeResponse);
+
+  // Get recent decision records.
+  rpc ListDecisions(ListDecisionsRequest) returns (DecisionLogResponse);
+
+  // Storage backend health.
+  rpc StorageHealth(Empty) returns (StorageHealthResponse);
+}
+
+message Empty {}
+
+message AckResponse {
+  string status = 1;
+  string message = 2;
+}
+
+message ListDecisionsRequest {
+  uint32 limit = 1;  // 0 = all
+}

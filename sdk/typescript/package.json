@@ -1,0 +1,74 @@
+{
+  "name": "@vinomoid/chakravyuh",
+  "version": "1.0.0",
+  "description": "Official TypeScript SDK for CHAKRAVYUH OS — AI security orchestration by Vinomoid",
+  "author": "Vinomoid <api@vinomoid.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vinomoid/chakravyuh-sdk-ts"
+  },
+  "homepage": "https://docs.vinomoid.com/chakravyuh-os/sdk/typescript",
+  "keywords": [
+    "chakravyuh",
+    "vinomoid",
+    "ai-security",
+    "llm-security",
+    "prompt-injection",
+    "guardrails",
+    "policy-engine",
+    "audit"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/esm/errors.js",
+      "require": "./dist/cjs/errors.js",
+      "types": "./dist/types/errors.d.ts"
+    },
+    "./models": {
+      "import": "./dist/esm/models.js",
+      "require": "./dist/cjs/models.js",
+      "types": "./dist/types/models.d.ts"
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "build": "npm run build:cjs && npm run build:esm && npm run build:types",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "tsc --noEmit",
+    "prepack": "npm run clean && npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^20.14.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}

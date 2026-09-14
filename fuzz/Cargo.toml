@@ -1,0 +1,105 @@
+[package]
+name = "chakravyuh-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "Apache-2.0"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+chakravyuh = { path = ".." }
+arbitrary = { version = "1.4", features = ["derive"] }
+libfuzzer-sys = "0.4"
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Prevent this from interfering with workspaces
+[workspace]
+members = ["."]
+
+[[bin]]
+name = "shield_waf"
+path = "fuzz_targets/shield_waf.rs"
+doc = false
+
+[[bin]]
+name = "shield_input_validator"
+path = "fuzz_targets/shield_input_validator.rs"
+doc = false
+
+[[bin]]
+name = "threat_ring"
+path = "fuzz_targets/threat_ring.rs"
+doc = false
+
+[[bin]]
+name = "threat_obfuscation_decoder"
+path = "fuzz_targets/threat_obfuscation_decoder.rs"
+doc = false
+
+[[bin]]
+name = "threat_jailbreak_detector"
+path = "fuzz_targets/threat_jailbreak_detector.rs"
+doc = false
+
+[[bin]]
+name = "threat_pattern_matcher"
+path = "fuzz_targets/threat_pattern_matcher.rs"
+doc = false
+
+[[bin]]
+name = "threat_semantic_classifier"
+path = "fuzz_targets/threat_semantic_classifier.rs"
+doc = false
+
+[[bin]]
+name = "memory_pii_extractor"
+path = "fuzz_targets/memory_pii_extractor.rs"
+doc = false
+
+[[bin]]
+name = "policy_compiler_yaml"
+path = "fuzz_targets/policy_compiler_yaml.rs"
+doc = false
+
+[[bin]]
+name = "policy_vm_bytecode"
+path = "fuzz_targets/policy_vm_bytecode.rs"
+doc = false
+
+[[bin]]
+name = "ananta_merkle_tree"
+path = "fuzz_targets/ananta_merkle_tree.rs"
+doc = false
+
+[[bin]]
+name = "ananta_hashing"
+path = "fuzz_targets/ananta_hashing.rs"
+doc = false
+
+[[bin]]
+name = "decision_serialization"
+path = "fuzz_targets/decision_serialization.rs"
+doc = false
+
+[[bin]]
+name = "ananta_config_parsing"
+path = "fuzz_targets/ananta_config_parsing.rs"
+doc = false
+
+[[bin]]
+name = "execution_ssrf_protector"
+path = "fuzz_targets/execution_ssrf_protector.rs"
+doc = false
+
+[[bin]]
+name = "execution_parameter_validator"
+path = "fuzz_targets/execution_parameter_validator.rs"
+doc = false
+
+[[bin]]
+name = "cross_ring_message"
+path = "fuzz_targets/cross_ring_message.rs"
+doc = false

@@ -1,0 +1,352 @@
+# CHAKRAVYUH — Example Configuration
+#
+# This is the default configuration shipped with CHAKRAVYUH.
+# Copy to /etc/chakravyuh/config.yaml and edit as needed.
+#
+# Documentation: https://docs.chakravyuh.org/config
+
+# Server settings
+server:
+  bind: "0.0.0.0:8443"
+  workers: 4
+  # Built-in TLS termination (requires `--features tls` at build time).
+  # tls:
+  #   cert_path: /etc/chakravyuh/tls/fullchain.pem
+  #   key_path: /etc/chakravyuh/tls/privkey.pem
+
+# Upstream LLM API — required for /v1/proxy to forward requests.
+# upstream:
+#   url: "https://api.openai.com/v1/chat/completions"
+#   api_key: "sk-your-key-here"
+#   timeout_secs: 60
+#   forward_client_auth: false
+
+# Logging
+logging:
+  level: info
+  format: text
+
+# Shield Ring (Ring 1) — Perimeter Defense
+shield:
+  enabled: true
+  input_validator:
+    enabled: true
+    max_prompt_length: 32000
+    max_tokens: 8000
+    max_messages: 100
+    required_fields:
+      - model
+      - messages
+  rate_limiter:
+    enabled: true
+    backend: memory
+    limits:
+      per_ip: "100/min"
+      per_api_key: "1000/min"
+      per_user: "500/min"
+  dos_protector:
+    enabled: true
+    baseline_window: 3600
+    threshold_sigma: 5.0
+    block_duration: 300
+  geo_fencer:
+    enabled: false
+    mode: blocklist
+    countries: []
+    default_on_lookup_fail: deny
+  bot_detector:
+    enabled: true
+    challenge_unknown: false
+    good_bots: [Googlebot, Bingbot, Slackbot, GitHub-Actions, curl]
+    bad_bots: [sqlmap, nikto, nmap, masscan, hydra, metasploit, w3af]
+  waf:
+    enabled: true
+    sanitize: false
+    custom_rules: []
+
+# Threat Ring (Ring 3) — Cognitive Threat Detection
+threat:
+  enabled: true
+  deny_threshold: 0.60
+  challenge_threshold: 0.30
+  pattern_matcher:
+    enabled: true
+  semantic_classifier:
+    enabled: true
+  jailbreak_detector:
+    enabled: true
+
+# Identity Ring (Ring 2) — Authentication, Authorization & Trust
+identity:
+  enabled: true
+  session_identity:
+    enabled: true
+    valid_api_key_prefixes: ["sk-", "pk-"]
+    min_api_key_length: 16
+    max_api_key_length: 256
+    trusted_jwt_issuers: []
+  role_resolver:
+    enabled: true
+    api_key_prefix_roles:
+      "sk-admin-": "admin"
+      "sk-op-": "operator"
+      "sk-audit-": "auditor"
+      "sk-svc-": "service"
+  trust_accumulator:
+    enabled: true
+    max_identities: 10000
+    decay_rate: 0.02
+  identity_anomaly:
+    enabled: true
+    challenge_threshold: 6.0
+    deny_threshold: 9.0
+    velocity_threshold: 30.0
+    travel_speed_threshold: 800.0
+    off_hours: [9, 17]
+
+# Execution Ring (Ring 6) — Tool/API Call Firewall
+execution:
+  enabled: true
+  tool_allowlist:
+    enabled: true
+    tools:
+      - name: web_search
+        enabled: true
+        max_calls_per_request: 5
+      - name: calculator
+        enabled: true
+        max_calls_per_request: 10
+      - name: file_read
+        enabled: true
+        max_calls_per_request: 3
+  parameter_validator:
+    enabled: true
+  sandbox_executor:
+    enabled: true
+    always_sandbox_tools: [shell_exec, code_execution, file_write]
+  approval_workflow:
+    enabled: true
+    default_timeout_secs: 300
+    default_fallback: deny
+    rules:
+      - tool_name: file_write
+        required_approver_role: admin
+        conditions:
+          paths: ["/production/**", "/etc/**"]
+      - tool_name: api_call
+        required_approver_role: admin
+        conditions:
+          methods: [DELETE, PUT]
+  action_logger:
+    enabled: true
+    max_entries: 10000
+    log_full_params: true
+  ssrf_protector:
+    enabled: true
+    extra_blocked_ranges: []
+
+# Agent Ring (Ring 4) — Agent Policy, Behavior & Scope
+agent:
+  enabled: true
+  deny_threshold: 9.0
+  agent_policy:
+    enabled: true
+    # Default permissions per agent type.
+    type_policies:
+      coder: [read, write, execute, file_system, api_call, tool_use, code_execution]
+      researcher: [read, network_access, api_call, memory_read, tool_use]
+      assistant: [read, memory_read, tool_use]
+      analyst: [read, network_access, api_call, memory_read, database_access, tool_use]
+      custom: []
+  permission_enforcer:
+    enabled: true
+    bypass_roles: [admin]
+  agent_scope:
+    enabled: true
+    max_traversal_depth: 5
+    exempt_actions: []
+  capability_guard:
+    enabled: true
+  behavior_monitor:
+    enabled: true
+    max_agents: 5000
+    rate_spike_threshold: 3.0
+    scope_violation_threshold: 5
+    min_actions_for_detection: 5
+  tool_chaining_detector:
+    enabled: true
+    history_size: 20
+    max_agents: 5000
+    risk_threshold: 6.0
+
+# Memory Ring (Ring 5) — Context Integrity & Memory Security
+memory:
+  enabled: true
+  deny_threshold: 9.0
+  context_guard:
+    enabled: true
+    max_context_length: 128000
+    max_turns: 100
+  pii_extractor:
+    enabled: true
+  conversation_tracker:
+    enabled: true
+    max_conversations: 5000
+    hijack_detection_threshold: 8.0
+  rag_poison_detector:
+    enabled: true
+    max_entry_length: 50000
+    poison_markers:
+      - "ignore previous"
+      - "system prompt"
+      - "you are now"
+      - "new instructions"
+      - "disregard"
+  provenance_validator:
+    enabled: true
+    max_entry_age_hours: 720
+  memory_access_control:
+    enabled: true
+
+# Keshav Core — Central Decision Brain
+keshav:
+  enabled: true
+  risk:
+    w_threat: 0.30
+    w_identity: 0.15    # Identity Ring (Ring 2)
+    w_behavior: 0.15    # Agent Ring (Ring 4)
+    w_memory: 0.10      # Memory Ring (Ring 5)
+    w_execution: 0.20
+    w_reasoning: 0.05   # Reasoning Ring (Ring 7)
+    w_governance: 0.05   # Governance Ring (Ring 8)
+    w_recovery: 0.05     # Recovery Ring (Ring 9)
+    w_context: 0.10
+  orchestrate:
+    enabled: true
+
+# Cross Ring Network — Inter-Ring Coordination (5 of 5)
+cross_ring:
+  enabled: true
+  buffer_size: 1000
+  recovery:
+    enabled: true
+    failure_threshold: 5
+    recovery_timeout_secs: 30
+    latency_threshold_ms: 50.0
+    error_rate_threshold: 0.5
+    max_rings_down: 3
+    history_window: 100
+
+# Reasoning Ring (Ring 7) — Chain-of-Thought Integrity
+reasoning:
+  enabled: true
+  deny_threshold: 9.0
+  coherence_checker:
+    min_coherence_score: 0.3
+  hallucination_detector:
+    sensitivity: 0.7
+  depth_analyzer:
+    min_depth_ratio: 0.2
+  bias_detector:
+    bias_threshold: 0.6
+  step_validator:
+    max_invalid_steps: 2
+  output_consistency:
+    min_consistency: 0.4
+
+# Governance Ring (Ring 8) — Policy, Audit & Compliance
+governance:
+  enabled: true
+  deny_threshold: 9.0
+  policy_compliance:
+    max_violations: 3
+  audit_logger:
+    retention_days: 90
+  data_retention:
+    max_retention_days: 365
+    auto_delete: false
+  consent_tracker:
+    require_explicit_consent: false
+  compliance_reporter:
+    compliance_threshold: 0.5
+    frameworks:
+      - GDPR
+      - SOC2
+      - HIPAA
+  sanction_checker:
+    enabled: true
+    blocked_entities: []
+    blocked_regions: []
+
+# Recovery Security Ring (Ring 9) — Incident Response & Rollback
+recovery_sec:
+  enabled: true
+  deny_threshold: 9.0
+  incident_classifier:
+    critical_threshold: 8.0
+    high_threshold: 5.0
+  rollback_engine:
+    max_rollback_window_secs: 3600
+  quarantine_manager:
+    max_quarantine_size: 10000
+    auto_quarantine_on_critical: true
+  evidence_collector:
+    retention_days: 365
+    hash_algorithm: sha256
+  state_restorer:
+    checkpoint_interval_secs: 300
+    max_checkpoints: 50
+  notification_engine:
+    channels:
+      - log
+    severity_filter: 5.0
+
+# Persistent Storage Backend (Phase 7)
+# Supports "memory" (default, in-process) or "redis" (requires --features redis).
+# If the configured backend fails, CHAKRAVYUH degrades gracefully to in-memory.
+storage:
+  backend: memory           # "memory" or "redis"
+  # redis_url: "redis://127.0.0.1:6379"
+  # redis_prefix: "chakravyuh:"
+  # timeout_ms: 1000
+
+# gRPC API Server (Phase 8)
+# Runs alongside the HTTP server for high-performance programmatic access.
+grpc:
+  enabled: false
+  addr: "0.0.0.0:50051"
+
+# Config File Watcher (Phase 9)
+# Automatically reloads policy when the policy file changes on disk.
+config_watcher:
+  enabled: false
+  debounce_ms: 500
+
+# Tamper-Evident Audit Trail (Phase 9)
+# SHA-256 hash-chained decision log for regulatory compliance.
+audit:
+  enabled: true
+  max_in_memory: 10000
+
+# API Key Authentication (Phase 9)
+# HMAC-SHA256 signed API keys for /v1/* endpoint access control.
+api_keys:
+  enabled: false
+  master_secret: ""          # Set to a strong random string in production
+  timestamp_tolerance_secs: 300
+  require_for_v1: false
+
+# ═══════════════════════════════════════════════════════════════
+# ANANTA — Autonomous Trust Plane
+# ═══════════════════════════════════════════════════════════════
+# ANANTA starts automatically on every CHAKRAVYUH launch using
+# embedded defaults (AnantaConfig::default()). The trust plane is
+# part of the security guarantee, not an optional add-on.
+#
+# To override the defaults, uncomment ananta_config_path and point
+# it at a custom ananta.yaml (see configs/ananta.example.yaml).
+# When set AND the file exists, the file takes precedence.
+# When set but the file is missing, embedded defaults are used.
+#
+# ananta_config_path: "/etc/chakravyuh/ananta.yaml"
+

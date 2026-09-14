@@ -1,0 +1,50 @@
+[package]
+name = "chakravyuh"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Vinomoid <api@vinomoid.com>"]
+description = "Official Rust SDK for CHAKRAVYUH OS — production-grade AI security orchestration"
+documentation = "https://docs.vinomoid.com/chakravyuh-os/sdk/rust"
+readme = "README.md"
+homepage = "https://vinomoid.com/chakravyuh-os"
+repository = "https://github.com/vinomoid/chakravyuh-os"
+license = "Proprietary"
+keywords = ["security", "ai", "llm", "prompt-injection", "chakravyuh"]
+categories = ["api-bindings", "web-programming::http-client"]
+
+[dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tokio = { version = "1", features = ["time"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+url = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+httpmock = "0.7"
+serde_json = "1"
+
+[features]
+default = ["rustls-tls"]
+rustls-tls = ["reqwest/rustls-tls"]
+native-tls = ["reqwest/native-tls"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[[example]]
+name = "protect"
+path = "examples/protect.rs"
+
+[[example]]
+name = "verify"
+path = "examples/verify.rs"
+
+[[example]]
+name = "health"
+path = "examples/health.rs"

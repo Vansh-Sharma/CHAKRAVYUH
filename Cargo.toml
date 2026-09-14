@@ -1,0 +1,169 @@
+[package]
+name = "chakravyuh"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["VINOMOID <maintainers@chakravyuh.org>"]
+license = "Apache-2.0"
+description = "Open-source security operating system for autonomous AI"
+homepage = "https://chakravyuh.org"
+repository = "https://github.com/vinomoid/chakravyuh"
+documentation = "https://docs.chakravyuh.org"
+readme = "README.md"
+keywords = ["ai", "security", "llm", "ai-security", "firewall"]
+categories = ["security", "network-programming"]
+
+[lib]
+name = "chakravyuh"
+path = "src/lib.rs"
+
+[[bin]]
+name = "chakravyuh"
+path = "src/main.rs"
+
+[dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive", "env"] }
+clap_complete = "4.5"
+# Temp files for CLI tests
+tempfile = "3"
+
+# Async runtime
+tokio = { version = "1.40", features = ["full"] }
+
+# Web server
+axum = "0.7"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "cors", "compression-gzip"] }
+
+# TLS (built-in HTTPS termination; optional)
+axum-server = { version = "0.8", features = ["tls-rustls"], optional = true }
+rustls = { version = "0.23", optional = true }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# gRPC
+tonic = "0.12"
+prost = "0.13"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Configuration
+config = "0.14"
+
+# Crypto (for signatures, hashing, ANANTA trust plane)
+sha2 = "0.10"
+ed25519-dalek = "2.1"
+blake3 = "1.5"
+aes-gcm = "0.10"
+hmac = "0.12"
+subtle = "2.6"
+pbkdf2 = "0.12"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Random
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# CSV export (for decision log)
+csv = "1.3"
+
+# HTTP client (for proxying)
+reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+
+# Regex (for WAF patterns)
+regex = "1.10"
+
+# Base64 decoder (for obfuscation decoder in Threat Ring)
+base64 = "0.22"
+
+# IP / Geo (for Shield Ring)
+ipnet = "2.9"
+maxminddb = "0.27"
+
+# Redis (optional persistence backend for rate limiter + storage)
+redis = { version = "0.27", optional = true }
+
+# Ctrl+C handler for graceful shutdown
+ctrlc = { version = "3.4", features = ["termination"] }
+
+# File system watcher (for config hot-reload)
+notify = "8.0"
+
+# HMAC is declared in crypto section above
+
+# Hex encoding
+hex = "0.4"
+
+# Random
+rand = "0.9"
+
+# Phase 13.0 — Identity & Multi-Tenant Platform
+# Password hashing (Argon2id)
+argon2 = "0.5"
+# JWT issue/verify (HS256)
+jsonwebtoken = "9.3"
+
+[features]
+default = []
+# Enable Redis-backed storage for the rate limiter. When this feature
+# is off, only the in-memory backend is available — selecting
+# `backend: redis` in config will return a build-time error.
+redis = ["dep:redis"]
+# Enable built-in TLS termination (rustls). When this feature is off,
+# CHAKRAVYUH listens on plain HTTP and operators are expected to
+# terminate TLS at a reverse proxy (nginx, Caddy, AWS ALB, etc.).
+tls = ["dep:axum-server", "dep:rustls"]
+
+[dev-dependencies]
+tokio-test = "0.4"
+mockito = "1.5"
+criterion = { version = "0.5", features = ["async_tokio"] }
+pretty_assertions = "1.4"
+http-body-util = "0.1"
+tower = { version = "0.5", features = ["util"] }
+# Self-signed cert generation for TLS integration tests.
+rcgen = "0.13"
+# Phase C — Hardening: property-based testing & fuzzing support
+proptest = "1.5"
+arbitrary = { version = "1.4", features = ["derive"] }
+rand_chacha = "0.3"
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[[bench]]
+name = "shield_ring"
+harness = false
+path = "tests/benchmarks/shield_ring.rs"
+
+[[bench]]
+name = "threat_ring"
+harness = false
+path = "tests/benchmarks/threat_ring.rs"
+
+[[bench]]
+name = "phase_c_benchmarks"
+harness = false
+path = "tests/benchmarks/phase_c_benchmarks.rs"

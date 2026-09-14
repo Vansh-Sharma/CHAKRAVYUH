@@ -1,0 +1,39 @@
+# Target
+/target
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Configs (users should not commit their actual configs)
+config.yaml
+config.local.yaml
+!config.example.yaml
+
+# Logs
+*.log
+logs/
+
+# Databases
+*.mmdb
+*.db
+*.sqlite
+
+# Certificates (for development)
+*.pem
+*.key
+*.crt
+!*.example.pem

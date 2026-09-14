@@ -1,0 +1,8 @@
+version: "1.0"
+name: "fuzz-test-policy"
+rules:
+  - name: "block_sql"
+    action: "deny"
+    condition: "payload.contains(\"SELECT\")"
+    enabled: true
+    risk_weight: 0.5

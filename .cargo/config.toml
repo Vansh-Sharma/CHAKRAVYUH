@@ -1,0 +1,32 @@
+# Cargo configuration for CHAKRAVYUH
+#
+# Resolves Windows MSVC linker error LNK1140:
+#   "limit exceeded for program database; link with /PDB:NONE"
+#
+# Cause: when building the large test/doctest binaries on Windows, the MSVC
+# linker (link.exe) defaults to /DEBUG:FULL, which generates a full program
+# database (PDB) at link time. For a crate this size with 3,200+ tests and
+# 16 fuzz targets, the PDB exceeds link.exe's internal 4 GB PDB size limit
+# and the link step aborts.
+#
+# Fix: switch to /DEBUG:FASTLINK, which defers full PDB generation to the
+# debugger session. This keeps the link-time PDB small and lets large test
+# binaries link successfully, while still preserving debug info for
+# stack traces and breakpoints.
+#
+# Scope: Windows MSVC targets only. Has no effect on Linux / macOS / MinGW.
+
+[target.'cfg(target_env = "msvc")']
+rustflags = [
+    "-C", "link-arg=/DEBUG:FASTLINK",
+]
+
+# Optional: also raise the default codegen-units for the test profile so the
+# linker has less work to do per artifact. The release profile already sets
+# codegen-units = 1 in Cargo.toml for maximum optimization; this only
+# affects `cargo test` and `cargo doc --tests` builds.
+[profile.test]
+codegen-units = 16
+
+[profile.bench]
+codegen-units = 16

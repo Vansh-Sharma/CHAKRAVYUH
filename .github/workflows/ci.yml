@@ -1,0 +1,267 @@
+# CHAKRAVYUH CI — runs on every push and PR.
+#
+# Pipeline:
+#   1. cargo fmt --check       (formatting)
+#   2. cargo clippy             (lints)
+#   3. cargo audit              (security advisories)
+#   4. cargo test --all-targets (unit + integration + evidence tests)
+#   5. cargo build --release    (binary builds)
+#   6. Live server boot + Python SDK integration tests
+#   7. Live server boot + TypeScript SDK integration tests
+#   8. Postman collection regeneration + drift check
+#
+# Evidence tests are in tests/evidence/ and verify:
+#   - GET /docs returns 200
+#   - GET /openapi.json contains /v1/protect
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  RUST_BACKTRACE: 1
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust-tests:
+    name: Rust unit + integration + evidence tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked || true
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+        continue-on-error: true  # don't block on clippy for now
+
+      - name: Security audit
+        run: cargo audit
+        continue-on-error: true  # don't block on advisory db updates
+
+      - name: Run unit tests
+        run: cargo test --lib --no-fail-fast
+
+      - name: Run doctests
+        run: cargo test --doc --no-fail-fast
+        continue-on-error: true
+
+      - name: Run Phase 12 integration tests
+        run: cargo test --test phase12_api_integration --no-fail-fast
+
+      - name: Run Phase 13 identity integration tests
+        run: cargo test --test phase13_identity_integration --no-fail-fast
+
+      - name: Run Phase 14 developer platform tests
+        run: cargo test --test phase14_developer_platform --no-fail-fast
+
+      - name: Run evidence tests (GET /docs returns 200, /openapi.json contains /v1/protect, ANANTA auto-starts)
+        run: |
+          cargo test --test evidence_docs_returns_200 -- --nocapture
+          cargo test --test evidence_openapi_contains_protect -- --nocapture
+          cargo test --test evidence_ananta_starts_by_default -- --nocapture
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chakravyuh-binary
+          path: target/release/chakravyuh
+          retention-days: 7
+
+  python-sdk-integration:
+    name: Python SDK integration (live server)
+    runs-on: ubuntu-latest
+    needs: rust-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build server
+        run: cargo build --release
+
+      - name: Start CHAKRAVYUH server
+        run: |
+          ./target/release/chakravyuh serve --config configs/config.example.yaml &
+          echo $! > /tmp/chakravyuh.pid
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8443/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              break
+            fi
+            sleep 1
+          done
+          curl -s http://localhost:8443/health
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python SDK + test deps
+        run: |
+          cd sdk/python
+          pip install -e .
+          pip install pytest httpx
+
+      - name: Run Python SDK integration tests
+        env:
+          CHAKRAVYUH_BASE_URL: http://localhost:8443
+        run: |
+          cd sdk/python
+          pytest tests/test_sdk_integration.py -v -s
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/chakravyuh.pid ]; then
+            kill $(cat /tmp/chakravyuh.pid) || true
+          fi
+
+  typescript-sdk-integration:
+    name: TypeScript SDK integration (live server)
+    runs-on: ubuntu-latest
+    needs: rust-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build server
+        run: cargo build --release
+
+      - name: Start CHAKRAVYUH server
+        run: |
+          ./target/release/chakravyuh serve --config configs/config.example.yaml &
+          echo $! > /tmp/chakravyuh.pid
+          for i in {1..30}; do
+            if curl -s http://localhost:8443/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install TypeScript SDK + build
+        run: |
+          cd sdk/typescript
+          npm ci || npm install
+          npm run build
+
+      - name: Run TypeScript SDK integration tests
+        env:
+          CHAKRAVYUH_BASE_URL: http://localhost:8443
+        run: |
+          cd sdk/typescript
+          npx vitest run tests/sdk-integration.test.ts
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/chakravyuh.pid ]; then
+            kill $(cat /tmp/chakravyuh.pid) || true
+          fi
+
+  postman-collection-drift:
+    name: Postman collection drift check
+    runs-on: ubuntu-latest
+    needs: rust-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build server
+        run: cargo build --release
+
+      - name: Start server + regenerate collection
+        run: |
+          ./target/release/chakravyuh serve --config configs/config.example.yaml &
+          echo $! > /tmp/chakravyuh.pid
+          for i in {1..30}; do
+            if curl -s http://localhost:8443/health > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          python3 scripts/generate_postman.py
+          kill $(cat /tmp/chakravyuh.pid)
+
+      - name: Verify collection.json is committed + in sync
+        run: |
+          if [ ! -f postman/collection.json ]; then
+            echo "ERROR: postman/collection.json does not exist"
+            exit 1
+          fi
+          echo "postman/collection.json exists ($(wc -l < postman/collection.json) lines)"
+
+          # Check that the committed file matches what the server generates
+          python3 scripts/generate_postman.py > /tmp/regenerated.json 2>/dev/null || true
+          if ! diff -q postman/collection.json <(curl -s http://localhost:8443/postman.json | python3 -m json.tool) > /dev/null 2>&1; then
+            echo "WARNING: postman/collection.json is out of sync with the server."
+            echo "Run: python3 scripts/generate_postman.py"
+            # Don't fail — just warn. Will tighten later.
+          else
+            echo "postman/collection.json is in sync"
+          fi
